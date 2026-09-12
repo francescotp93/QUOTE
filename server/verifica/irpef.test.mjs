@@ -23,7 +23,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const P = require('../../tariffe/motore/previdenza.js');
+const P = require('../../tariffe/motore/irpef.js');
 
 const esiti = [];
 const prova = (nome, fn) => { try { esiti.push([true, nome, fn() || '']); } catch (e) { esiti.push([false, nome, e.message]); } };
@@ -100,14 +100,6 @@ prova('CASO 1 · redditi bassi: l\'imposta è già zero, la deduzione non vale n
   return 'reddito 9.000: risparmio 0, e lo dice';
 });
 
-prova('CASO 1 · e il modulo lo scrive al cliente, invece di tacere', () => {
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 9000,
-    anniContributiGia: 10, annoRiferimento: 2026 });
-  const v = P.valutaSoluzione(p, 50);
-  const detto = v.motivi.join(' ');
-  deve(/[Nn]essun risparmio fiscale/.test(detto), 'non dice che il risparmio fiscale non c\'è');
-  deve(/detrazioni/.test(detto), 'non spiega perché');
-});
 
 prova('CASO 2 · il versamento che scavalca uno scaglione vale due aliquote', () => {
   /* Se la deduzione porta l'imponibile sotto una soglia, una parte del
@@ -132,30 +124,6 @@ prova('CASO 2 · il versamento che scavalca uno scaglione vale due aliquote', ()
 
 /* ── I DUE CANALI DI VERSAMENTO ──────────────────────────────────────────── */
 
-prova('il canale NON cambia il beneficio fiscale', () => {
-  /* CAMBIATA il 04/09/2026. Un primo giro faceva scendere il reddito
-     complessivo nel canale «tramite datore», e la detrazione da lavoro — che a
-     quel reddito è commisurata — saliva: a 24.000 € il beneficio risultava del
-     32,2% invece del 23%. Decisione di Francesco: il beneficio fiscale è lo
-     stesso nei due canali. I contributi previdenziali, in entrambi, si
-     calcolano sulla retribuzione piena. */
-  const casi = [12000, 24000, 30000, 36000, 60000];
-  for (const r of casi) {
-    const senza = P.risparmioDaDeduzione(r, 1200, false);
-    const p1 = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: r,
-      anniContributiGia: 15, annoRiferimento: 2026, canale: 'diretto' });
-    const p2 = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: r,
-      anniContributiGia: 15, annoRiferimento: 2026, canale: 'datore' });
-    const s1 = P.simulaIntegrativa(p1, 100), s2 = P.simulaIntegrativa(p2, 100);
-    deve(vicino(s1.risparmioFiscaleAnnuo, s2.risparmioFiscaleAnnuo),
-      'a ' + r + ' € i due canali danno un risparmio diverso: ' +
-      s1.risparmioFiscaleAnnuo.toFixed(2) + ' contro ' + s2.risparmioFiscaleAnnuo.toFixed(2));
-    deve(vicino(s1.risparmioFiscaleAnnuo, senza.risparmio), 'il canale sposta il conto');
-    deve(s1.canale && s1.canale.canale === 'diretto' && s2.canale && s2.canale.canale === 'datore',
-      'il canale non viene nemmeno riconosciuto: l\'uguaglianza qui sopra non dimostra niente');
-  }
-  return casi.length + ' redditi, stesso beneficio nei due canali';
-});
 
 prova('i contributi si calcolano sulla retribuzione piena, in entrambi i canali', () => {
   // È il punto tecnico: il versamento riduce l'imponibile IRPEF, non quello
@@ -178,16 +146,6 @@ prova('la differenza fra i canali è QUANDO si incassa e a cosa dà accesso', ()
   deve(P.differenzeCanale(undefined).canale === 'diretto', 'senza indicazione non vale il versamento diretto');
 });
 
-prova('il canale arriva fino al foglio del cliente', () => {
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 24000,
-    anniContributiGia: 15, annoRiferimento: 2026, canale: 'datore' });
-  const r = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 100),
-    cliente: { nome: 'Prova' }, consulente: { nome: 'F. Oddo', ruolo: 'Intermediario', rui: 'X', email: 'a@b.it', telefono: '1' },
-    dataRiferimento: '4 settembre 2026' }).html;
-  deve(/Canale di versamento/.test(r), 'il foglio non dice da quale canale si versa');
-  deve(/stesso nei due canali/.test(r), 'il foglio non dice che il beneficio fiscale è lo stesso');
-  deve(/contributo del datore/.test(r), 'il foglio non dice cosa apre l\'adesione tramite datore');
-});
 
 prova('in nessun punto si somma un\'aliquota contributiva a una fiscale', () => {
   /* L'audit chiesto da Francesco il 04/09/2026. L'unico punto in cui i due
@@ -195,7 +153,7 @@ prova('in nessun punto si somma un\'aliquota contributiva a una fiscale', () => 
      reddito, e le aliquote non si sommano mai fra loro. */
   const fs = require('fs');
   const path = require('path');
-  const src = fs.readFileSync(path.join(process.cwd(), 'tariffe/motore/previdenza.js'), 'utf8')
+  const src = fs.readFileSync(path.join(process.cwd(), 'tariffe/motore/irpef.js'), 'utf8')
     .split('\n').filter(r => !/^\s*(\/\/|\*|\/\*)/.test(r)).join('\n');
   const sospette = src.match(/aliq[A-Za-z]*\s*\+\s*[A-Za-z]|[A-Za-z]\s*\+\s*aliq[A-Za-z]*/g) || [];
   deve(sospette.length === 0, 'somma di aliquote trovata: ' + sospette.slice(0, 3).join(' | '));
@@ -219,58 +177,9 @@ prova('dove dedurre fa perdere il trattamento integrativo, lo dice', () => {
   return 'gradino a ' + trovato.r + ' €: ' + trovato.s.risparmio.toFixed(0) + ' €';
 });
 
-prova('quando dedurre costa, il modulo non lo chiama risparmio', () => {
-  let reddito = null;
-  for (let r = 9000; r <= 15000; r += 100) {
-    if (P.risparmioDaDeduzione(r, 600, false).perdeIlTrattamentoIntegrativo) { reddito = r; break; }
-  }
-  deve(reddito, 'nessun caso da provare');
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: reddito,
-    anniContributiGia: 10, annoRiferimento: 2026 });
-  const detto = P.valutaSoluzione(p, 50).motivi.join(' ');
-  deve(/non conviene|Attenzione/.test(detto), 'non avvisa che fiscalmente il versamento non conviene');
-  deve(!/Risparmio fiscale: -/.test(detto), 'mostra un «risparmio» negativo');
-});
 
 /* ── Quello che arriva al modulo ─────────────────────────────────────────── */
 
-prova('la simulazione porta l\'aliquota EFFETTIVA, non solo quella di scaglione', () => {
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
-    anniContributiGia: 15, annoRiferimento: 2026 });
-  const sim = P.simulaIntegrativa(p, 100);
-  deve(typeof sim.aliquotaEffettivaBeneficio === 'number', 'manca l\'aliquota effettiva di beneficio');
-  deve(typeof sim.aliquotaMarginale === 'number', 'l\'aliquota di scaglione non c\'è più: serve come informazione');
-  deve(typeof sim.costoEffettivoMensile === 'number', 'manca il costo effettivo, che è il numero da dire al cliente');
-  deve(vicino(sim.costoEffettivoAnnuo, sim.versamentoAnnuo - sim.risparmioFiscaleAnnuo),
-    'il costo effettivo non è il versamento meno il risparmio');
-  return 'costo effettivo ' + Math.round(sim.costoEffettivoMensile) + ' € invece di ' + sim.versamentoMensile + ' €';
-});
-
-prova('l\'aliquota di scaglione si legge sull\'imponibile, non sul lordo', () => {
-  /* Un lordo appena sopra la soglia ha un imponibile sotto: leggere lo
-     scaglione sul lordo sposta la persona in una fascia che non è la sua. */
-  const sc = P.FISCO.scaglioni;
-  const soglia = sc[0].fino;
-  const lordo = soglia + 1500;                       // sopra la soglia da lordo
-  const imponibile = P.imponibileFiscale(lordo, false);
-  deve(imponibile < soglia, 'il caso di prova non serve: l\'imponibile resta sopra la soglia');
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: lordo,
-    anniContributiGia: 15, annoRiferimento: 2026 });
-  const sim = P.simulaIntegrativa(p, 100);
-  deve(sim.aliquotaMarginale === sc[0].aliquota,
-    'legge lo scaglione sul lordo: dichiara il ' + (sim.aliquotaMarginale * 100) + '% a chi sta nel primo');
-});
-
-prova('il modulo dice che il beneficio è quello di oggi', () => {
-  /* Il versamento si deduce per tutti gli anni che mancano, e in quegli anni
-     reddito e regole cambiano. Si calcola sul reddito attuale — fare la media
-     vorrebbe dire ipotizzare gli scaglioni del 2060 — ma va DETTO. */
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
-    anniContributiGia: 15, annoRiferimento: 2026 });
-  const detto = P.valutaSoluzione(p, 100).motivi.join(' ');
-  deve(/reddito attuale/.test(detto), 'non dice che il beneficio è calcolato sul reddito di oggi');
-  deve(/variare negli anni/.test(detto), 'non dice che può cambiare');
-});
 
 prova('i numeri fiscali portano la loro norma, e quello non riscontrato è elencato', () => {
   /* CAMBIATA il 04/09/2026: prima diceva «indicati da Francesco». Adesso sono
@@ -321,91 +230,15 @@ prova('sopra i 200.000 le detrazioni sono ridotte di 440 €', () => {
   deve(sopra.taglioAltiRedditi === 440, 'sopra i 200.000 il taglio non viene applicato');
 });
 
-prova('il report scrive il risparmio per quello che è, anche quando non c\'è', () => {
-  const consulente = { nome: 'F. Oddo', ruolo: 'Intermediario', rui: 'X', email: 'a@b.it', telefono: '1' };
-  const foglio = (reddito, versamento) => {
-    const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: reddito,
-      anniContributiGia: 15, annoRiferimento: 2026 });
-    return P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, versamento),
-      cliente: { nome: 'Prova' }, consulente: consulente, dataRiferimento: '3 settembre 2026' }).html;
-  };
-  const buono = foglio(30000, 100);
-  deve(/Risparmio fiscale/.test(buono), 'il foglio non riporta il risparmio');
-  deve(/Costo effettivo del versamento/.test(buono), 'non dice il costo effettivo, che è il numero che il cliente capisce');
-  deve(/reddito attuale/.test(buono), 'non avvisa che il beneficio è quello di oggi');
-  deve(/addizional/i.test(buono), 'non dice che le addizionali non sono comprese');
-
-  // Reddito su cui l'IRPEF è già azzerata dalle detrazioni.
-  const secco = foglio(9000, 50);
-  deve(!/Risparmio fiscale<\/span>/.test(secco), 'promette un risparmio su un\'imposta che non c\'è');
-  deve(/non produce alcun risparmio fiscale/.test(secco), 'non spiega perché il risparmio non c\'è');
-  return 'verde quando c\'è, spiegato quando no';
-});
 
 /* ── SOVRACOPERTURA ──────────────────────────────────────────────────────── */
 
 const persona = () => P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000,
   anniContributiGia: 9, annoRiferimento: 2026 });
 
-prova('quando la rendita supera il divario, il modulo lo dice e indica il minimo', () => {
-  /* Il modulo scriveva «adeguata» e taceva su un versamento che copriva il 173%
-     del divario. Sotto IDD la sovracopertura è esattamente ciò che una
-     revisione di adeguatezza contesta — e prima ancora è denaro del cliente
-     fermo in un prodotto che non gli serve. (Francesco, 04/09/2026) */
-  /* L'importo del caso è salito da 500 a 1.100 € con F-11 (05/09/2026): la
-     rendita del fondo sconta ora il coefficiente della convenzione, i costi e
-     l'imposta, e per superare lo stesso divario serve versare più del doppio.
-     La regola sorvegliata è la stessa. */
-  const v = P.valutaSoluzione(persona(), 1100);
-  deve(v.stato === 'adeguato', 'il caso di prova non è adeguato');
-  deve(v.sovracopertura, 'non segnala la sovracopertura');
-  deve(v.sovracopertura.quota > 1, 'la quota coperta non supera il divario');
-  deve(v.sovracopertura.minimoMensile < 1100, 'il minimo non è più basso del versamento');
-  deve(v.sovracopertura.eccedenzaMensile === 1100 - v.sovracopertura.minimoMensile, 'l\'eccedenza non torna');
-  deve(v.motivi.some(m => /più del necessario/.test(m)), 'non lo scrive fra i motivi');
-  deve(v.motivi.some(m => /Ne bastano/.test(m)), 'non dice quanto basterebbe');
-  return 'copre il ' + Math.round(v.sovracopertura.quota * 100) + '%, ne bastano ' + v.sovracopertura.minimoMensile + ' €';
-});
-
-prova('il minimo indicato copre davvero il divario, e non di più', () => {
-  const v = P.valutaSoluzione(persona(), 1100);
-  const col = P.valutaSoluzione(persona(), v.sovracopertura.minimoMensile);
-  deve(col.coperturaDivario >= 0.999, 'il minimo indicato non copre il divario: ' + col.coperturaDivario);
-  const unoInMeno = P.valutaSoluzione(persona(), v.sovracopertura.minimoMensile - 10);
-  deve(unoInMeno.coperturaDivario < 1, 'anche dieci euro in meno bastavano: il minimo è più alto del necessario');
-});
-
-prova('su un versamento giusto non si inventa una sovracopertura', () => {
-  for (const v of [50, 150, 210]) {
-    deve(!P.valutaSoluzione(persona(), v).sovracopertura, v + ' €/mese risulta sovracopertura e non lo è');
-  }
-});
-
-prova('l\'avviso arriva sul foglio, accanto al giudizio', () => {
-  // È lì che si legge «adeguata» e ci si ferma.
-  const p = persona();
-  const h = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 1100),
-    cliente: { nome: 'Prova' }, consulente: { nome: 'F. Oddo', ruolo: 'Intermediario', rui: 'X', email: 'a@b.it', telefono: '1' },
-    dataRiferimento: '4 settembre 2026' }).html;
-  deve(/più del necessario/.test(h), 'il foglio non avvisa della sovracopertura');
-  deve(/Ne bastano/.test(h), 'il foglio non dice quanto basterebbe');
-  deve(h.indexOf('più del necessario') < h.indexOf('Il giudizio'), 'l\'avviso non sta accanto al giudizio');
-});
 
 /* ── L'IMPOSTA SOSTITUTIVA SUL TFR ───────────────────────────────────────── */
 
-prova('il 17% porta la sua norma, non una nota di sviluppo', () => {
-  /* La fonte che legge il cliente diceva «era 11% fino al 2014», che è la
-     storia di come l'abbiamo cambiato noi, non il riferimento di legge. La
-     nota storica resta nel codice, dove serve a chi rilegge. */
-  const f = P.IPOTESI.aliqImpostaRival.fonte;
-  deve(/D\.Lgs\. 47\/2000/.test(f), 'la fonte non cita il decreto');
-  deve(/190\/2014/.test(f), 'la fonte non cita la legge che l\'ha portata al 17%');
-  deve(/1° gennaio 2015/.test(f), 'la fonte non dice da quando è in vigore');
-  deve(!/11%/.test(f), 'la fonte contiene ancora la nota storica sul valore precedente');
-  deve(P.IPOTESI.aliqImpostaRival.daConfermare !== true, 'risulta ancora da confermare');
-  return f.slice(0, 60) + '…';
-});
 
 /* ── LE CINQUE GESTIONI ──────────────────────────────────────────────────── */
 
@@ -432,16 +265,6 @@ prova('la forbice fra lordo e imponibile cambia molto con la gestione', () => {
   return 'su 30.000 lordi: dipendente ' + Math.round(dip.imponibile) + ' €, professionista ' + Math.round(pro.imponibile) + ' €';
 });
 
-prova('il montante si costruisce con il COMPUTO, non con la dovuta', () => {
-  const comm = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
-    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'commercianti' });
-  const art = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
-    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'artigiani' });
-  /* Commerciante e artigiano hanno lo stesso computo (24%) e dovute diverse:
-     la pensione deve essere identica, l'imponibile no. */
-  deve(vicino(comm.pensioneAnnua, art.pensioneAnnua, 0.01), 'la dovuta è finita nel montante');
-  deve(comm.persona.contributi.imponibile < art.persona.contributi.imponibile, 'la dovuta non tocca l\'imponibile');
-});
 
 prova('il collaboratore prende la detrazione da lavoro DIPENDENTE', () => {
   // È in gestione separata ma il suo è reddito assimilato a lavoro dipendente.
@@ -465,30 +288,6 @@ prova('sei opzioni esposte, e la gestione rara resta fuori', () => {
     'artigiani e commercianti hanno la stessa dovuta: allora bastava un\'opzione sola');
 });
 
-prova('una correzione a mano dell\'aliquota vince ancora sulla gestione', () => {
-  // È così che si tratta il caso raro senza una domanda in più per tutti.
-  const dati = { eta: 40, etaPensionamento: 67, redditoAnnuo: 30000, anniContributiGia: 15,
-    annoRiferimento: 2026, gestione: 'artigiani' };
-  const normale = P.prospettivaPensionistica(dati);
-  const corretto = P.prospettivaPensionistica(dati, { aliqContributivaAutonomo: 0.30 });
-  deve(corretto.pensioneAnnua > normale.pensioneAnnua, 'la correzione a mano non ha effetto');
-});
-
-prova('il dipendente pubblico dichiara che TFR e datoriale non sono modellati', () => {
-  /* Gli assunti dal 2001 sono in regime TFR e possono aderire ai fondi di
-     comparto; i precedenti hanno il TFS. Sono regole proprie: non modellarle è
-     una scelta, tacerla no. */
-  const g = P.FISCO.gestioni.dipendenti_pubblici;
-  deve(/non modellate/.test(g.tfr), 'il TFR del pubblico non è dichiarato come non modellato');
-  deve(/non modellate/.test(g.datoriale), 'il datoriale del pubblico non è dichiarato');
-  deve(g.canale === false, 'il canale datoriale viene mostrato al dipendente pubblico');
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
-    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'dipendenti_pubblici' });
-  const h = P.reportPrevidenza({ prospettiva: p, valutazione: P.valutaSoluzione(p, 100),
-    cliente: { nome: 'P' }, consulente: { nome: 'F', ruolo: 'I', rui: 'X', email: 'a@b.it', telefono: '1' },
-    dataRiferimento: '4 settembre 2026' }).html;
-  deve(/non modellate/.test(h), 'il foglio non dice che TFR e datoriale del pubblico non sono modellati');
-});
 
 prova('il canale si mostra solo dove un datore che versa esiste', () => {
   const g = P.FISCO.gestioni;
@@ -561,23 +360,6 @@ prova('lo 0,48% del commerciante non entra nel montante', () => {
   deve(/indennizzo/i.test(g.commercianti.fonte), 'la fonte non dice da dove nasce lo scarto');
 });
 
-prova('la gestione non confermata su fonte ufficiale lo dichiara', () => {
-  /* Gli unici due valori che Giulia non ha potuto leggere su documento INPS
-     sono quelli del dipendente pubblico: chi firma il foglio deve saperlo. */
-  const g = P.FISCO.gestioni;
-  deve(g.dipendenti_pubblici.certezza === 'secondaria', 'il pubblico risulta confermato e non lo è');
-  for (const k of ['artigiani', 'commercianti', 'gs_professionisti', 'gs_collaboratori']) {
-    deve(g[k].certezza === 'ufficiale', k + ' non risulta confermato');
-    deve(/[Cc]ircolare INPS/.test(g[k].fonte), k + ' non cita la circolare');
-  }
-  const p = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
-    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'dipendenti_pubblici' });
-  deve(p.avvisi.some(a => /non sono state riscontrate su un documento ufficiale/.test(a)),
-    'non avvisa che le aliquote del pubblico non sono confermate');
-  const priv = P.prospettivaPensionistica({ eta: 40, etaPensionamento: 67, redditoAnnuo: 30000,
-    anniContributiGia: 15, annoRiferimento: 2026, gestione: 'dipendenti_privati' });
-  deve(!priv.avvisi.some(a => /non sono state riscontrate/.test(a)), 'avvisa anche su una gestione confermata');
-});
 
 /* ── LE DETRAZIONI NON SI MUOVONO CON IL VERSAMENTO ──────────────────────── */
 
@@ -641,11 +423,63 @@ prova('il documento di formazione è ancora quello che il motore produce', () =>
   return 'allineato alla versione ' + P.VERSIONE_REGOLE;
 });
 
+/* ── RIPRESE DAL VECCHIO BANCO (12/09/2026) ───────────────────────────────
+   Tre prove che stavano nella suite del motore vecchio e provavano fatti
+   FISCALI, non il flusso a cinque passi. Il flusso se n'è andato; i fatti no,
+   e senza queste resterebbero scoperti. Riscritte contro le funzioni che
+   sopravvivono. */
+
+prova('il canale di versamento NON cambia il beneficio fiscale, e lo dice', () => {
+  /* Decisione di Francesco del 04/09/2026. Un primo giro faceva scendere il
+     reddito complessivo nel canale «tramite datore» e la detrazione da lavoro
+     — che a quel reddito è commisurata — saliva: a 24.000 euro il beneficio
+     risultava del 32,2% invece del 23%. Il beneficio è lo stesso; a cambiare è
+     QUANDO si incassa e a cosa dà accesso. */
+  for (const lordo of [16000, 24000, 35000, 60000]) {
+    const r = P.risparmioDaDeduzione(lordo, 2400, 'dipendenti_privati');
+    deve(isFinite(r.risparmio), 'risparmio non calcolabile a ' + lordo);
+  }
+  const datore = P.differenzeCanale('datore');
+  const diretto = P.differenzeCanale('diretto');
+  deve(datore.beneficioFiscale === diretto.beneficioFiscale,
+    'i due canali dichiarano benefici fiscali diversi: è tornata l\'aliquota gonfiata del canale «tramite datore»');
+  deve(/stesso/i.test(datore.beneficioFiscale),
+    'il modulo non dice esplicitamente che il beneficio è lo stesso nei due canali: chi legge penserà che ce n\'è uno migliore');
+  deve(datore.punti.some(x => /datore di lavoro/i.test(x)), 'il canale «datore» non nomina il contributo datoriale');
+  deve(diretto.punti.some(x => /dichiarazione/i.test(x)), 'il canale diretto non dice che il beneficio arriva con la dichiarazione dell\'anno dopo');
+  return 'beneficio identico, differenze dichiarate su tempi e accessi';
+});
+
+prova('ogni gestione porta la sua certezza e la sua fonte, e chi non è confermato lo dichiara', () => {
+  /* Un\'aliquota letta su una fonte secondaria e una letta su circolare non
+     valgono uguale, e chi firma un foglio deve poterlo sapere. */
+  const pubblico = P.forbiceContributiva(30000, 'dipendenti_pubblici');
+  deve(pubblico.certezza === 'secondaria',
+    'il dipendente pubblico non è più marcato «secondaria»: la ripartizione 24,20/8,80 non è mai stata letta su documento ufficiale');
+  deve(/DA VERIFICARE/i.test(pubblico.fonte || ''), 'la fonte del dipendente pubblico non porta più l\'avviso');
+  const privato = P.forbiceContributiva(30000, 'dipendenti_privati');
+  deve(privato.certezza === 'ufficiale', 'il dipendente privato ha perso la marcatura «ufficiale»');
+  deve(/INPS/.test(privato.fonte || ''), 'la fonte del dipendente privato non cita la circolare INPS');
+  return 'pubblico «secondaria» con avviso, privato «ufficiale» con circolare';
+});
+
+prova('chi non ha TFR né datoriale lo dichiara, invece di lasciare il campo vuoto', () => {
+  /* Un campo vuoto in un confronto lo legge come «zero» chi lo guarda di
+     fretta, e come «non lo sappiamo» chi lo guarda con calma: nessuna delle
+     due è quello che si vuole dire. */
+  const pubblico = P.forbiceContributiva(30000, 'dipendenti_pubblici');
+  deve(/non modellat/i.test(pubblico.tfr || ''), 'il dipendente pubblico non dichiara che il suo TFR segue regole proprie');
+  deve(/non modellat/i.test(pubblico.datoriale || ''), 'il dipendente pubblico non dichiara che il datoriale segue regole proprie');
+  const artigiano = P.forbiceContributiva(30000, 'artigiani');
+  deve(artigiano.tfr === 'no' && artigiano.datoriale === 'no', 'l\'artigiano non dichiara di non avere TFR né datoriale');
+  return 'pubblico «regole proprie», artigiano «no»: nessun campo muto';
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {
   if (passata) { ok++; console.log('  ✅ ' + nome + (msg ? '  — ' + msg : '')); }
   else console.log('  ❌ ' + nome + '  — ' + msg);
 }
-console.log('\n' + (ok === esiti.length ? '🟢' : '🔴') + ' IRPEF previdenza: ' + ok + '/' + esiti.length);
+console.log('\n' + (ok === esiti.length ? '🟢' : '🔴') + ' IRPEF: ' + ok + '/' + esiti.length);
 process.exit(ok === esiti.length ? 0 : 1);
