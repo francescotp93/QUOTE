@@ -1,32 +1,6 @@
-id: grp2-1789203718  exit: 0  2026-09-12 09:02:21
+id: ora-1789204128  exit: 0  2026-09-12 09:09:00
 ----
-=== GROUPAMA: tutto il giornale di stamattina (il login ha retto meno di un'ora)
-Sep 12 07:49:34 vps-d6443a46 start-service.sh[1978140]: 07:49:34 [groupama] fill user/pass: {"ok":true}
-Sep 12 07:49:38 vps-d6443a46 start-service.sh[1978140]: 07:49:38 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
-Sep 12 07:51:45 vps-d6443a46 start-service.sh[1978140]: 07:51:45 [groupama] OTP inserito → valore nel campo: "356221" OK
-Sep 12 07:51:47 vps-d6443a46 start-service.sh[1978140]: 07:51:47 [groupama] sessione salvata su disco (login riuscito)
-
-=== AXA: il tentativo di login di stamattina, per esteso
-Sep 12 07:40:49 vps-d6443a46 start-service.sh[1497962]: 07:40:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:45:49 vps-d6443a46 start-service.sh[1497962]: 07:45:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:49:45 vps-d6443a46 start-service.sh[1497962]: 07:49:45 [axa] AXA: User ID inserito
-Sep 12 07:49:45 vps-d6443a46 start-service.sh[1497962]: 07:49:45 [axa] AXA: password inserita (form unico)
-Sep 12 07:49:45 vps-d6443a46 start-service.sh[1497962]: 07:49:45 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 07:49:47 vps-d6443a46 start-service.sh[1497962]: 07:49:47 [axa] AXA: submit 1
-Sep 12 07:49:50 vps-d6443a46 start-service.sh[1497962]: 07:49:50 [axa] AXA: password inserita (passo 2)
-Sep 12 07:49:50 vps-d6443a46 start-service.sh[1497962]: 07:49:50 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 07:49:52 vps-d6443a46 start-service.sh[1497962]: 07:49:52 [axa] AXA: submit 2
-Sep 12 07:49:54 vps-d6443a46 start-service.sh[1497962]: 07:49:54 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 07:49:57 vps-d6443a46 start-service.sh[1497962]: 07:49:57 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 07:49:57 vps-d6443a46 start-service.sh[1497962]: 07:49:57 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
-Sep 12 07:49:57 vps-d6443a46 start-service.sh[1497962]: 07:49:57 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
-Sep 12 07:55:22 vps-d6443a46 start-service.sh[1497962]: 07:55:22 [axa] 2FA inserito → valore nel campo: "310401" OK
-Sep 12 07:55:22 vps-d6443a46 start-service.sh[1497962]: 07:55:22 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 07:55:24 vps-d6443a46 start-service.sh[1497962]: 07:55:24 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 07:55:25 vps-d6443a46 start-service.sh[1497962]: 07:55:25 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 07:55:26 vps-d6443a46 start-service.sh[1497962]: 07:55:26 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 07:55:27 vps-d6443a46 start-service.sh[1497962]: 07:55:27 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 07:55:28 vps-d6443a46 start-service.sh[1497962]: 07:55:28 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 08:00:40 vps-d6443a46 start-service.sh[1497962]: 08:00:40 [axa] attesa del codice scaduta (10 min): il keep-alive riprende
-Sep 12 08:00:49 vps-d6443a46 start-service.sh[1497962]: 08:00:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:05:49 vps-d6443a46 start-service.sh[1497962]: 08:05:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+ora: 2026-09-12 09:08:55 UTC
+axa        loggato: None | stato: attesa_otp | Codice non accettato — genera un nuovo codice e riprova.
+groupama   loggato: False | stato: pronto | Sessione scaduta: rifai il login da Fonti → Groupama
+--- ultimi eventi groupama:
