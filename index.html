@@ -1760,7 +1760,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
         <div class="aw-grid">
           <div class="aw-field"><label>Età</label><input id="pens-eta" type="number" min="16" max="75" placeholder="es. 38"></div>
           <div class="aw-field"><label>Tipo di lavoro</label>
-            <select id="pens-lavoro">
+            <select id="pens-lavoro" onchange="pensLavoroScelto()">
               <option value="dipendente">Lavoratore dipendente</option>
               <option value="autonomo">Lavoratore autonomo</option>
               <option value="professionista">Libero professionista</option>
@@ -1771,6 +1771,17 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
               <button type="button" class="on" data-base="netto" onclick="pensBase('netto')">Netto in mano</button>
               <button type="button" data-base="lordo" onclick="pensBase('lordo')">Lordo da busta</button>
             </div></div>
+          <!-- LE MENSILITÀ NON SONO UN DETTAGLIO DI FORMATTAZIONE: il reddito
+               annuo si ricava da qui, e sul reddito annuo si calcola l'IRPEF,
+               che è progressiva. Una mensilità di scarto puo' far uscire un
+               versamento «in perdita» quando in realta' conviene. Il valore si
+               propone dal tipo di lavoro e resta modificabile. -->
+          <div class="aw-field"><label>Mensilità</label>
+            <select id="pens-mensilita" onchange="pensMensilitaScelta()">
+              <option value="12">12 — nessuna mensilità aggiuntiva</option>
+              <option value="13">13 — con tredicesima</option>
+              <option value="14">14 — con tredicesima e quattordicesima</option>
+            </select></div>
           <div class="aw-field"><label>Versamento mensile ipotizzato</label><input id="pens-versamento" type="number" min="0" step="10" placeholder="es. 100"></div>
           <div class="aw-field"><label>Ha cominciato a lavorare a</label><input id="pens-inizio" type="number" min="14" max="70" placeholder="es. 24" oninput="pensInizioScritto()"></div>
         </div>
@@ -3897,6 +3908,7 @@ function openVita(){
    l'unica cosa che nessuna prova guardava, ed era l'unica che usciva di casa. */
 var PENS = {
   base: 'netto',          // il reddito indicato e' netto o lordo
+  mensilitaAMano: false,  // il consulente le ha scelte lui: non le tocchiamo piu'
   esito: null,
   cliente: null,          // se si arriva dalla scheda anagrafica
   parametri: 'attesa',    // attesa | ok | ko
@@ -3910,6 +3922,7 @@ function apriPensione() {
      accorge. */
   if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
   pensAvvisi();
+  pensMensilitaProposta();
   showPage('previdenza');
 }
 
@@ -3974,6 +3987,28 @@ function pensBase(b) {
   if (PENS.esito) pensCalcola();
 }
 
+/* ── LE MENSILITA' ───────────────────────────────────────────────────────
+   Si PROPONGONO dal tipo di lavoro — 13 al dipendente, 12 all'autonomo, che
+   una tredicesima non l'ha mai vista — e restano modificabili: i contratti a
+   14 esistono. Ma una volta che il consulente le ha scelte a mano NON si
+   sovrascrivono piu' cambiando il tipo di lavoro: sarebbe il campo che si
+   muove da solo mentre uno guarda altrove, e nessuno se ne accorgerebbe. */
+function pensMensilitaProposta() {
+  if (PENS.mensilitaAMano) return;
+  var l = (document.getElementById('pens-lavoro') || {}).value || 'dipendente';
+  var prop = (window.Pensione && Pensione.LAVORI[l] && Pensione.LAVORI[l].mensilita) || 12;
+  var sel = document.getElementById('pens-mensilita');
+  if (sel) sel.value = String(prop);
+}
+function pensLavoroScelto() {
+  pensMensilitaProposta();
+  if (PENS.esito) pensCalcola();
+}
+function pensMensilitaScelta() {
+  PENS.mensilitaAMano = true;
+  if (PENS.esito) pensCalcola();
+}
+
 /* La casella «non lo sa» e il campo dell'eta' di inizio si escludono: tenerli
    tutti e due attivi lascerebbe sullo schermo un numero che il calcolo non
    sta usando, ed e' il modo piu' facile per far dire al consulente una cosa
@@ -3998,7 +4033,8 @@ function pensPulisci() {
   });
   var c = document.getElementById('pens-inizio-ignoto'); if (c) c.checked = false;
   var l = document.getElementById('pens-lavoro'); if (l) l.value = 'dipendente';
-  PENS.esito = null; PENS.cliente = null;
+  PENS.esito = null; PENS.cliente = null; PENS.mensilitaAMano = false;
+  pensMensilitaProposta();
   var da = document.getElementById('pens-da-cliente'); if (da) da.innerHTML = '';
   var es = document.getElementById('pens-esito'); if (es) es.innerHTML = '';
   pensBase('netto');
@@ -4012,6 +4048,7 @@ function pensLeggi() {
     lavoro: v('pens-lavoro') || 'dipendente',
     redditoMensile: Number(v('pens-reddito')) || 0,
     baseReddito: PENS.base,
+    mensilita: Number(v('pens-mensilita')) || 0,
     versamentoMensile: Number(v('pens-versamento')) || 0,
     etaInizioLavoro: ignoto ? null : (v('pens-inizio') === '' ? null : Number(v('pens-inizio'))),
   };
@@ -4100,6 +4137,8 @@ function pensRendi(e) {
     '</div>' +
     '<div class="pv-piccolo">Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi +
       ' anni di contributi (inizio a ' + e.etaInizioUsata + '). Gli importi sono in euro di oggi.<br>' +
+      'Reddito su <b>' + e.mensilita + ' mensilità</b> (' + pensEuro(e.nettoAnnuo) + ' netti l\'anno); ' +
+      'la pensione INPS si riceve in ' + e.mensilitaPensione + ' rate, la rendita del fondo in ' + e.mensilitaRendita + '.<br>' +
       'Tariffa di riferimento: <b>' + esc(Pensione.FONDO.prodotto.etichetta) + '</b> · alternativa: ' +
       esc(Pensione.FONDO.prodotto.alternativa) + '.</div>' +
     '</div>';
@@ -4357,6 +4396,8 @@ function pensDaCliente(id) {
   var dedotto = pensLavoroDaProfessione(a.professione);
   var i = document.getElementById('pens-eta'); if (i && eta) i.value = eta;
   var l = document.getElementById('pens-lavoro'); if (l && dedotto) l.value = dedotto;
+  /* Il tipo di lavoro e' appena cambiato: le mensilita' lo seguono. */
+  pensMensilitaProposta();
 
   /* Si scrive COSA e' stato ripreso e COSA e' stato dedotto. Un campo
      riempito da solo, senza dire da dove viene, e' un campo che nessuno
