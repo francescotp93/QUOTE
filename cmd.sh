@@ -1,7 +1,12 @@
-echo "ora: $(date '+%F %T %Z')"
-echo "=== AXA /verifica (non fa login, non consuma tentativi)"
-curl -s -m 90 http://127.0.0.1:4700/verifica | head -c 400
-echo; echo "=== stato subito dopo"
-curl -s -m 30 http://127.0.0.1:4700/status | python3 -c 'import sys,json;d=json.load(sys.stdin);print("loggato:",d.get("loggato"),"| url:",(d.get("url") or "")[:100])' 2>/dev/null
-echo "=== giornale"
-journalctl -u axa-scraper --since '-3min' --no-pager 2>/dev/null | tail -8 | cut -c1-180
+echo "== HEAD backend"
+git -C /opt/withus-backend log --oneline -1 2>&1
+echo "== autopull ultimo giro"
+journalctl -u withus-autopull --since '-20min' --no-pager 2>&1 | tail -15
+echo "== servizi"
+for s in withus-backend axa-scraper groupama-scraper hdi-scraper italiana-scraper allianz-scraper moto-scraper; do
+  printf '%-20s %s  attivo da: %s\n' "$s" "$(systemctl is-active $s 2>&1)" "$(systemctl show -p ActiveEnterTimestamp --value $s 2>&1)"
+done
+echo "== health"
+curl -s -m 8 http://127.0.0.1:8080/health 2>&1 | head -c 300; echo
+echo "== file nuovi presenti?"
+ls -l /opt/withus-backend/server/otpPosta.js /opt/withus-backend/server/esiti.js 2>&1
