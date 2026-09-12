@@ -18,7 +18,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const P = require('../../tariffe/motore/previdenza.js');
+const P = require('../../tariffe/motore/pensione.js');
 /* Le due porte nuove si importano «con la rete»: su un codice che non le ha
    ancora, questa prova deve poter girare e dire QUALE comportamento manca —
    non morire all'import lasciando in dubbio se è rossa per il motivo giusto.
@@ -28,7 +28,7 @@ const A = await import('../analisiPrevidenziali.js').catch(() => ({}));
 const R = await import('../registro.js').catch(() => ({}));
 if (!A.preparaRiga) { A.preparaRiga = () => manca('analisiPrevidenziali.js'); A.LIMITE_BYTE = 512 * 1024; }
 if (!R.registroRichieste) { R.registroRichieste = () => manca('registro.js'); R.riga = () => manca('registro.js'); R.daRegistrare = () => manca('registro.js'); }
-if (!P.schedaArchivio) P.schedaArchivio = () => manca('../tariffe/motore/previdenza.js');
+if (!P.schedaArchivio) P.schedaArchivio = () => manca('../tariffe/motore/pensione.js');
 
 const qui = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const radice = path.dirname(qui);
@@ -70,21 +70,15 @@ const deve = (c, m) => { if (!c) throw new Error(m); };
 const IO = { id: '11111111-2222-3333-4444-555555555555' };
 const UNALTRO = '99999999-8888-7777-6666-555555555555';
 
-/* Il consulente ha corretto a mano il rendimento del fondo: il conto si fa con
-   quella correzione, ed è con quella che deve finire in archivio. */
-const CORREZIONI = { rendFondo: 0.04 };
-const analisi = (corr) => {
-  const pr = P.prospettivaPensionistica({ eta: 33, etaPensionamento: 67, redditoAnnuo: 24000,
-    anniContributiGia: 9, annoRiferimento: 2026, gestione: 'dipendenti_privati' }, corr);
-  const vl = P.valutaSoluzione(pr, 200, corr);
-  return { prospettiva: pr, valutazione: vl };
-};
+/* Il caso di riferimento, con il motore nuovo (12/09/2026). */
+const analisi = () => P.calcola({ eta: 33, lavoro: 'dipendente', redditoMensile: 1800,
+  baseReddito: 'netto', versamentoMensile: 200, etaInizioLavoro: 24 });
 const scheda = (extra) => P.schedaArchivio(Object.assign({
+  esito: analisi(),
   cliente: { nome: 'Mario Rossi' },
   consulente: { nome: 'Francesco Oddo', ruolo: 'Consulente previdenziale', rui: 'B000123456' },
-  dataRiferimento: '04/09/2026',
-  correzioni: CORREZIONI,
-}, analisi(CORREZIONI), extra || {}));
+  dataRiferimento: '12/09/2026',
+}, extra || {}));
 
 /* ── LA SCHEDA ──────────────────────────────────────────────────────────── */
 
@@ -96,8 +90,8 @@ prova('la versione delle regole la scrive il motore, non chi chiama', () => {
      nessuno se ne accorgerebbe finché non serve. */
   const s = scheda({ versione_motore: 'inventata-dal-browser', riga: { versione_motore: 'pure-questa' } });
   deve(s.ok, 'la scheda non si è costruita: ' + (s.problemi || []).join('; '));
-  deve(s.riga.versione_motore === P.VERSIONE_REGOLE,
-    'la scheda porta «' + s.riga.versione_motore + '» invece della versione del motore (' + P.VERSIONE_REGOLE + ')');
+  deve(s.riga.versione_motore === P.VERSIONE,
+    'la scheda porta «' + s.riga.versione_motore + '» invece della versione del motore (' + P.VERSIONE + ')');
   return 'versione ' + s.riga.versione_motore;
 });
 
@@ -108,27 +102,32 @@ prova('in archivio finiscono i parametri di quel giorno, non solo il risultato',
      prova diventa rossa prima che succeda. */
   const s = scheda();
   const pu = s.riga.parametri_usati;
-  deve(pu && pu.ipotesi && Object.keys(pu.ipotesi).length >= 5,
-    'la scheda non porta le ipotesi usate: senza, l\'analisi non si rifà');
-  deve(pu.coefficienti && typeof pu.coefficienti.usato === 'number',
-    'la scheda non porta il coefficiente di trasformazione applicato');
-  deve(pu.ipotesi.rendFondo && pu.ipotesi.rendFondo.corretta === true && pu.ipotesi.rendFondo.v === 0.04,
-    'la correzione a mano del consulente non risulta fra le ipotesi: due analisi diverse dello stesso cliente sarebbero inspiegabili');
-  deve(s.riga.scelte.correzioni && s.riga.scelte.correzioni.rendFondo === 0.04,
-    'le correzioni scritte a mano non sono in archivio: è la prima cosa che si guarda quando due conti non tornano');
-  return Object.keys(pu.ipotesi).length + ' ipotesi, coefficiente ' + (pu.coefficienti.usato * 100).toFixed(3) + '%';
+  deve(pu && pu.legge && Object.keys(pu.legge).length >= 5,
+    'la scheda non porta i numeri di legge usati: senza, l\'analisi non si rifà');
+  deve(pu.fondo && typeof pu.fondo.coeffRendita.v === 'number',
+    'la scheda non porta il coefficiente di conversione in rendita applicato');
+  deve(pu.tassiLordi && pu.tassiLordi.tavole && pu.tassiLordi.tavole.dipendente,
+    'la scheda non porta la tabella dei tassi di sostituzione: è il numero da cui dipende tutto il resto');
+  /* E deve portare anche quello che quel giorno era ancora da confermare:
+     fra un anno, davanti al foglio, è la prima cosa che si guarda. */
+  deve(Array.isArray(pu.daConfermare),
+    'la scheda non dice quali valori erano ancora da confermare il giorno in cui è uscito il foglio');
+  deve(s.riga.dati.baseReddito && typeof s.riga.dati.redditoMensileDichiarato === 'number',
+    'la scheda non dice se il reddito indicato era netto o lordo: senza, il conto non si rifà uguale');
+  return Object.keys(pu.legge).length + ' numeri di legge, ' + pu.daConfermare.length + ' ancora da confermare';
 });
 
 prova('senza il consulente che firma la scheda si rifiuta', () => {
-  const s = P.schedaArchivio(Object.assign({ cliente: { nome: 'Mario Rossi' }, dataRiferimento: '04/09/2026' }, analisi(CORREZIONI)));
+  const s = P.schedaArchivio({ esito: analisi(), cliente: { nome: 'Mario Rossi' }, dataRiferimento: '12/09/2026' });
   deve(!s.ok, 'ha archiviato un\'analisi che non è di nessuno');
   deve(s.problemi.join(' ').includes('consulente'), 'non dice che manca il consulente');
 });
 
 prova('su un calcolo non riuscito non si archivia niente', () => {
-  const s = P.schedaArchivio({ prospettiva: { ok: false }, valutazione: { ok: false },
-    cliente: { nome: 'X' }, consulente: { nome: 'Y' }, dataRiferimento: '04/09/2026' });
-  deve(!s.ok && s.riga === null, 'ha prodotto una riga da un calcolo fallito');
+  const s = P.schedaArchivio({ esito: null,
+    cliente: { nome: 'X' }, consulente: { nome: 'Y' }, dataRiferimento: '12/09/2026' });
+  deve(!s.ok && !s.riga, 'ha prodotto una riga da un calcolo fallito');
+  deve((s.problemi || []).join(' ').includes('calcolo'), 'non dice che il problema è il calcolo mancante');
 });
 
 /* ── LA PORTA ───────────────────────────────────────────────────────────── */
@@ -263,11 +262,11 @@ prova('la stampa non aspetta l\'archivio', () => {
      mezzo — server lento, rete che non va — il foglio non esce. Prima si
      stampa, poi si archivia. */
   const html = fs.readFileSync(path.join(radice, 'index.html'), 'utf8');
-  const f = html.slice(html.indexOf('function prevApriReport()'), html.indexOf('async function prevArchivia'));
-  deve(f.includes('prevArchivia('), 'il report non viene più archiviato');
-  deve(f.indexOf('w.document.write(r.html)') < f.indexOf('prevArchivia('),
+  const f = html.slice(html.indexOf('function pensFoglio()'), html.indexOf('async function pensArchivia'));
+  deve(f.includes('pensArchivia('), 'il foglio non viene più archiviato');
+  deve(f.indexOf('w.document.write(r.html)') < f.indexOf('pensArchivia('),
     'l\'archiviazione precede la stampa: un archivio lento terrebbe fermo il foglio');
-  deve(!/await\s+prevArchivia/.test(f), 'la stampa aspetta l\'archivio');
+  deve(!/await\s+pensArchivia/.test(f), 'la stampa aspetta l\'archivio');
   deve(/NON \S+ finito in archivio|NON è finito in archivio/.test(html),
     'un archivio che fallisce in silenzio è peggio di non averlo: manca l\'avviso al consulente');
 });

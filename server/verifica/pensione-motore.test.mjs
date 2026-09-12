@@ -273,26 +273,61 @@ prova('senza versamento non c\'è montante, e il divario è tutto scoperto', () 
 
 /* ── 4. la proposta che azzera dev'essere vera ──────────────────────────── */
 
-prova('l\'importo che «azzera il gap» lo azzera davvero, ricalcolandolo', () => {
-  for (const caso of [
+prova('l\'importo che «azzera il gap» lo azzera davvero, RIFACENDO tutto il calcolo', () => {
+  /* IL CASO CHE DEVE FALLIRE, trovato dal browser il 12/09/2026 dopo che
+     tutto sembrava a posto.
+
+     Le proposte sono versamenti TOTALI alternativi — «e se invece mettessi
+     100?» — non aggiunte a quello che uno versa già. Misurandole sul divario
+     che sconta già la rendita del versamento attuale, a un cliente che
+     versava 20 euro il modulo diceva «con 295 azzeri»: mettendone davvero
+     295 ne restavano scoperti 31, esattamente la rendita dei 20 contata due
+     volte. Chi versava di più riceveva una promessa più falsa di chi non
+     versava niente.
+
+     Per questo il giro parte da versamenti diversi E rifà il calcolo intero
+     con l'importo proposto, invece di fidarsi della riga. */
+  let controlli = 0;
+  for (const profilo of [
     { ...BASE },
     { ...BASE, eta: 50, redditoMensile: 2600 },
     { ...BASE, lavoro: 'autonomo', redditoMensile: 2200 },
     { ...BASE, lavoro: 'professionista', eta: 42, redditoMensile: 3500 },
   ]) {
-    const e = P.calcola(caso);
-    if (e.gapMensile <= 0) continue;
-    const az = e.proposte.filter(p => p.azzera);
-    deve(az.length > 0, 'nessuna proposta azzera il divario di ' + eur(e.gapMensile) + ' (' + caso.lavoro + ', ' + caso.eta + ' anni)');
-    for (const p of az) {
-      /* Si RICALCOLA da capo, non ci si fida della riga. */
-      const r = P.renditaFondo(p.versamentoMensile, e.anniAllaPensione, e.anniAllaPensione);
-      deve(r.renditaMensileNetta >= e.gapMensile - 0.01,
-        'la proposta da ' + eur(p.versamentoMensile) + ' dice di azzerare ma copre solo ' +
-        eur(r.renditaMensileNetta) + ' di ' + eur(e.gapMensile));
+    for (const gia of [0, 20, 100, 300]) {
+      const caso = { ...profilo, versamentoMensile: gia };
+      const e = P.calcola(caso);
+      if (e.gapSenzaFondoMensile <= 0) continue;
+      const az = e.proposte.filter(p => p.azzera);
+      deve(az.length > 0, 'nessuna proposta azzera il divario di ' + eur(e.gapSenzaFondoMensile) +
+        ' (' + caso.lavoro + ', ' + caso.eta + ' anni, versa già ' + eur(gia) + ')');
+      for (const p of az) {
+        /* NON si ricontrolla la sola rendita: si RIFÀ IL CALCOLO INTERO con
+           quel versamento, che è quello che succede quando il consulente
+           tocca la proposta a schermo. */
+        const dopo = P.calcola({ ...caso, versamentoMensile: p.versamentoMensile });
+        deve(dopo.gapMensile < 0.01,
+          'la proposta da ' + eur(p.versamentoMensile) + ' dice di azzerare, ma mettendola davvero ' +
+          'restano scoperti ' + eur(dopo.gapMensile) + ' (' + caso.lavoro + ', versava ' + eur(gia) + ')');
+        controlli++;
+      }
     }
   }
-  return '4 profili, ogni proposta «azzera» verificata ricalcolando';
+  return controlli + ' proposte «azzera» verificate rifacendo il calcolo intero';
+});
+
+prova('le proposte non cambiano al cambiare di quello che uno versa già', () => {
+  /* Corollario della prova sopra, e dice la stessa cosa da un'altra parte:
+     se le proposte si muovessero col versamento attuale vorrebbe dire che
+     sono tornate a misurarsi sul divario sbagliato. */
+  const importi = (v) => P.calcola({ ...BASE, versamentoMensile: v }).proposte.map(p => p.versamentoMensile).join(',');
+  const zero = importi(0);
+  for (const v of [20, 100, 250, 400]) {
+    deve(importi(v) === zero,
+      'versando ' + eur(v) + ' le proposte diventano [' + importi(v) + '] invece di [' + zero + ']: ' +
+      'sono di nuovo misurate sul divario che sconta il fondo');
+  }
+  return 'stesse proposte [' + zero + '] a qualunque versamento di partenza';
 });
 
 prova('le proposte sono crescenti e coprono progressivamente di più', () => {
@@ -579,6 +614,52 @@ prova('un reddito a zero non produce NaN né divisioni per zero', () => {
   }
   deve(e.gapMensile === 0, 'divario diverso da zero con reddito zero');
   return 'nessun NaN, nessun infinito';
+});
+
+prova('il foglio spiega su quale divario si misurano le proposte', () => {
+  /* Il cliente legge «ti mancheranno 350» e poi «20 € coprono il 6%», fa la
+     divisione e non torna: 33 diviso 350 fa il 9%. Le proposte si misurano sul
+     divario NUDO, e sul foglio va scritto — un numero che non torna su un
+     documento firmato distrugge la fiducia in tutto il resto della pagina. */
+  const e = P.calcola({ ...BASE, versamentoMensile: 100 });
+  deve(e.gapSenzaFondoMensile > e.gapMensile, 'il caso scelto non ha un fondo che riduce il divario');
+  const f = P.foglioHtml({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(f.ok, (f.problemi || []).join('; '));
+  deve(/al posto/.test(f.html), 'il foglio non dice che le proposte sostituiscono il versamento attuale');
+  deve(f.html.includes(String(Math.round(e.gapSenzaFondoMensile))),
+    'il foglio non riporta il divario su cui sono calcolate le percentuali');
+  /* E quando non c'è nessun versamento in corso, la nota non serve e non c'è. */
+  const senza = P.foglioHtml({ esito: P.calcola({ ...BASE, versamentoMensile: 0 }),
+    cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(!/al posto/.test(senza.html), 'la nota compare anche a chi non versa niente: è rumore');
+  return 'nota presente con versamento in corso, assente senza';
+});
+
+prova('il foglio porta il disclaimer, i valori da confermare e chi firma', () => {
+  const e = P.calcola({ ...BASE, etaInizioLavoro: null });
+  const f = P.foglioHtml({ esito: e, cliente: { nome: 'Mario Rossi' },
+    consulente: { nome: 'Francesco Oddo', rui: 'B000123456' }, dataRiferimento: '12/09/2026' });
+  deve(f.ok, (f.problemi || []).join('; '));
+  deve(/STIMA PRUDENZIALE/.test(f.html), 'lo scenario prudenziale non è marcato sul foglio');
+  deve(f.html.indexOf('STIMA PRUDENZIALE') < f.html.indexOf('Dove sei oggi'),
+    'l\'avviso prudenziale sta sotto i numeri: un avviso in fondo lo legge chi già sapeva');
+  deve(/Valori ancora da confermare/.test(f.html), 'i valori da confermare non arrivano sul foglio');
+  deve(/Tariffa HDI/.test(f.html), 'i segnaposto HDI non arrivano sul foglio del cliente');
+  deve(/illustrativo/.test(f.html) && /NON è una promessa/.test(f.html), 'manca il disclaimer');
+  deve(/B000123456/.test(f.html), 'il foglio non porta l\'iscrizione RUI di chi firma');
+  deve(/Quando posso prendere prima i miei soldi/.test(f.html), 'il blocco sul riscatto non arriva sul foglio');
+  deve(/48 mesi/.test(f.html) && /75%/.test(f.html), 'il foglio non riporta i numeri delle anticipazioni e dei riscatti');
+  return 'prudenziale in cima, da confermare, disclaimer, RUI e riscatti';
+});
+
+prova('gli importi sul foglio hanno il punto delle migliaia, sempre', () => {
+  /* Senza `useGrouping: "always"` Intl smette di raggruppare sotto le cinque
+     cifre, e sullo stesso foglio compaiono «1800 €» e «57.477 €». */
+  const e = P.calcola(BASE);
+  const f = P.foglioHtml({ esito: e, cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } });
+  deve(/1\.800 €/.test(f.html), 'il reddito di 1.800 € è scritto senza il punto delle migliaia');
+  deve(!/[^.\d]1800 €/.test(f.html), 'compare un importo a quattro cifre senza separatore');
+  return 'migliaia raggruppate anche sotto le cinque cifre';
 });
 
 /* ── esecuzione ──────────────────────────────────────────────────────────── */

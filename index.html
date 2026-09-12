@@ -61,7 +61,8 @@
 <script src="tariffe/motore/rcnonreg.js?v=20260817"></script>
 <script src="tariffe/motore/amtrust.js?v=20260817"></script>
 <script src="tariffe/motore/tutelalegale.js?v=20260817"></script>
-<script src="tariffe/motore/previdenza.js?v=20260901"></script>
+<script src="tariffe/motore/irpef.js?v=20260912"></script>
+<script src="tariffe/motore/pensione.js?v=20260912"></script>
 <script src="tariffe/motore/animali.js?v=20260817"></script>
 <script src="tariffe/motore/rcrischidiversi.js?v=20260817"></script>
 <script src="tariffe/motore/viaggio.js?v=20260817"></script>
@@ -360,7 +361,7 @@ button{font-family:inherit}
 .badge-ok{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:var(--blue-bg2);color:var(--blue-deep);font-weight:600}
 .empty-state{text-align:center;padding:3rem;color:var(--muted);font-size:14px}
 
-/* ═══ L'ASPETTO DEL MODULO PREVIDENZIALE ═══════════════════════════════════
+/* ═══ L'ASPETTO DEL MODULO PENSIONE ════════════════════════════════════════
    Il modulo non e' una pagina di QUOTO come le altre: si apre dentro la scocca
    di IAM, in un riquadro, con la barra scura sopra e la colonna a sinistra. Con
    il blu di QUOTO dentro una cornice verde sembrava un pezzo di un altro
@@ -370,85 +371,141 @@ button{font-family:inherit}
    schermata gemella di IAM, l'analisi dei bisogni: stessa famiglia di verdi e
    grigi, superfici a raggio piccolo, campi piu' morbidi, una sola ombra.
 
-   TUTTO E' SOTTO #page-previdenza: il resto di QUOTO non si tocca.
-   E non si tocca NIENTE che non sia aspetto — nessun numero, nessuna riga di
-   ipotesi, nessun testo del motore. (05/09/2026) */
+   CHE COSA E' CAMBIATO IL 12/09/2026. Prima qui c'erano cinque passi e una
+   barra di avanzamento. Adesso ce n'e' uno: quattro campi e la risposta sotto,
+   sulla stessa schermata. Il motivo non e' estetico — un flusso a passi si usa
+   seduti a un tavolo, e questo si usa in piedi, col telefono in mano, mentre
+   il cliente guarda. Se per vedere il risultato bisogna cambiare schermata, il
+   cliente smette di guardare.
+
+   TUTTO E' SOTTO #page-previdenza: il resto di QUOTO non si tocca. E qui non
+   c'e' NIENTE che non sia aspetto — nessun numero, nessuna soglia, nessun
+   testo del motore. */
 #page-previdenza{
   --pv-verde:#02984e; --pv-verde-vivo:#01c061; --pv-verde-tenue:#eaf7f0; --pv-verde-bordo:#b9e3cd;
   --pv-ink:#1f2a37; --pv-ink2:#5b6b7c; --pv-ink3:#93a0ac;
-  --pv-linea:#dfe5e9; --pv-linea2:#cfd8de;
-  --pv-ambra:#b06a00; --pv-ambra-bg:#fff4e6; --pv-ambra-txt:#7a4a00;
-  --pv-blu:#356b8c; --pv-blu-bg:#eef7fb;
-  --pv-ombra:0 10px 30px rgba(16,24,32,.08);
-  /* I token generali di QUOTO, ridefiniti QUI DENTRO: ogni `var(--blue)`,
-     `var(--muted)` o `var(--line)` rimasto in giro nel modulo prende il valore
-     di IAM senza doverlo rincorrere riga per riga — e senza toccare una virgola
-     del resto del programma. */
-  --blue:var(--pv-verde); --muted:var(--pv-ink2); --line:var(--pv-linea); --ink:var(--pv-ink);
-  /* Una colonna sola, come il documento gemello: un modulo che si compila in
-     larghezza piena obbliga l'occhio ad attraversare lo schermo per ogni
-     campo. */
-  max-width:760px; color:var(--pv-ink);
+  --pv-linea:#d8e3dc; --pv-linea2:#e4ebe7; --pv-fondo:#f7faf8;
+  --pv-ambra:#d98b00; --pv-ambra-bg:#fff8ec; --pv-blu:#2a6f97; --pv-blu-bg:#eef5fa;
+  --pv-rosso:#c0392b; --pv-rosso-bg:#fdecec; --pv-rosso-bordo:#f0c0bb;
+  color:var(--pv-ink);
 }
 #page-previdenza .page-title{font-size:21px;font-weight:800;letter-spacing:-.02em;color:var(--pv-ink)}
 #page-previdenza .page-sub{font-size:13.5px;color:var(--pv-ink2);line-height:1.65;margin-bottom:1.1rem}
 
-/* Le cinque schede dei passi. Il riquadro bianco lo mette il foglio di stile,
-   non il marcatore: cosi' non si tocca una riga di HTML dei passi. */
-#page-previdenza > #prev-p1,
-#page-previdenza > #prev-p2,
-#page-previdenza > #prev-p3,
-#page-previdenza > #prev-p4,
-#page-previdenza > #prev-p5{
-  background:#fff; border:1px solid var(--pv-linea); border-radius:var(--w1-r,4px);
-  box-shadow:var(--pv-ombra); padding:22px;
-}
+/* Le lastre: il modulo e' fatto di riquadri affiancati, non di passi. */
+#page-previdenza .pv-card{
+  background:#fff;border:1px solid var(--pv-linea);border-radius:10px;
+  padding:1.15rem 1.25rem;margin-bottom:14px;box-shadow:0 1px 2px rgba(31,42,55,.04)}
+#page-previdenza .pv-sec{font-size:11px;font-weight:800;color:var(--pv-verde);text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:.8rem}
 
-/* IL PERCORSO A PASSI. Erano pillole blu; in IAM un percorso si mostra con una
-   barra che avanza e il passo scritto in chiaro. Restano cliccabili come
-   prima: e' la cosa che serviva davanti al cliente. */
-#page-previdenza .pv-avanz{display:flex;align-items:center;gap:11px;margin-bottom:12px}
-#page-previdenza .pv-barra{flex:1;height:6px;border-radius:999px;background:#e7ecef;overflow:hidden}
-#page-previdenza .pv-barra span{display:block;height:100%;background:linear-gradient(90deg,var(--pv-verde),var(--pv-verde-vivo));transition:width .35s}
-#page-previdenza .pv-passo-n{font-size:12px;font-weight:700;color:var(--pv-ink2);white-space:nowrap}
-#page-previdenza .pv-passi{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:1.1rem}
-#page-previdenza .pv-p{background:none;border:0;padding:0;font:inherit;font-size:12px;font-weight:700;
-  color:var(--pv-ink2);cursor:pointer;border-bottom:2px solid transparent;padding-bottom:3px}
-#page-previdenza .pv-p:hover{color:var(--pv-verde)}
-#page-previdenza .pv-p.att{color:var(--pv-verde);border-bottom-color:var(--pv-verde)}
-#page-previdenza .pv-p[disabled]{color:var(--pv-ink3);cursor:not-allowed;border-bottom-color:transparent}
-
-/* I bottoni, sulla grammatica di IAM: alti 46, raggio 11, peso 800. */
 #page-previdenza .btn-primary,
-#page-previdenza .btn-ghost{height:46px;border-radius:11px;padding:0 20px;font-size:14px;font-weight:800;gap:8px}
-#page-previdenza .btn-primary{background:linear-gradient(180deg,var(--pv-verde-vivo),var(--pv-verde));border:1px solid var(--pv-verde)}
+#page-previdenza .btn-ghost{height:46px;border-radius:11px;padding:0 20px;font-size:14px;font-weight:800;gap:8px;
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border:0;font-family:inherit}
+#page-previdenza .btn-primary{background:linear-gradient(180deg,var(--pv-verde-vivo),var(--pv-verde));border:1px solid var(--pv-verde);color:#fff}
 #page-previdenza .btn-primary:hover{filter:brightness(1.04)}
 #page-previdenza .btn-ghost{background:#fff;border:1px solid var(--pv-linea);color:var(--pv-ink)}
 #page-previdenza .btn-ghost:hover{background:#f7f9fa}
 
-/* I campi. L'anello blu del fuoco era l'ultimo blu rimasto in vista. */
+#page-previdenza .aw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0 16px}
 #page-previdenza .aw-field{margin-bottom:1rem}
-#page-previdenza .aw-field label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--pv-ink2)}
+#page-previdenza .aw-field label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--pv-ink2);display:block;margin-bottom:5px}
 #page-previdenza .aw-field input,
-#page-previdenza .aw-field select,
-#page-previdenza .aw-field textarea{border:1px solid var(--pv-linea2);border-radius:10px;padding:12px;font-size:14px;color:var(--pv-ink)}
+#page-previdenza .aw-field select{width:100%;border:1px solid var(--pv-linea2);border-radius:10px;padding:12px;
+  font-size:14px;color:var(--pv-ink);font-family:inherit;background:#fff}
 #page-previdenza .aw-field input:focus,
-#page-previdenza .aw-field select:focus{border-color:var(--pv-verde);box-shadow:0 0 0 3px rgba(2,152,78,.10)}
+#page-previdenza .aw-field select:focus{outline:0;border-color:var(--pv-verde);box-shadow:0 0 0 3px rgba(2,152,78,.12)}
 
-/* I titoletti di sezione del risultato. `class="sec-title"` non aveva nessuna
-   regola in tutto il programma: erano righe di testo qualunque. */
-#page-previdenza .pv-sec{font-size:11px;font-weight:800;color:var(--pv-verde);text-transform:uppercase;
-  letter-spacing:.06em;margin:18px 0 8px}
-#page-previdenza .pv-riga{display:flex;justify-content:space-between;gap:14px;
-  border-bottom:1px dashed var(--pv-linea);padding:6px 0}
+/* NETTO O LORDO. Due bottoni invece di una tendina: e' una domanda da un
+   secondo e sbagliarla sposta il risultato di un quarto. Va vista, non
+   cercata. */
+#page-previdenza .pv-nl{display:flex;gap:0;border:1px solid var(--pv-linea2);border-radius:10px;overflow:hidden}
+#page-previdenza .pv-nl button{flex:1;border:0;background:#fff;padding:12px 8px;font:inherit;font-size:13px;
+  font-weight:700;color:var(--pv-ink2);cursor:pointer}
+#page-previdenza .pv-nl button.on{background:var(--pv-verde-tenue);color:var(--pv-verde);box-shadow:inset 0 0 0 1px var(--pv-verde-bordo)}
 
-/* Gli avvisi: barra colorata a sinistra e fondo tenue, come in IAM. */
+/* «Non lo so» sull'eta' di inizio: una casella, non un campo vuoto. Un campo
+   vuoto non dice se non si sa o se ci si e' dimenticati. */
+#page-previdenza .pv-check{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--pv-ink2);
+  margin:-4px 0 12px;cursor:pointer}
+#page-previdenza .pv-check input{width:16px;height:16px;accent-color:var(--pv-verde);cursor:pointer}
+
+/* I TRE NUMERI. Sono la risposta: stanno grandi, in fila, e il divario e' in
+   rosso perche' e' quello che deve restare in mente. */
+#page-previdenza .pv-numeri{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:14px}
+#page-previdenza .pv-n{border:1px solid var(--pv-linea);border-radius:10px;padding:13px 15px;background:#fff}
+#page-previdenza .pv-n .et{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--pv-ink2);font-weight:800}
+#page-previdenza .pv-n .v{font-size:27px;font-weight:800;letter-spacing:-.03em;margin-top:3px;line-height:1.1}
+#page-previdenza .pv-n .sub{font-size:11.5px;color:var(--pv-ink2);margin-top:3px;line-height:1.45}
+#page-previdenza .pv-n.gap{background:var(--pv-rosso-bg);border-color:var(--pv-rosso-bordo)}
+#page-previdenza .pv-n.gap .v{color:var(--pv-rosso)}
+#page-previdenza .pv-n.ok{background:var(--pv-verde-tenue);border-color:var(--pv-verde-bordo)}
+#page-previdenza .pv-n.ok .v{color:var(--pv-verde)}
+
+/* LA BARRA. Una riga sola: quanto copre la pensione, quanto il fondo, quanto
+   manca. E' la cosa che il cliente capisce prima dei numeri. */
+#page-previdenza .pv-barra{display:flex;height:26px;border-radius:7px;overflow:hidden;border:1px solid var(--pv-linea);margin:2px 0 8px}
+#page-previdenza .pv-barra span{display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;
+  color:#fff;white-space:nowrap;overflow:hidden;transition:width .4s}
+#page-previdenza .pv-barra .b-pens{background:var(--pv-verde)}
+#page-previdenza .pv-barra .b-fondo{background:var(--pv-verde-vivo)}
+#page-previdenza .pv-barra .b-gap{background:#e8b4ae;color:#7a2e24}
+#page-previdenza .pv-legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--pv-ink2);margin-bottom:6px}
+#page-previdenza .pv-legenda i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:0}
+
+/* LE PROPOSTE. Cliccabili: toccarne una rifa' il conto con quel versamento.
+   E' il gesto che chiude la conversazione — «e con cento?» — e deve costare
+   un dito, non una ridigitazione. */
+#page-previdenza .pv-proposte{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+#page-previdenza .pv-prop{border:1px solid var(--pv-linea);border-radius:10px;padding:12px;background:#fff;
+  cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+#page-previdenza .pv-prop:hover{border-color:var(--pv-verde);box-shadow:0 0 0 3px rgba(2,152,78,.08)}
+#page-previdenza .pv-prop.on{border-color:var(--pv-verde);background:var(--pv-verde-tenue)}
+#page-previdenza .pv-prop.azzera{border-color:var(--pv-verde);background:var(--pv-verde-tenue)}
+#page-previdenza .pv-prop .q{font-size:20px;font-weight:800;letter-spacing:-.02em}
+#page-previdenza .pv-prop .d{font-size:11.5px;color:var(--pv-ink2);margin-top:4px;line-height:1.45}
+#page-previdenza .pv-prop .tag{display:inline-block;font-size:9.5px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.05em;border-radius:4px;padding:2px 6px;margin-top:6px}
+#page-previdenza .pv-prop .tag.v{background:var(--pv-verde);color:#fff}
+#page-previdenza .pv-prop .tag.a{background:var(--pv-ambra-bg);color:var(--pv-ambra);border:1px solid #f0dcb8}
+
+/* I DUE CONFRONTI affiancati. Su misura piccola diventano una colonna sola,
+   perche' due colonne da 140 pixel non le legge nessuno. */
+#page-previdenza .pv-conf{width:100%;border-collapse:collapse;font-size:12.5px}
+#page-previdenza .pv-conf th,
+#page-previdenza .pv-conf td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--pv-linea2);line-height:1.55}
+#page-previdenza .pv-conf thead th{background:var(--pv-fondo);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--pv-ink2);font-weight:800}
+#page-previdenza .pv-conf th.voce{width:160px;font-size:12.5px;color:var(--pv-ink);text-transform:none;letter-spacing:0;background:#fff}
+#page-previdenza .pv-conf ul{margin:0;padding-left:16px}
+#page-previdenza .pv-conf li{margin-bottom:4px}
+
 #page-previdenza .pv-avviso,
 #page-previdenza .pv-nota,
-#page-previdenza .pv-ok{margin:12px 0;padding:13px 15px;border-radius:6px;font-size:13px;line-height:1.6}
-#page-previdenza .pv-avviso{border-left:3px solid var(--pv-ambra);background:var(--pv-ambra-bg);color:var(--pv-ambra-txt)}
+#page-previdenza .pv-allarme,
+#page-previdenza .pv-ok{margin:12px 0;padding:13px 15px;border-radius:6px;font-size:12.5px;line-height:1.6}
+#page-previdenza .pv-avviso{border-left:3px solid var(--pv-ambra);background:var(--pv-ambra-bg);color:#7a5200}
 #page-previdenza .pv-nota{border-left:3px solid var(--pv-blu);background:var(--pv-blu-bg);color:#3e6073}
+#page-previdenza .pv-allarme{border-left:3px solid var(--pv-rosso);background:var(--pv-rosso-bg);color:#8a2b20}
 #page-previdenza .pv-ok{border-left:3px solid var(--pv-verde);background:var(--pv-verde-tenue);color:#1f5c3d}
+#page-previdenza .pv-piccolo{font-size:11.5px;color:var(--pv-ink2);line-height:1.6}
+#page-previdenza .pv-azioni{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
+@media(max-width:760px){
+  #page-previdenza .pv-conf th.voce{width:auto}
+  #page-previdenza .pv-conf,
+  #page-previdenza .pv-conf thead,
+  #page-previdenza .pv-conf tbody,
+  #page-previdenza .pv-conf tr,
+  #page-previdenza .pv-conf th,
+  #page-previdenza .pv-conf td{display:block;width:auto}
+  #page-previdenza .pv-conf thead{display:none}
+  #page-previdenza .pv-conf td{border-bottom:0;padding-top:2px}
+  #page-previdenza .pv-conf th.voce{border-bottom:0;padding-bottom:2px;font-weight:800}
+  #page-previdenza .pv-conf tr{border-bottom:1px solid var(--pv-linea2);padding-bottom:8px;margin-bottom:8px}
+  #page-previdenza .pv-conf td:before{content:attr(data-col);display:block;font-size:10px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--pv-ink3);margin-bottom:1px}
+}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.5rem}
 .stat-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.25rem;box-shadow:var(--sh-sm);transition:box-shadow .18s,transform .18s}
 .stat-card:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
@@ -1447,7 +1504,7 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
       <!-- La schermata c'era gia' ma si raggiungeva solo da Vita, e infatti non
            la trovava nessuno. Qui accanto ai Parametri, che sono i numeri con
            cui fa i conti: le due cose si guardano insieme. -->
-      <div class="nav-item" id="nav-analprev" style="display:none" onclick="apriPrevidenza()"><i class="ti ti-chart-arrows-vertical"></i><span>Analisi previdenziale</span></div>
+      <div class="nav-item" id="nav-analprev" style="display:none" onclick="apriPensione()"><i class="ti ti-chart-arrows-vertical"></i><span>Pensione</span></div>
       <div class="nav-item" id="nav-fonti" style="display:none" onclick="showPage('fonti')"><i class="ti ti-database-cog"></i><span>Fonti</span></div>
     </div>
     <div class="tb-user">
@@ -1680,63 +1737,52 @@ button.ghost:hover{background:#e3e6ee;color:var(--ink)}
          Cinque passi, e il quarto e' quello che di solito non c'e': le ipotesi
          del calcolo, in chiaro e correggibili. Non e' un vezzo — un rendimento
          del 3,5% cambia il risultato piu' di qualunque dato del cliente. -->
+    <!-- ── PENSIONE · quattro campi, due minuti ─────────────────────────────
+         La pagina tiene l'id `page-previdenza` che aveva prima, e non e' una
+         svista: la scocca di IAM, il mega-menu e i collegamenti salvati
+         chiedono `?page=previdenza`. Rinominarla avrebbe rotto tutti quelli,
+         per guadagnare una parola piu' bella in un attributo.
+         Il contenuto, invece, e' tutto nuovo: un passo solo. -->
     <div class="page" id="page-previdenza">
       <button class="back-link" onclick="showPage('vita')"><i class="ti ti-arrow-left"></i> Vita</button>
-      <div class="page-title">Analisi previdenziale</div>
-      <div class="page-sub" id="prev-sub">Pensione, TFR e fondo: tre conti, un report per il cliente.</div>
-      <div class="cl-tabs" id="prev-passi" style="margin-bottom:1rem"></div>
-      <!-- I numeri di legge arrivano dalla tabella «Parametri previdenziali».
-           Se sono scaduti, o se non si riesce a leggerli, si dice QUI e si
-           dice sul report: un foglio consegnato al cliente non deve mai
-           poggiare su numeri vecchi senza che nessuno lo sappia. -->
-      <div id="prev-avvisi" style="margin-bottom:1rem"></div>
+      <div class="page-title">Pensione in due minuti</div>
+      <div class="page-sub" id="pens-sub">Quattro domande. Quanto ti mancherà quando smetti di lavorare, e con quanto al mese lo copri.</div>
 
-      <div id="prev-p1">
-        <div class="aw-field"><label>Chi stiamo analizzando</label>
-          <select id="prev-tipo">
-            <option value="pf">Una persona — pensione e integrazione</option>
-            <option value="tfr">Una persona — TFR: in azienda o nel fondo?</option>
-            <option value="azienda">Un'azienda — quanto conviene destinare il TFR</option>
-          </select></div>
-        <div style="margin-top:1rem"><button class="btn-primary" onclick="prevVai(2)">Avanti</button></div>
-      </div>
+      <!-- Gli avvisi sui numeri di legge: se la tabella dei parametri non
+           risponde, o porta valori scaduti, si dice QUI e si dice sul foglio.
+           Un documento consegnato al cliente non deve mai poggiare su numeri
+           vecchi senza che nessuno lo sappia. -->
+      <div id="pens-avvisi"></div>
 
-      <div id="prev-p2" style="display:none">
-        <div id="prev-campi" class="aw-grid"></div>
-        <div style="margin-top:1rem;display:flex;gap:8px">
-          <button class="btn-ghost" onclick="prevVai(1)">Indietro</button>
-          <button class="btn-primary" onclick="prevCalcola()">Calcola</button>
+      <div class="pv-card">
+        <div class="pv-sec">Chi hai davanti</div>
+        <div id="pens-da-cliente"></div>
+        <div class="aw-grid">
+          <div class="aw-field"><label>Età</label><input id="pens-eta" type="number" min="16" max="75" placeholder="es. 38"></div>
+          <div class="aw-field"><label>Tipo di lavoro</label>
+            <select id="pens-lavoro">
+              <option value="dipendente">Lavoratore dipendente</option>
+              <option value="autonomo">Lavoratore autonomo</option>
+              <option value="professionista">Libero professionista</option>
+            </select></div>
+          <div class="aw-field"><label>Reddito mensile</label><input id="pens-reddito" type="number" min="0" step="50" placeholder="es. 1800"></div>
+          <div class="aw-field"><label>Il reddito indicato è</label>
+            <div class="pv-nl" id="pens-nl">
+              <button type="button" class="on" data-base="netto" onclick="pensBase('netto')">Netto in mano</button>
+              <button type="button" data-base="lordo" onclick="pensBase('lordo')">Lordo da busta</button>
+            </div></div>
+          <div class="aw-field"><label>Versamento mensile ipotizzato</label><input id="pens-versamento" type="number" min="0" step="10" placeholder="es. 100"></div>
+          <div class="aw-field"><label>Ha cominciato a lavorare a</label><input id="pens-inizio" type="number" min="14" max="70" placeholder="es. 24" oninput="pensInizioScritto()"></div>
+        </div>
+        <label class="pv-check"><input type="checkbox" id="pens-inizio-ignoto" onchange="pensIgnoto()">
+          Non lo sa — usa una stima prudenziale (inizio tardivo: pensione più bassa, divario più ampio)</label>
+        <div class="pv-azioni">
+          <button class="btn-primary" onclick="pensCalcola()"><i class="ti ti-calculator"></i> Calcola</button>
+          <button class="btn-ghost" onclick="pensPulisci()">Pulisci</button>
         </div>
       </div>
 
-      <div id="prev-p3" style="display:none">
-        <div id="prev-esito"></div>
-        <div style="margin-top:1rem;display:flex;gap:8px">
-          <button class="btn-ghost" onclick="prevVai(2)">Cambia i dati</button>
-          <button class="btn-ghost" onclick="prevVai(4)">Vedi le ipotesi</button>
-          <button class="btn-primary" id="prev-b-soluzione" onclick="prevVai(5)">Prepara il report</button>
-        </div>
-      </div>
-
-      <div id="prev-p4" style="display:none">
-        <div style="font-size:12.5px;color:var(--muted);margin-bottom:.7rem">
-          Questi numeri decidono il risultato. Quelli che vengono dalla legge non si toccano; gli altri si correggono e il conto si rifà.
-        </div>
-        <div id="prev-ipotesi"></div>
-        <div style="margin-top:1rem;display:flex;gap:8px">
-          <button class="btn-ghost" onclick="prevVai(3)">Torna al risultato</button>
-          <button class="btn-primary" onclick="prevCalcola()">Ricalcola</button>
-        </div>
-      </div>
-
-      <div id="prev-p5" style="display:none">
-        <div id="prev-report-form"></div>
-        <div style="margin-top:1rem;display:flex;gap:8px">
-          <button class="btn-ghost" onclick="prevVai(3)">Indietro</button>
-          <button class="btn-primary" onclick="prevApriReport()">Apri il report</button>
-        </div>
-        <div id="prev-archivio"></div>
-      </div>
+      <div id="pens-esito"></div>
     </div>
 
     <div class="page" id="page-vita">
@@ -3599,9 +3645,10 @@ const PAGINE_DA_AVVIARE = {
      giusta a meta' che una pagina bianca — ma resta una cosa da sistemare
      nel modulo, non qui. */
   rcrd:         () => openRcRd('albergo'),
-  /* L'analisi previdenziale ha cinque passi: aprirla con showPage la
-     mostrerebbe a meta', sul passo dove era rimasta la volta prima. */
-  previdenza:   () => apriPrevidenza(),
+  /* Il modulo pensione va aperto dalla sua porta: showPage accenderebbe la
+     pagina senza leggere i numeri di legge dalla tabella, e il primo calcolo
+     uscirebbe con la copia di riserva senza che nessuno lo sappia. */
+  previdenza:   () => apriPensione(),
 };
 
 /* Apre una pagina chiesta dalla scocca, passando dalla sua porta se ne ha una.
@@ -3822,13 +3869,13 @@ const VITA_PRODOTTI = [
 let VITA_CLI = { mode:'cerca', clienteId:null };
 function openVita(){
   const g = document.getElementById('vita-grid');
-  /* L'analisi previdenziale non e' un prodotto da richiedere: e' lo strumento
-     con cui si capisce SE serve e quanto. Per questo sta in cima e ha una
-     scheda sua, non una riga in mezzo ai prodotti. */
+  /* Il calcolo della pensione non e' un prodotto da richiedere: e' lo
+     strumento con cui si capisce SE serve e quanto. Per questo sta in cima e
+     ha una scheda sua, non una riga in mezzo ai prodotti. */
   const analisi = `
-    <div class="mod-card" onclick="apriPrevidenza()" data-tip="Pensione stimata, TFR e fondo: i conti e il report per il cliente">
+    <div class="mod-card" onclick="apriPensione()" data-tip="Quattro campi: quanto ti manca alla pensione e con quanto al mese lo copri">
       <div class="mod-ic"><i class="ti ti-chart-arrows-vertical"></i></div>
-      <div class="mod-name">Analisi previdenziale</div>
+      <div class="mod-name">Pensione in due minuti</div>
       <span class="mod-badge badge-live">Strumento</span>
     </div>`;
   if (g) g.innerHTML = analisi + VITA_PRODOTTI.map(p=>`
@@ -3838,507 +3885,414 @@ function openVita(){
     </div>`).join('');
   showPage('vita');
 }
-/* ══ ANALISI PREVIDENZIALE — i tre calcolatori ═══════════════════════════════
-   Il calcolo non sta qui: sta in tariffe/motore/previdenza.js, provato a parte
-   con 42 controlli. Questa e' solo la schermata, e deve restare tale — un
-   calcolo scritto dentro una pagina non si puo' provare senza aprire un
-   browser, ed e' il motivo per cui quello del Lab non era mai stato verificato.
-   Qui dentro non c'e' nessuna formula: si raccolgono dati, si chiama il motore,
-   si mostra cio' che risponde (motivi e avvisi compresi). */
-var PREV = { tipo: 'pf', dati: {}, correzioni: {}, esito: null, valutazione: null };
+/* ══ PENSIONE — quattro campi, due minuti ═══════════════════════════════════
+   QUI NON C'E' NESSUNA FORMULA, e non e' pigrizia: un calcolo scritto dentro
+   una pagina non si puo' provare senza aprire un browser, ed e' il motivo per
+   cui quello del Lab non era mai stato verificato. Il conto sta in
+   tariffe/motore/pensione.js con 37 prove, il fisco in irpef.js con 32.
+   Qui si raccolgono quattro dati, si chiama il motore e si mostra cio' che
+   risponde — avvisi e bandiere comprese.
 
-var PREV_CAMPI = {
-  pf: [
-    /* CHIEDERLO E' IL PRIMO PASSO. Il motore ha due aliquote contributive —
-       33% dipendente, 24% autonomo — e nessuno gli diceva quale: prendeva
-       quella del dipendente per tutti. Sui profili che stiamo reclutando
-       (dealer, CAF, patronati, negozi), in larga parte autonomi, la pensione
-       pubblica usciva sbagliata in partenza. (03/09/2026) */
-    { k: 'gestione', l: 'Regime contributivo', t: 'select', testo: true,
-      opzioni: (function () {
-        var g = (window.Previdenza && Previdenza.FISCO && Previdenza.FISCO.gestioni) || {};
-        return Object.keys(g).filter(function (k) { return g[k].esposta; })
-          .map(function (k) { return { v: k, l: g[k].etichetta }; });
-      })(),
-      aiuto: 'Decide con che aliquota si costruisce il montante e quanto si toglie dal lordo per l\'imponibile: fra un dipendente e un professionista ballano diciassette punti.' },
-    /* IL CANALE non cambia il beneficio fiscale — stessa deduzione, stessa
-       aliquota — ma cambia QUANDO lo si incassa e a cosa dà accesso: contributo
-       del datore e conferimento del TFR passano da lì. (04/09/2026) */
-    { k: 'canale', l: 'Come versa al fondo', t: 'select', soloSe: 'canale', opzioni: [
-      { v: 'diretto', l: 'Versamento diretto' },
-      { v: 'datore', l: 'Tramite il datore di lavoro' },
-    ], testo: true, aiuto: 'Il beneficio fiscale è lo stesso: cambia quando lo si incassa, e l\'accesso al contributo del datore.' },
-    /* IL TIPO DI PRODOTTO decide i costi, e i costi decidono la rendita: fra un
-       negoziale e un PIP ballano un punto e mezzo l'anno, che su trent'anni e'
-       un terzo del capitale. Lasciato vuoto si deduce dal canale — chi versa
-       tramite il datore ha accesso al negoziale di categoria. (05/09/2026) */
-    { k: 'tipoProdotto', l: 'Tipo di prodotto', t: 'select', testo: true, opzioni: [
-      { v: '', l: 'Dal canale (negoziale se tramite il datore)' },
-      { v: 'negoziale', l: 'Fondo pensione negoziale' },
-      { v: 'aperto', l: 'Fondo pensione aperto' },
-      { v: 'pip', l: 'PIP — piano individuale pensionistico' },
-    ], aiuto: 'Decide i costi annui usati nel calcolo (ISC a 35 anni). Quando hai la Nota informativa del prodotto vero, correggi la casella dei costi nel passo delle ipotesi.' },
-    { k: 'eta', l: 'Età oggi', t: 'number' },
-    { k: 'etaPensionamento', l: 'Età prevista di pensionamento', t: 'number', v: 67 },
-    { k: 'redditoAnnuo', l: 'Reddito annuo lordo (€)', t: 'number' },
-    { k: 'anniContributiGia', l: 'Anni di contributi già versati', t: 'number' },
-    { k: 'montanteGia', l: 'Montante dall\'estratto conto INPS (€) — se lo hai', t: 'number' },
-    { k: 'versamentoMensile', l: 'Versamento che vuole valutare (€ al mese)', t: 'number', v: 100 },
-  ],
-  tfr: [
-    { k: 'redditoAnnuo', l: 'Reddito annuo lordo (€)', t: 'number' },
-    { k: 'anni', l: 'Per quanti anni accantona', t: 'number', v: 25 },
-    { k: 'anniAdesione', l: 'Anni di adesione al fondo', t: 'number', v: 25 },
-  ],
-  azienda: [
-    { k: 'dipendenti', l: 'Numero di dipendenti', t: 'number' },
-    { k: 'stipendioMensile', l: 'Stipendio medio mensile (€)', t: 'number' },
-    { k: 'anni', l: 'Orizzonte (anni)', t: 'number', v: 20 },
-  ],
+   ANCHE IL FOGLIO DEL CLIENTE STA NEL MOTORE. Il foglio del modulo vecchio era
+   l'unica cosa che nessuna prova guardava, ed era l'unica che usciva di casa. */
+var PENS = {
+  base: 'netto',          // il reddito indicato e' netto o lordo
+  esito: null,
+  cliente: null,          // se si arriva dalla scheda anagrafica
+  parametri: 'attesa',    // attesa | ok | ko
+  avvisi: [],
+  caricamento: null,
 };
-var PREV_TITOLI = { pf: 'Persona · pensione e integrazione', tfr: 'Persona · TFR in azienda o nel fondo',
-                    azienda: 'Azienda · convenienza a destinare il TFR' };
 
-function apriPrevidenza() {
-  /* I coefficienti gia' letti si tengono: riaprire la schermata non e' un
-     motivo per rifare il giro, e se il server non risponde si continua con
-     quelli di prima invece di ricadere sulla copia di riserva. */
-  var giaLetti = (typeof PREV === 'object' && PREV) ? PREV.coefficienti : null;
-  var giaAvvisi = (typeof PREV === 'object' && PREV) ? PREV.avvisiParametri : null;
-  PREV = { tipo: 'pf', dati: {}, correzioni: {}, esito: null, valutazione: null,
-           coefficienti: giaLetti || null, avvisiParametri: giaAvvisi || [],
-           /* «attesa» finché la tabella non ha risposto: il calcolo non parte
-              su un forse. */
-           parametri: giaLetti ? 'ok' : 'attesa' };
-  prevVai(1); showPage('previdenza');
-  prevAvvisi();
-  if (!giaLetti) PREV.caricamento = caricaNumeriPrevidenza();
+function apriPensione() {
+  /* I numeri di legge gia' letti si tengono: riaprire la schermata non e' un
+     motivo per rifare un giro di rete, e chi ha il telefono in mano se ne
+     accorge. */
+  if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+  pensAvvisi();
+  showPage('previdenza');
 }
 
-/* Il tasto «Riprova» del blocco: rilegge la tabella e, se stavolta risponde,
-   rifà il conto da solo — chi ha davanti un cliente non deve ricompilare. */
-async function prevRiprovaParametri() {
-  var box = document.getElementById('prev-esito');
-  if (box) box.innerHTML = '<div class="pv-nota">Rileggo i parametri…</div>';
-  await caricaNumeriPrevidenza();
-  prevCalcola();
-}
+/* ── I NUMERI DI LEGGE, DALLA TABELLA ─────────────────────────────────────
+   La copia buona sta nella tabella «Parametri previdenziali»; il motore ne
+   tiene una di riserva. Passando sempre di qui, la riserva resta quello che
+   deve essere — il paracadute per quando il server non risponde — e non
+   diventa una seconda verita'.
 
-const ATTESA_PARAMETRI_MS = 8000;
-/* I numeri di legge, presi dalla tabella e messi dentro al motore. Passa dal
-   server e non da Supabase perche' la tabella e' riservata allo staff, mentre
-   questa analisi la fa anche il collaboratore della rete al suo cliente. */
-async function caricaNumeriPrevidenza() {
+   SE NON RISPONDE NON SI TACE. Il conto si fa lo stesso con la riserva, ma
+   l'avviso arriva fino al foglio del cliente: un documento che sembra
+   definitivo e non lo e' e' la cosa peggiore che questo modulo possa
+   produrre. */
+async function caricaNumeriPensione() {
+  PENS.parametri = 'attesa';
   try {
-    const tok = await payToken();
-    /* UN TEMPO MASSIMO, e non solo un `catch`. Una richiesta che fallisce si
-       gestisce; una che resta APPESA no: senza questa scadenza la schermata
-       resterebbe muta per sempre, il consulente calcolerebbe con la copia di
-       riserva e nessuno glielo direbbe. E' il caso peggiore, ed e' anche quello
-       che capita per primo quando il server e' sotto sforzo. */
-    const stop = new AbortController();
-    const scaduta = setTimeout(function () { stop.abort(); }, ATTESA_PARAMETRI_MS);
-    let r;
+    var tok = await payToken();
+    var stop = new AbortController();
+    var timer = setTimeout(function () { stop.abort(); }, 8000);
+    var r;
     try { r = await fetch(PAY_API + '/parametri-previdenziali/numeri', { headers: { Authorization: 'Bearer ' + (tok || '') }, signal: stop.signal }); }
-    finally { clearTimeout(scaduta); }
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || ('Errore ' + r.status));
-    /* UNA RISPOSTA CHE ARRIVA NON E' UNA RISPOSTA CHE SERVE. Un server che
-       risponde 200 con un corpo che non porta i coefficienti (una rotta
-       cambiata, un proxy di mezzo, una tabella svuotata) passerebbe di qui in
-       silenzio: si continuerebbe con la copia di riserva credendo di avere i
-       numeri di oggi. Se i coefficienti non ci sono, vale come non risposta. */
-    const utili = d && d.coefficienti && d.coefficienti.perEta && Object.keys(d.coefficienti.perEta).length;
-    if (!utili) throw new Error('la risposta non porta i coefficienti di trasformazione');
-    PREV.avvisiParametri = d.avvisi || [];
-    PREV.parametri = 'ok';
-    PREV.coefficienti = d.coefficienti;
-    /* La curva del decadimento e i requisiti proiettati non sono ipotesi da
-       mettere dentro al motore: sono dati che il calcolo riceve insieme a
-       quelli del cliente, e viaggiano con loro. */
-    PREV.decadimento = d.decadimento || null;
-    PREV.requisitiProiettati = d.requisitiProiettati || null;
-    if (d.numeri && window.Previdenza && Previdenza.numeriDiLegge) Previdenza.numeriDiLegge(d.numeri);
+    finally { clearTimeout(timer); }
+    if (!r.ok) throw new Error('errore ' + r.status);
+    var d = await r.json();
+    if (!d || !d.numeri) throw new Error('la risposta non porta i numeri');
+    var esito = (window.Pensione && Pensione.numeriDiLegge) ? Pensione.numeriDiLegge(d.numeri) : { applicati: [] };
+    PENS.parametri = 'ok';
+    PENS.avvisi = (d.avvisi || []).slice();
+    if (!esito.applicati.length) PENS.avvisi.push('La tabella dei parametri ha risposto, ma nessuno dei suoi valori è servito a questo calcolo: si stanno usando i numeri di riserva del programma.');
   } catch (e) {
-    /* NON si tace. Il motore ha una copia di riserva dei coefficienti — quella
-       del decreto, letta il 03/09/2026 — e con quella il conto si fa lo stesso.
-       Ma l'avviso si attacca alla tabella, cosi' viaggia col risultato e finisce
-       stampato: chi firma il foglio deve sapere da dove escono i numeri. */
-    /* Il motivo, per esteso. Con un avviso unico per tutto — rete caduta,
-       rotta cambiata, tabella vuota, token scaduto — non si sa dove guardare,
-       e chi lo legge non puo' fare niente se non riprovare. */
-    var perche = (e && e.name === 'AbortError')
-      ? 'il server non ha risposto entro ' + Math.round(ATTESA_PARAMETRI_MS / 1000) + ' secondi'
-      : (e && e.message) || 'motivo sconosciuto';
-    /* NON SI RIPIEGA PIU' SULLA COPIA DI RISERVA. Lo faceva, con un avviso in
-       cima alla schermata — e il consulente leggeva l'80,1% e andava avanti.
-       Peggio: la copia di riserva NON e' allineata alla tabella (non ha la
-       serie Eurostat, i pesi Istat, i requisiti proiettati), quindi il
-       coefficiente restava fermo e la pensione usciva PIU' ALTA del vero.
-       Un avviso sopra un numero sbagliato non protegge nessuno: senza
-       parametri non si calcola. (decisione di Francesco, 05/09/2026) */
-    PREV.parametri = 'ko';
-    PREV.perParametri = perche;
-    PREV.avvisiParametri = ['Parametri non disponibili (' + perche + '): il calcolo è fermo finché la tabella non risponde.'];
-    PREV.coefficienti = null;
+    PENS.parametri = 'ko';
+    PENS.avvisi = ['I numeri di legge non sono stati letti dalla tabella (' + (e && e.message ? e.message : e) +
+      '): il calcolo usa la copia di riserva del programma. Prima di consegnare un foglio a un cliente, ricontrolla i parametri.'];
   }
-  prevAvvisi();
+  pensAvvisi();
+  return PENS.parametri;
 }
 
-function prevAvvisi() {
-  var box = document.getElementById('prev-avvisi'); if (!box) return;
-  var a = (PREV && PREV.avvisiParametri) || [];
-  if (!a.length) { box.innerHTML = ''; return; }
-  box.innerHTML = a.map(function (t) {
-    return '<div class="pv-avviso" style="display:flex;gap:8px;align-items:flex-start">' +
-      '<i class="ti ti-alert-triangle" style="margin-top:2px"></i><span>' + esc(t) + '</span></div>';
-  }).join('');
-}
-
-function prevVai(n) {
-  for (var i = 1; i <= 5; i++) {
-    var el = document.getElementById('prev-p' + i);
-    if (el) el.style.display = (i === n ? '' : 'none');
+function pensAvvisi() {
+  var box = document.getElementById('pens-avvisi');
+  if (!box) return;
+  var righe = (PENS.avvisi || []).slice();
+  if (!window.Pensione) {
+    righe.unshift('Il motore del calcolo non è caricato: questa schermata non può calcolare niente. Ricarica la pagina.');
   }
-  var passi = ['Chi', 'Dati', 'Risultato', 'Ipotesi', 'Report'];
-  var barra = document.getElementById('prev-passi');
-  /* SEMBRAVANO CLICCABILI E NON LO ERANO — il caso peggiore. Davanti al cliente
-     si tornava indietro un passo alla volta, scorrendo ogni volta fino in fondo
-     alla pagina. I passi che il conto non ha ancora prodotto restano spenti, e
-     si vede che sono spenti. (03/09/2026) */
-  var raggiungibile = function (i) {
-    if (i <= 2) return true;               // Chi e Dati si aprono sempre
-    return !!PREV.esito;                   // gli altri solo dopo il calcolo
-  };
-  /* Barra che avanza piu' il passo scritto in chiaro, come IAM mostra un
-     percorso; sotto, i cinque passi cliccabili come prima. */
-  if (barra) barra.innerHTML =
-    '<div class="pv-avanz"><div class="pv-barra"><span style="width:' + Math.round(n / passi.length * 100) + '%"></span></div>' +
-    '<div class="pv-passo-n">Passo ' + n + ' di ' + passi.length + ' · ' + esc(passi[n - 1]) + '</div></div>' +
-    '<div class="pv-passi">' + passi.map(function (t, i) {
-      var p = i + 1, ok = raggiungibile(p);
-      return '<button class="pv-p' + (p === n ? ' att' : '') + '"' +
-        (ok ? ' onclick="prevVai(' + p + ')"' : ' disabled title="Prima calcola"') +
-        '>' + p + '. ' + esc(t) + '</button>';
-    }).join('') + '</div>';
-  if (n === 2) prevCampi();
-  if (n === 4) prevIpotesi();
-  if (n === 5) prevFormReport();
+  box.innerHTML = righe.length
+    ? '<div class="pv-avviso"><b>Da sapere prima di consegnare un foglio</b><ul style="margin:6px 0 0;padding-left:18px">' +
+      righe.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' +
+      (PENS.parametri === 'ko' ? '<div class="pv-azioni"><button class="btn-ghost" style="height:34px;font-size:12.5px" onclick="caricaNumeriPensione()">Riprova a leggere i parametri</button></div>' : '') +
+      '</div>'
+    : '';
 }
 
-function prevCampi() {
-  PREV.tipo = document.getElementById('prev-tipo').value;
-  var sub = document.getElementById('prev-sub');
-  if (sub) sub.textContent = PREV_TITOLI[PREV.tipo];
-  /* Il canale di versamento esiste solo per chi ha un datore che possa
-     versare: mostrarlo a un artigiano e' una domanda senza risposta. */
-  var gAttuale = (window.Previdenza && Previdenza.gestioneDi)
-    ? Previdenza.gestioneDi(PREV.dati.gestione || 'dipendenti_privati') : {};
-  document.getElementById('prev-campi').innerHTML = PREV_CAMPI[PREV.tipo]
-    .filter(function (c) { return !c.soloSe || gAttuale[c.soloSe]; })
-    .map(function (c) {
-    var val = PREV.dati[c.k] != null ? PREV.dati[c.k] : (c.v != null ? c.v : '');
-    var dentro = c.t === 'select'
-      ? '<select id="prev-f-' + c.k + '">' + c.opzioni.map(function (o) {
-          return '<option value="' + o.v + '"' + (String(val) === o.v ? ' selected' : '') + '>' + esc(o.l) + '</option>';
-        }).join('') + '</select>'
-      : '<input id="prev-f-' + c.k + '" type="' + c.t + '" value="' + esc(val) + '">';
-    if (c.k === 'gestione') dentro = dentro.replace('<select ', '<select onchange="prevLeggi(); prevCampi();" ');
-    return '<div class="aw-field"><label>' + esc(c.l) + '</label>' + dentro +
-      (c.aiuto ? '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(c.aiuto) + '</div>' : '') + '</div>';
-  }).join('');
-}
+/* ── I QUATTRO CAMPI ──────────────────────────────────────────────────────── */
 
-function prevLeggi() {
-  var d = {};
-  PREV_CAMPI[PREV.tipo].forEach(function (c) {
-    var v = (document.getElementById('prev-f-' + c.k) || {}).value;
-    if (v === '' || v == null) return;
-    /* Non tutto è un numero: il canale di versamento è una parola, e
-       Number('diretto') è NaN — che arriva al motore come dato mancante. */
-    d[c.k] = c.testo ? v : Number(v);
+function pensBase(b) {
+  PENS.base = (b === 'lordo') ? 'lordo' : 'netto';
+  var cont = document.getElementById('pens-nl');
+  if (cont) [].forEach.call(cont.querySelectorAll('button'), function (x) {
+    x.classList.toggle('on', x.getAttribute('data-base') === PENS.base);
   });
-  /* L'anno NON lo prende il motore dall'orologio: glielo passa la schermata.
-     E' l'unico punto dove si guarda la data, ed e' voluto. */
-  var oggi = new Date();
-  d.annoRiferimento = oggi.getFullYear();
-  d.annoInizio = oggi.getFullYear();
-  /* I coefficienti di trasformazione arrivano dalla tabella dei parametri, non
-     dal file del motore: a novembre esce il decreto nuovo, si aggiorna la
-     tabella e questa schermata segue senza che nessuno tocchi il programma.
-     Se la lettura non e' riuscita, `PREV.coefficienti` porta la copia di
-     riserva CON l'avviso attaccato, cosi' il report lo stampa. */
-  if (PREV.coefficienti) d.coefficienti = PREV.coefficienti;
-  if (PREV.decadimento) d.decadimentoCoefficiente = PREV.decadimento;
-  if (PREV.requisitiProiettati) d.requisitiProiettati = PREV.requisitiProiettati;
-  PREV.dati = d;
-  return d;
+  if (PENS.esito) pensCalcola();
 }
 
-/* `class="sec-title"` non aveva nessuna regola in tutto il programma, e
-   `var(--bordo)` non e' mai stata definita: il titolo era testo qualunque e la
-   riga tratteggiata non c'era: una variabile che non esiste rende invalida
-   tutta la dichiarazione del bordo. Adesso le due classi esistono davvero. */
-function prevBox(titolo, righe) {
-  return '<div class="pv-sec">' + esc(titolo) + '</div>' +
-    righe.map(function (r) {
-      return '<div class="pv-riga"><span>' + esc(r[0]) + '</span>' +
-        '<b' + (r[2] ? ' style="color:' + r[2] + '"' : '') + '>' + esc(r[1]) + '</b></div>';
-    }).join('');
+/* La casella «non lo sa» e il campo dell'eta' di inizio si escludono: tenerli
+   tutti e due attivi lascerebbe sullo schermo un numero che il calcolo non
+   sta usando, ed e' il modo piu' facile per far dire al consulente una cosa
+   e al foglio un'altra. */
+function pensIgnoto() {
+  var c = document.getElementById('pens-inizio-ignoto');
+  var i = document.getElementById('pens-inizio');
+  if (!c || !i) return;
+  i.disabled = c.checked;
+  if (c.checked) i.value = '';
+  if (PENS.esito) pensCalcola();
 }
-var prevEuro = function (n) { return '€ ' + Math.round(Number(n) || 0).toLocaleString('it-IT'); };
-var prevPerc = function (n, d) { return (Number(n) || 0).toFixed(d == null ? 1 : d).replace('.', ',') + '%'; };
-
-function prevGuai(r) {
-  return '<div class="empty-state" style="text-align:left">' +
-    '<b>Non posso calcolare: mancano dei dati.</b><ul style="margin:.6rem 0 0">' +
-    (r.problemi || []).map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>';
-}
-function prevMotivi(r) {
-  var avvisi = (r.avvisi || []).concat((r.daConfermare || []).map(function (x) {
-    return 'Da confermare: ' + x.etichetta + ' (' + x.fonte + ')';
-  }));
-  return (avvisi.length ? '<div class="pv-avviso"><b>Prima di consegnarlo al cliente</b><ul style="margin:.4rem 0 0">' +
-      avvisi.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul></div>' : '') +
-    '<div class="pv-sec">Perche\' questi numeri</div><ul style="font-size:12.5px;color:var(--pv-ink2)">' +
-    (r.motivi || []).map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('') + '</ul>';
+function pensInizioScritto() {
+  var c = document.getElementById('pens-inizio-ignoto');
+  var i = document.getElementById('pens-inizio');
+  if (c && i && i.value !== '') c.checked = false;
 }
 
-async function prevCalcola() {
-  /* SE LA LETTURA E' ANCORA IN CORSO SI ASPETTA, non si blocca: chi compila in
-     fretta arriverebbe al tasto prima che il server abbia risposto, e si
-     vedrebbe rifiutare il conto per una frazione di secondo di ritardo. */
-  if (PREV.parametri === 'attesa' && PREV.caricamento) {
-    var attesa = document.getElementById('prev-esito');
-    if (attesa) attesa.innerHTML = '<div class="pv-nota">Leggo i parametri di legge…</div>';
-    try { await PREV.caricamento; } catch (e) {}
+function pensPulisci() {
+  ['pens-eta', 'pens-reddito', 'pens-versamento', 'pens-inizio'].forEach(function (id) {
+    var e = document.getElementById(id); if (e) { e.value = ''; e.disabled = false; }
+  });
+  var c = document.getElementById('pens-inizio-ignoto'); if (c) c.checked = false;
+  var l = document.getElementById('pens-lavoro'); if (l) l.value = 'dipendente';
+  PENS.esito = null; PENS.cliente = null;
+  var da = document.getElementById('pens-da-cliente'); if (da) da.innerHTML = '';
+  var es = document.getElementById('pens-esito'); if (es) es.innerHTML = '';
+  pensBase('netto');
+}
+
+function pensLeggi() {
+  var v = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
+  var ignoto = (document.getElementById('pens-inizio-ignoto') || {}).checked;
+  return {
+    eta: Number(v('pens-eta')) || 0,
+    lavoro: v('pens-lavoro') || 'dipendente',
+    redditoMensile: Number(v('pens-reddito')) || 0,
+    baseReddito: PENS.base,
+    versamentoMensile: Number(v('pens-versamento')) || 0,
+    etaInizioLavoro: ignoto ? null : (v('pens-inizio') === '' ? null : Number(v('pens-inizio'))),
+  };
+}
+
+async function pensCalcola() {
+  var box = document.getElementById('pens-esito');
+  if (!box) return;
+  if (!window.Pensione) { pensAvvisi(); return; }
+
+  /* Se i parametri sono ancora per strada si aspetta: fare il conto con la
+     riserva e poi rifarlo con i numeri veri farebbe cambiare i numeri sotto
+     gli occhi del cliente. */
+  if (PENS.parametri === 'attesa' && PENS.caricamento) {
+    box.innerHTML = '<div class="pv-nota">Sto leggendo i numeri di legge…</div>';
+    try { await PENS.caricamento; } catch (e) {}
   }
-  var d = prevLeggi();
-  var box = document.getElementById('prev-esito');
-  var bott = document.getElementById('prev-b-soluzione');
-  PREV.esito = null; PREV.valutazione = null;
 
-  /* SENZA I NUMERI DI LEGGE NON SI CALCOLA. Nessun risultato, nessuna
-     percentuale, nessun foglio: solo cosa e' successo e come riprovare. */
-  if (PREV.parametri !== 'ok') {
-    if (bott) bott.style.display = 'none';
-    box.innerHTML = '<div class="pv-avviso"><b>Parametri non disponibili, riprova.</b>' +
-      (PREV.parametri === 'ko' && PREV.perParametri ? '<div style="margin-top:6px">' + esc(PREV.perParametri) + '</div>' : '') +
-      '<div style="margin-top:6px">I numeri di legge arrivano dalla tabella dei parametri previdenziali. ' +
-      'Finché non risponde il calcolo resta fermo: un risultato costruito su valori vecchi sarebbe più alto del vero.</div>' +
-      '<div style="margin-top:12px"><button class="btn-primary" onclick="prevRiprovaParametri()">Riprova</button></div></div>';
-    prevVai(3);
+  var d = pensLeggi();
+  if (!(d.eta > 0) || !(d.redditoMensile > 0)) {
+    box.innerHTML = '<div class="pv-avviso">Servono almeno l\'età e il reddito mensile: senza quei due il calcolo non dice niente.</div>';
+    PENS.esito = null;
     return;
   }
+  PENS.esito = Pensione.calcola(d);
+  pensRendi(PENS.esito);
+}
 
-  if (PREV.tipo === 'azienda') {
-    var r = Previdenza.pianoAzienda(d, PREV.correzioni);
-    PREV.esito = r;
-    if (!r.ok) { box.innerHTML = prevGuai(r); prevVai(3); return; }
-    box.innerHTML = prevBox('Quanto vale destinare il TFR alla previdenza', [
-      ['Risparmio complessivo in ' + r.azienda.anni + ' anni', prevEuro(r.totali.risparmio), '#02984e'],
-      ['TFR destinato nel periodo', prevEuro(r.totali.tfrDestinato)],
-      ['Risparmio sul TFR destinato', prevPerc(r.totali.risparmioSuTfr)],
-      ['Deduzione applicata', prevPerc(r.azienda.percentualeDeduzione * 100, 0) + (r.azienda.piccola ? ' (sotto i 50 dipendenti)' : '')],
-    ]) + prevMotivi(r);
-    if (bott) bott.style.display = 'none';   // il report e' per la persona
-  } else if (PREV.tipo === 'tfr') {
-    var t = Previdenza.confrontoTfr(d, PREV.correzioni);
-    PREV.esito = t;
-    if (!t.ok) { box.innerHTML = prevGuai(t); prevVai(3); return; }
-    box.innerHTML = prevBox('TFR in azienda contro TFR nel fondo', [
-      ['Versato nel periodo', prevEuro(t.versato)],
-      ['Netto lasciandolo in azienda', prevEuro(t.azienda.netto)],
-      ['Netto portandolo nel fondo', prevEuro(t.fondo.netto)],
-      ['Differenza', prevEuro(Math.abs(t.differenza)) + (t.conviene === 'fondo' ? ' a favore del fondo' : t.conviene === 'azienda' ? ' a favore dell\'azienda' : ''),
-        t.conviene === 'fondo' ? '#02984e' : '#c25a00'],
-      ['Aliquota finale nel fondo', prevPerc(t.fondo.aliquotaFinale * 100, 2)],
-    ]) +
-    '<div style="background:var(--sfondo-2);border-radius:10px;padding:10px 12px;margin:1rem 0;font-size:12.5px">' +
-    '<b>Dimissioni o licenziamento?</b> ' + esc(t.scenari.nota) + '</div>' + prevMotivi(t);
-    if (bott) bott.style.display = 'none';
-  } else {
-    var p = Previdenza.prospettivaPensionistica(d, PREV.correzioni);
-    PREV.esito = p;
-    if (!p.ok) { box.innerHTML = prevGuai(p); prevVai(3); return; }
-    var v = Previdenza.valutaSoluzione(p, d.versamentoMensile || 0, PREV.correzioni);
-    PREV.valutazione = v;
-    var colore = { adeguato: '#02984e', parziale: '#c25a00', insufficiente: '#c0392b' }[v.stato] || 'var(--muted)';
-    /* IN EURO DI OGGI. Il nominale del 2060 non si legge: «2.836 al mese» su
-       uno stipendio di 1.846 fa concludere al cliente che la pensione gli basta
-       e avanza, e la conversazione muore lì. Il nominale resta nella riga
-       tecnica in fondo al report, per chi vuole ricostruire. */
-    var R = p.reale || { pensioneMensile: p.pensioneMensile, gapMensile: p.gapMensile,
-      redditoOggiMensile: p.persona.redditoOggi / 13,
-      redditoAllaPensioneMensile: p.persona.redditoAllaPensione / 13 };
-    box.innerHTML = '<div class="pv-nota">' +
-      '<i class="ti ti-info-circle"></i> Tutti gli importi sono in <b>euro di oggi</b>, a parità di potere d\'acquisto' +
-      (p.reale ? ' (inflazione ' + prevPerc(p.reale.inflazione * 100, 1) + ' all\'anno)' : '') + '.</div>' +
-      /* LE DUE RIGHE DELLO STIPENDIO VENGONO PRIMA, e non e' cosmesi. Il
-         tasso di sostituzione e il divario si misurano sull'ULTIMO stipendio:
-         senza quella riga il cliente che ha dichiarato 2.000 € legge «pensione
-         1.651, ti mancano 866» e non torna — perche' l'866 e' calcolato su un
-         numero che non ha mai visto. (09/09/2026) */
-      prevBox('La pensione pubblica', [
-      ['Stipendio di oggi', prevEuro(R.redditoOggiMensile) + ' al mese'],
-      ['Ultimo stipendio prima della pensione', prevEuro(R.redditoAllaPensioneMensile) + ' al mese'],
-      ['Pensione stimata', prevEuro(R.pensioneMensile) + ' al mese'],
-      ['Copre dell\'ultimo stipendio', prevPerc(p.tassoSostituzione)],
-      ['Quanto manca', prevEuro(R.gapMensile) + ' al mese', '#c0392b'],
-    ]) + prevBox('Con ' + prevEuro(v.soluzione.versamentoMensile) + ' al mese', [
-      ['Giudizio', { adeguato: 'Adeguata', parziale: 'Parziale', insufficiente: 'Insufficiente' }[v.stato], colore],
-      ['Divario coperto', prevPerc(v.coperturaDivario * 100, 0), colore],
-      /* IN EURO DI OGGI, come dice il cappello della schermata e come fa gia'
-         il report stampato. Con il nominale questa riga diceva 233 € al mese
-         dove il divario coperto ne dichiarava 113: il beneficio del versamento
-         usciva quasi doppio. (09/09/2026) */
-      ['Rendita aggiuntiva', prevEuro((v.soluzione.reale || v.soluzione).renditaMensile) + ' al mese'],
-      ['Risparmio fiscale', prevEuro(v.soluzione.risparmioFiscaleAnnuo) + ' all\'anno', '#02984e'],
-      ['Tasso di sostituzione', prevPerc(v.tassoPrima) + ' → ' + prevPerc(v.tassoDopo)],
-    ]) +
-    (v.alternative.length
-      ? prevBox('Se vuole coprire di piu\'', v.alternative.map(function (a) {
-          return [prevEuro(a.versamentoMensile) + ' al mese', 'copre il ' + prevPerc(a.coperturaDivario * 100, 0) + ' del divario'];
-        }))
-      : '<div class="pv-ok">La posizione e\' adeguata: non ci sono alternative da proporre.</div>') +
-    prevMotivi(v);
-    if (bott) bott.style.display = '';
+/* ── LA RISPOSTA ─────────────────────────────────────────────────────────── */
+
+function pensEuro(n, dec) {
+  /* `useGrouping: 'always'`: senza, Intl non mette il punto sotto le cinque
+     cifre e nella stessa riga compaiono «1800 €» e «57.477 €». */
+  return (Number(n) || 0).toLocaleString('it-IT',
+    { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0, useGrouping: 'always' }) + ' €';
+}
+function pensPerc(n, dec) { return ((Number(n) || 0) * 100).toFixed(dec == null ? 0 : dec).replace('.', ',') + '%'; }
+
+function pensRendi(e) {
+  var box = document.getElementById('pens-esito');
+  if (!box) return;
+  var h = '';
+
+  /* LA FASCIA PRUDENZIALE STA IN CIMA. Un avviso in fondo lo legge chi gia'
+     sapeva. Questo deve vederlo chi sta per dire un numero a voce alta. */
+  if (e.prudenziale) {
+    h += '<div class="pv-avviso"><b>Stima prudenziale</b> — l\'età di inizio dell\'attività lavorativa non è stata indicata' +
+      (e.datoIncoerente ? ' in modo utilizzabile (l\'anno indicato è successivo all\'età attuale)' : '') +
+      '. Il calcolo usa uno scenario peggiorativo: inizio a ' + Pensione.ETA_INIZIO_PRUDENZIALE +
+      ' anni, quindi pensione più bassa e divario più ampio di quelli probabili. Chiedere l\'anno vero cambia il risultato.</div>';
   }
-  prevVai(3);
-}
+  if (e.affidabilita === 'bassa') {
+    h += '<div class="pv-nota">' + esc(e.notaLavoro) + '</div>';
+  }
 
-/* Le ipotesi, in chiaro. Quelle di legge si vedono ma non si toccano: il motore
-   le rifiuterebbe comunque, e un campo che accetta un valore poi ignorato e'
-   peggio di un campo bloccato. */
-function prevIpotesi() {
-  var ip = Previdenza.ipotesiAttive(PREV.correzioni);
-  var righe = Object.keys(ip).map(function (k) {
-    var o = ip[k];
-    var mostra = o.unita === '%' ? (o.v * 100).toFixed(2).replace('.', ',') : o.v;
-    return '<tr><td style="padding:6px 8px">' + esc(o.etichetta) +
-      '<div style="font-size:11px;color:var(--muted)">' + esc(o.fonte) + '</div></td>' +
-      '<td style="padding:6px 8px;text-align:right;white-space:nowrap">' +
-      /* IL CAMPO ERA VUOTO, e non per caso: `mostra` scrive «3,50» con la
-         virgola, e un <input type="number"> con dentro una virgola non e'
-         valido — il browser lo disegna vuoto, senza dire niente. Erano vuoti
-         esattamente i dieci parametri in percentuale, cioe' tutti i
-         modificabili: la pagina che esiste per rendere verificabile il conto
-         era l'unica a non mostrare niente. (03/09/2026)
-         Adesso e' un campo di testo: la virgola si scrive e si legge. */
-      (o.modificabile
-        ? '<input id="prev-ip-' + k + '" type="text" inputmode="decimal" value="' + esc(mostra) + '" style="width:90px;text-align:right" oninput="prevCorreggi(\'' + k + '\',\'' + esc(o.unita) + '\')"> ' + esc(o.unita)
-        : '<b>' + esc(mostra) + ' ' + esc(o.unita) + '</b><div style="font-size:11px;color:var(--muted)">di legge</div>') +
-      '</td></tr>';
-  }).join('');
-  /* IL NUMERO PIU' DECISIVO DI TUTTI, e non era in questo elenco: il
-     coefficiente di trasformazione. Non e' un'ipotesi correggibile — arriva dal
-     decreto, e correggerlo a mano vorrebbe dire firmare un preventivo con un
-     numero di legge scelto da chi lo firma — ma va VISTO, perche' e' l'unico
-     che il cliente puo' contestare con un estratto alla mano. (03/09/2026) */
-  var co = PREV.esito && PREV.esito.coefficienti;
-  var primaRiga = co
-    ? '<tr><td style="padding:6px 8px">Coefficiente di trasformazione' +
-      '<div style="font-size:11px;color:var(--muted)">' + esc(co.fonte || co.nota || 'dalla tabella dei Parametri previdenziali') + '</div></td>' +
-      '<td style="padding:6px 8px;text-align:right;white-space:nowrap"><b>' +
-      (co.usato * 100).toFixed(3).replace('.', ',') + ' % a ' + esc(co.eta) + ' anni</b>' +
-      '<div style="font-size:11px;color:var(--muted)">di legge</div></td></tr>'
-    : '<tr><td style="padding:6px 8px" colspan="2"><span style="color:var(--muted)">Il coefficiente di trasformazione si vede dopo il calcolo: dipende dall\'età di uscita.</span></td></tr>';
-  /* IL SILENZIO VA DETTO. Senza i requisiti proiettati il modulo non avvisa
-     sull'età di uscita, ed è giusto — non li conosce. Ma il collaboratore deve
-     sapere che quel controllo NON c'è: scoprirlo da un cliente che fa notare
-     che nel 2060 a 67 anni non ci si va è un'altra cosa. */
-  var co = PREV.esito && PREV.esito.persona && PREV.esito.persona.contributi;
-  var rigaForbice = co
-    ? '<tr><td style="padding:6px 8px">Dal lordo all\'imponibile IRPEF' +
-      '<div style="font-size:11px;color:var(--muted)">' + esc(co.gestione) +
-      ': si toglie il ' + (co.aCarico * 100).toFixed(2).replace('.', ',') + '% a carico del lavoratore' +
-      (co.dovuta > co.aCarico ? ' (aliquota dovuta ' + (co.dovuta * 100).toFixed(2).replace('.', ',') + '%, il resto lo versa il datore o il committente)' : '') +
-      '. Montante costruito al ' + (co.computo * 100).toFixed(0) + '%.</div></td>' +
-      '<td style="padding:6px 8px;text-align:right;white-space:nowrap"><b>' +
-      Math.round(co.lordo).toLocaleString('it-IT') + ' € → ' + Math.round(co.imponibile).toLocaleString('it-IT') + ' €</b>' +
-      '<div style="font-size:11px;color:var(--muted)">di legge</div></td></tr>'
-    : '';
-  var reqNoto = PREV.requisitiProiettati && Object.keys(PREV.requisitiProiettati).length > 0;
-  var rigaReq = reqNoto
-    ? ''
-    : '<tr><td colspan="2" style="padding:8px">' +
-      '<span style="background:var(--pv-ambra-bg);color:var(--pv-ambra-txt);border-left:3px solid var(--pv-ambra);border-radius:6px;padding:5px 11px;font-size:12.5px">' +
-      '<i class="ti ti-alert-triangle" style="vertical-align:-2px"></i> ' +
-      'Verifica del requisito di età non attiva: tabella dei requisiti proiettati non ancora popolata.</span></td></tr>';
-  document.getElementById('prev-ipotesi').innerHTML =
-    '<table style="width:100%;border-collapse:collapse"><tbody>' + primaRiga + rigaForbice + rigaReq + righe + '</tbody></table>' +
-    '<div style="font-size:12px;color:var(--muted);margin-top:8px">Un campo lasciato vuoto usa il valore predefinito, quello scritto qui accanto alla voce.</div>';
-}
-function prevCorreggi(chiave, unita) {
-  var el = document.getElementById('prev-ip-' + chiave);
-  if (!el || el.value.trim() === '') { delete PREV.correzioni[chiave]; return; }
-  // «3,50» e «3.50» sono la stessa cosa: chi compila scrive come gli viene.
-  var n = Number(String(el.value).trim().replace(',', '.'));
-  if (!isFinite(n)) { delete PREV.correzioni[chiave]; return; }
-  PREV.correzioni[chiave] = unita === '%' ? n / 100 : n;
-}
-
-function prevFormReport() {
-  var nome = (INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '';
-  var rui = (INTERM_PROFILO && INTERM_PROFILO.rui) || '';
-  document.getElementById('prev-report-form').innerHTML =
-    '<div class="aw-grid">' +
-    '<div class="aw-field"><label>Cliente</label><input id="prev-cli" placeholder="Nome e cognome"></div>' +
-    '<div class="aw-field"><label>Consulente che firma</label><input id="prev-cons" value="' + esc(nome) + '"></div>' +
-    '<div class="aw-field"><label>Ruolo</label><input id="prev-ruolo" value="Consulente previdenziale"></div>' +
-    '<div class="aw-field"><label>Iscrizione RUI</label><input id="prev-rui" value="' + esc(rui) + '"></div>' +
-    '<div class="aw-field"><label>Email</label><input id="prev-mail" value="' + esc((currentUser && currentUser.email) || '') + '"></div>' +
-    '<div class="aw-field"><label>Telefono</label><input id="prev-tel"></div>' +
+  /* I TRE NUMERI. */
+  h += '<div class="pv-card"><div class="pv-sec">Dove sei oggi, e dove arrivi</div><div class="pv-numeri">' +
+    '<div class="pv-n"><div class="et">Oggi porti a casa</div><div class="v">' + pensEuro(e.redditoNettoMensile) + '</div>' +
+      '<div class="sub">al mese, netti' + (e.baseReddito === 'lordo' ? ' — dai ' + pensEuro(e.redditoLordoMensile) + ' lordi indicati' : '') + '</div></div>' +
+    '<div class="pv-n"><div class="et">Pensione pubblica</div><div class="v">' + pensEuro(e.pensioneNettaMensile) + '</div>' +
+      '<div class="sub">il ' + pensPerc(e.tassoSostituzioneNetto) + ' di quello che prendi oggi</div></div>' +
+    '<div class="pv-n"><div class="et">Dal fondo pensione</div><div class="v">' + pensEuro(e.fondo.renditaMensileNetta) + '</div>' +
+      '<div class="sub">' + (e.versamentoMensile > 0
+        ? 'versando ' + pensEuro(e.versamentoMensile) + ' al mese per ' + e.anniAllaPensione + ' anni'
+        : 'nessun versamento ipotizzato') + '</div></div>' +
+    '<div class="pv-n ' + (e.gapMensile > 0 ? 'gap' : 'ok') + '"><div class="et">' + (e.gapMensile > 0 ? 'Ti mancheranno' : 'Sei coperto') + '</div>' +
+      '<div class="v">' + pensEuro(e.gapMensile) + '</div>' +
+      '<div class="sub">al mese' + (e.gapMensile > 0 ? ', il ' + pensPerc(e.gapPercentuale) + ' del reddito di oggi' : ', il divario è chiuso') + '</div></div>' +
     '</div>';
+
+  /* LA BARRA. La cosa che il cliente capisce prima dei numeri. */
+  var tot = Math.max(e.redditoNettoMensile, 1);
+  var qP = Math.max(0, Math.min(100, e.pensioneNettaMensile / tot * 100));
+  var qF = Math.max(0, Math.min(100 - qP, e.fondo.renditaMensileNetta / tot * 100));
+  var qG = Math.max(0, 100 - qP - qF);
+  var etichetta = function (q, testo) { return q > 12 ? testo : ''; };
+  h += '<div class="pv-legenda">' +
+      '<span><i style="background:#02984e"></i>Pensione pubblica</span>' +
+      '<span><i style="background:#01c061"></i>Fondo pensione</span>' +
+      '<span><i style="background:#e8b4ae"></i>Scoperto</span>' +
+    '</div>' +
+    '<div class="pv-barra">' +
+      '<span class="b-pens" style="width:' + qP.toFixed(1) + '%">' + etichetta(qP, pensPerc(qP / 100)) + '</span>' +
+      '<span class="b-fondo" style="width:' + qF.toFixed(1) + '%">' + etichetta(qF, pensPerc(qF / 100)) + '</span>' +
+      '<span class="b-gap" style="width:' + qG.toFixed(1) + '%">' + etichetta(qG, pensPerc(qG / 100)) + '</span>' +
+    '</div>' +
+    '<div class="pv-piccolo">Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi +
+      ' anni di contributi (inizio a ' + e.etaInizioUsata + '). Gli importi sono in euro di oggi.</div>' +
+    '</div>';
+
+  /* LE PROPOSTE, cliccabili. */
+  h += '<div class="pv-card"><div class="pv-sec">Con quanto al mese lo copri</div>';
+  /* LE PROPOSTE SONO VERSAMENTI TOTALI ALTERNATIVI, non aggiunte a quello che
+     il cliente versa gia'. Per questo si misurano sul divario NUDO — reddito
+     meno pensione pubblica — e per questo lo si scrive: chi versa gia'
+     qualcosa vedrebbe due cifre diverse e non saprebbe quale guardare. */
+  if (e.versamentoMensile > 0 && e.gapSenzaFondoMensile > e.gapMensile + 0.5) {
+    h += '<div class="pv-piccolo" style="margin-bottom:9px">Queste sono ipotesi di versamento <b>al posto</b> dei ' +
+      pensEuro(e.versamentoMensile) + ' di adesso, non in aggiunta: coprono il divario di <b>' +
+      pensEuro(e.gapSenzaFondoMensile) + '</b> che resterebbe con la sola pensione pubblica.</div>';
+  }
+  if (e.gapMensile <= 0) {
+    h += '<div class="pv-ok">Con ' + pensEuro(e.versamentoMensile) + ' al mese il divario è già chiuso. ' +
+      'Versare di più non serve a coprire un buco che non c\'è — semmai ad avere di più, che è un\'altra conversazione.</div>';
+  }
+  h += '<div class="pv-proposte">' + e.proposte.map(function (p) {
+    var cls = 'pv-prop' + (p.azzera ? ' azzera' : '') + (p.versamentoMensile === e.versamentoMensile ? ' on' : '');
+    return '<button type="button" class="' + cls + '" onclick="pensProponi(' + p.versamentoMensile + ')">' +
+      '<div class="q">' + pensEuro(p.versamentoMensile) + '</div>' +
+      '<div class="d">ti tornano <b>' + pensEuro(p.renditaMensileNetta) + '</b> al mese<br>' +
+        (p.azzera ? 'copre tutto il divario' : 'copre il ' + pensPerc(p.coperturaGap) + ' del divario') + '</div>' +
+      (p.eQuelloCheAzzera ? '<span class="tag v">azzera il gap</span>' : '') +
+      (p.fuoriPortata ? '<span class="tag a">oltre un quinto del reddito</span>' : '') +
+      (p.oltreIlTettoDeducibile ? '<span class="tag a">oltre il tetto deducibile</span>' : '') +
+      '</button>';
+  }).join('') + '</div>';
+  var muro = e.proposte.filter(function (p) { return p.eQuelloCheAzzera && p.fuoriPortata; })[0];
+  if (muro) {
+    h += '<div class="pv-avviso">Per azzerare del tutto il divario servirebbero ' + pensEuro(muro.versamentoMensile) +
+      ' al mese, che su ' + pensEuro(e.redditoNettoMensile) + ' di reddito non è una proposta: è un muro. ' +
+      'Il discorso qui non è azzerare — è coprirne una parte, e cominciare.</div>';
+  }
+  h += '</div>';
+
+  /* IL RISPARMIO FISCALE. */
+  h += '<div class="pv-card"><div class="pv-sec">Quanto ti fa risparmiare di tasse</div>';
+  if (!e.fiscale.disponibile) {
+    h += '<div class="pv-avviso">' + esc(e.fiscale.perche) + '</div>';
+  } else if (e.fiscale.inPerdita) {
+    h += '<div class="pv-allarme"><b>A questo reddito dedurre NON conviene.</b> Il versamento farebbe scendere ' +
+      'l\'imposta lorda sotto la soglia di capienza e farebbe perdere il trattamento integrativo: il conto finale ' +
+      'sarebbe in perdita di ' + pensEuro(Math.abs(e.fiscale.risparmioAnnuo)) + ' l\'anno. ' +
+      'Il fondo resta utile per la pensione — il vantaggio fiscale, qui, non c\'è. Dirlo è l\'unica cosa che tiene in piedi il resto.</div>';
+  } else if (e.fiscale.impostaAzzerata) {
+    h += '<div class="pv-avviso">L\'imposta è già azzerata dalle detrazioni: la deduzione non produce nessun risparmio. ' +
+      'Il fondo ha senso per la pensione, non per le tasse.</div>';
+  } else {
+    h += '<div class="pv-numeri">' +
+      '<div class="pv-n ok"><div class="et">Risparmio fiscale</div><div class="v">' + pensEuro(e.fiscale.risparmioAnnuo) + '</div>' +
+        '<div class="sub">all\'anno, versando ' + pensEuro(e.fiscale.versatoAnnuo) + '</div></div>' +
+      '<div class="pv-n"><div class="et">Ogni euro dedotto vale</div><div class="v">' + pensPerc(e.fiscale.aliquotaEffettiva, 1) + '</div>' +
+        '<div class="sub">non è l\'aliquota di scaglione: è quanto rende davvero</div></div>' +
+      '</div>';
+    if (e.fiscale.oltreIlTetto) {
+      h += '<div class="pv-avviso">Il versamento supera il tetto di deducibilità (' + pensEuro(Pensione.LEGGE.tettoDeducibilita.v, 2) +
+        ' l\'anno): ' + pensEuro(e.fiscale.eccedenza) + ' non danno diritto a deduzione. Il fondo li accetta, il fisco no.</div>';
+    }
+  }
+  h += '</div>';
+
+  /* IL CONFRONTO TFR, solo a chi ce l'ha. */
+  if (e.mostraTfr) {
+    h += '<div class="pv-card"><div class="pv-sec">TFR: in azienda o nel fondo?</div>' +
+      '<div class="pv-piccolo" style="margin-bottom:9px">Un confronto, non un consiglio: la scelta è del lavoratore e dipende anche da cose che in questo foglio non ci sono.</div>' +
+      '<table class="pv-conf"><thead><tr><th></th><th>TFR in azienda</th><th>TFR nel fondo</th></tr></thead><tbody>' +
+      Pensione.TFR.righe.map(function (r) {
+        return '<tr><th class="voce">' + esc(r.voce) + '</th>' +
+          '<td data-col="TFR in azienda">' + esc(r.azienda) + '</td>' +
+          '<td data-col="TFR nel fondo">' + esc(r.fondo) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div class="pv-piccolo" style="margin-top:8px">' + esc(Pensione.TFR.daVerificare) + '</div></div>';
+  }
+
+  /* QUANDO POSSO PRENDERE PRIMA I MIEI SOLDI. Va a tutti, non solo a chi ha
+     il TFR: e' l'obiezione numero uno di chiunque. Se non la si mette, il
+     cliente ci pensa lo stesso — solo senza risposta davanti. */
+  var q = Pensione.TFR.quandoLiRiprendo;
+  h += '<div class="pv-card"><div class="pv-sec">' + esc(q.titolo) + '</div>' +
+    '<table class="pv-conf"><thead><tr><th>Se il TFR resta in azienda</th><th>Nel fondo pensione</th></tr></thead><tbody><tr>' +
+    '<td data-col="Se resta in azienda"><ul>' + q.azienda.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
+    '<td data-col="Nel fondo pensione"><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
+    '</tr></tbody></table>' +
+    '<div class="pv-piccolo" style="margin-top:8px">' + esc(q.fonte) + '</div>' +
+    '<div class="pv-avviso">' + esc(q.daVerificare) + '</div></div>';
+
+  /* QUELLO CHE NON E' ANCORA CONFERMATO. Non in fondo per pudore: in fondo
+     perche' e' l'ultima cosa che si legge prima di premere «stampa». */
+  if (e.daConfermare && e.daConfermare.length) {
+    h += '<div class="pv-card"><div class="pv-sec">Valori ancora da confermare</div>' +
+      '<div class="pv-piccolo">Finché questa lista non è vuota, il foglio si può stampare ma va letto per quello che è: una stima. ' +
+      'Ogni voce arriva anche sul foglio del cliente.</div>' +
+      '<ul class="pv-piccolo" style="margin-top:8px;padding-left:18px">' +
+      e.daConfermare.map(function (m) { return '<li><b>' + esc(m.gruppo) + '</b> · ' + esc(m.etichetta) + ' — ' + esc(m.fonte) + '</li>'; }).join('') +
+      '</ul></div>';
+  }
+
+  /* IL FOGLIO E L'INVIO. */
+  h += '<div class="pv-card"><div class="pv-sec">Il foglio per il cliente</div>' +
+    '<div class="aw-grid">' +
+    '<div class="aw-field"><label>Cliente</label><input id="pens-cli" placeholder="Nome e cognome" value="' +
+      esc((PENS.cliente && PENS.cliente.nome) || '') + '"></div>' +
+    '<div class="aw-field"><label>Consulente che firma</label><input id="pens-cons" value="' +
+      esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '') + '"></div>' +
+    '<div class="aw-field"><label>Ruolo</label><input id="pens-ruolo" value="Consulente previdenziale"></div>' +
+    '<div class="aw-field"><label>Iscrizione RUI</label><input id="pens-rui" value="' +
+      esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.rui) || '') + '"></div>' +
+    '<div class="aw-field"><label>Email</label><input id="pens-mail" value="' + esc((currentUser && currentUser.email) || '') + '"></div>' +
+    '<div class="aw-field"><label>Telefono del cliente</label><input id="pens-tel" value="' +
+      esc((PENS.cliente && PENS.cliente.telefono) || '') + '" placeholder="per WhatsApp — es. 3331234567"></div>' +
+    '</div>' +
+    '<div class="pv-azioni">' +
+      '<button class="btn-primary" onclick="pensFoglio()"><i class="ti ti-printer"></i> Apri il foglio da stampare</button>' +
+      '<button class="btn-ghost" onclick="pensWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Messaggio WhatsApp</button>' +
+    '</div>' +
+    '<div class="pv-piccolo" style="margin-top:9px">WhatsApp non permette di allegare un file da un collegamento: ' +
+      'stampa prima il foglio in PDF, poi allegalo al messaggio che si apre già scritto.</div>' +
+    '<div id="pens-archivio"></div></div>';
+
+  box.innerHTML = h;
 }
 
-function prevApriReport() {
-  if (!PREV.esito || !PREV.valutazione) { alert('Prima calcola: il report si costruisce sul risultato.'); return; }
+/* Toccare una proposta rifa' il conto con quel versamento. E' il gesto che
+   chiude la conversazione — «e con cento?» — e deve costare un dito. */
+function pensProponi(v) {
+  var i = document.getElementById('pens-versamento');
+  if (i) i.value = v;
+  pensCalcola();
+  var box = document.getElementById('pens-esito');
+  if (box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── IL FOGLIO ───────────────────────────────────────────────────────────── */
+
+function pensDatiFoglio() {
   var v = function (id) { return (document.getElementById(id) || {}).value || ''; };
-  /* UNA data sola per il foglio e per l'archivio. Prendendola due volte
-     dall'orologio, un'analisi stampata a mezzanotte finirebbe a registro col
-     giorno dopo — e sarebbe l'unica riga che non combacia col documento che il
-     cliente ha in mano. */
-  var oggi = new Date().toLocaleDateString('it-IT');
-  var cliente = { nome: v('prev-cli') };
-  var consulente = { nome: v('prev-cons'), ruolo: v('prev-ruolo'), rui: v('prev-rui'), email: v('prev-mail'), telefono: v('prev-tel') };
-  var r = Previdenza.reportPrevidenza({
-    prospettiva: PREV.esito, valutazione: PREV.valutazione,
-    cliente: cliente, consulente: consulente,
-    dataRiferimento: oggi,
+  return {
+    esito: PENS.esito,
+    cliente: { nome: v('pens-cli'), telefono: v('pens-tel') },
+    consulente: { nome: v('pens-cons'), ruolo: v('pens-ruolo'), rui: v('pens-rui'), email: v('pens-mail') },
+    /* UNA data sola per il foglio e per l'archivio. Prendendola due volte
+       dall'orologio, un'analisi stampata a mezzanotte finirebbe a registro col
+       giorno dopo — e sarebbe l'unica riga che non combacia col documento che
+       il cliente ha in mano. */
+    dataRiferimento: new Date().toLocaleDateString('it-IT'),
+    anagraficaId: (PENS.cliente && PENS.cliente.id) || null,
     logo: 'withus-logo.png',
-  });
-  if (!r.ok) { alert('Non posso produrre il report:\n\n· ' + r.problemi.join('\n· ')); return; }
+  };
+}
+
+function pensFoglio() {
+  if (!PENS.esito) { alert('Prima calcola: il foglio si costruisce sul risultato.'); return; }
+  var d = pensDatiFoglio();
+  var r = Pensione.foglioHtml(d);
+  if (!r.ok) { alert('Non posso produrre il foglio:\n\n· ' + r.problemi.join('\n· ')); return; }
   var w = window.open('', '_blank');
-  if (!w) { alert('Il browser ha bloccato la finestra: consenti le finestre per stampare il report.'); return; }
+  if (!w) { alert('Il browser ha bloccato la finestra: consenti le finestre per stampare il foglio.'); return; }
   w.document.write(r.html); w.document.close();
   /* PRIMA il foglio, POI l'archivio. Il consulente e' seduto davanti a un
      cliente: nessun salvataggio deve poter trattenere la stampa. */
-  prevArchivia(cliente, consulente, oggi);
+  pensArchivia(d);
 }
 
-/* ── L'ANALISI VA A REGISTRO ───────────────────────────────────────────────
-   Ogni foglio stampato lascia la sua riga: chi, per chi, con quale versione
-   delle regole e con quali numeri di legge. Serve fra un anno, quando i
-   parametri saranno cambiati e il cliente tornera' con quel foglio in mano.
+function pensWhatsApp() {
+  if (!PENS.esito) { alert('Prima calcola: il messaggio si costruisce sul risultato.'); return; }
+  var d = pensDatiFoglio();
+  var testo = Pensione.messaggioWhatsApp(d);
+  /* Il numero si normalizza qui: WhatsApp vuole il prefisso internazionale
+     senza il piu' e senza spazi. Senza numero si apre lo stesso, e il
+     consulente sceglie il destinatario dalla rubrica. */
+  var n = String(d.cliente.telefono || '').replace(/\D/g, '');
+  if (n && n.length === 10 && n[0] === '3') n = '39' + n;
+  var url = 'https://wa.me/' + n + '?text=' + encodeURIComponent(testo);
+  window.open(url, '_blank');
+}
 
-   SE NON RIESCE, LO DICE. Un archivio che perde pezzi in silenzio e' peggio di
-   non averlo: si conta su di lui e non c'e'. Il foglio pero' e' gia' uscito —
-   quello non si tocca. */
-async function prevArchivia(cliente, consulente, oggi) {
-  var box = document.getElementById('prev-archivio');
+/* ── L'ANALISI VA A REGISTRO ──────────────────────────────────────────────
+   Ogni foglio stampato lascia la sua riga: chi, per chi, con quali numeri e
+   con quale versione delle regole. Serve fra un anno, quando i parametri
+   saranno cambiati e il cliente tornera' con quel foglio in mano.
+
+   SE NON RIESCE, LO DICE. Un archivio che perde pezzi in silenzio e' peggio
+   di non averlo: si conta su di lui e non c'e'. Il foglio pero' e' gia'
+   uscito — quello non si tocca. */
+async function pensArchivia(d) {
+  var box = document.getElementById('pens-archivio');
   var dica = function (testo, colore) {
-    if (!box) return;
-    box.innerHTML = '<div style="margin-top:10px;font-size:12.5px;color:' + colore + '">' + esc(testo) + '</div>';
+    if (box) box.innerHTML = '<div style="margin-top:10px;font-size:12.5px;color:' + colore + '">' + esc(testo) + '</div>';
   };
-  dica('Salvo l\'analisi in archivio...', 'var(--muted)');
+  dica('Salvo l\'analisi in archivio…', 'var(--pv-ink2)');
   try {
-    if (!window.Previdenza || !Previdenza.schedaArchivio) throw new Error('il motore non sa preparare la scheda');
-    var s = Previdenza.schedaArchivio({
-      prospettiva: PREV.esito, valutazione: PREV.valutazione,
-      cliente: cliente, consulente: consulente,
-      dataRiferimento: oggi, correzioni: PREV.correzioni,
-    });
+    var s = Pensione.schedaArchivio(d);
     if (!s.ok) throw new Error(s.problemi.join('; '));
     var tok = await payToken();
     var risp = await fetch(PAY_API + '/analisi-previdenziali', {
@@ -4346,13 +4300,70 @@ async function prevArchivia(cliente, consulente, oggi) {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (tok || '') },
       body: JSON.stringify({ riga: s.riga }),
     });
-    var d = await risp.json().catch(function () { return {}; });
-    if (!risp.ok || !d.ok) throw new Error(d.error || ('errore ' + risp.status));
-    dica('Analisi archiviata il ' + oggi + ' (regole ' + s.riga.versione_motore + ').', 'var(--muted)');
+    var j = await risp.json().catch(function () { return {}; });
+    if (!risp.ok || !j.ok) throw new Error(j.error || ('errore ' + risp.status));
+    dica('Analisi archiviata il ' + d.dataRiferimento + ' (regole ' + s.riga.versione_motore + ').', 'var(--pv-ink2)');
   } catch (e) {
     dica('Il foglio è stato stampato ma NON è finito in archivio: ' + (e && e.message ? e.message : e) +
-         '. Segnalalo: questa analisi non risulterà a registro.', '#c0392b');
+      '. Segnalalo: questa analisi non risulterà a registro.', 'var(--pv-rosso)');
   }
+}
+
+/* ── DALLA SCHEDA CLIENTE ─────────────────────────────────────────────────
+   «Calcola pensione» sulla scheda: quello che sappiamo gia' non si richiede.
+   Data di nascita e professione sono in anagrafica; l'unica domanda nuova e'
+   l'anno in cui ha cominciato a lavorare.
+
+   IL TIPO DI LAVORO SI PROPONE, NON SI DECIDE. La professione in anagrafica e'
+   testo libero scritto da persone diverse in momenti diversi: indovinarla e
+   tirare dritto vorrebbe dire calcolare un autonomo come dipendente senza che
+   nessuno se ne accorga — e sono nove punti di aliquota. Si propone, si dice
+   che e' stata dedotta, e resta modificabile. */
+var PENS_PROFESSIONI = [
+  { re: /avvoc|medic|chirurg|ingegn|architett|commercialist|notai|geometr|dentist|odontoiatr|veterinar|psicolog|farmacist|attuar|biolog|chimic|agronom|giornalist/i, lavoro: 'professionista' },
+  { re: /artigian|commerciant|negoz|imprendit|titolare|autonom|partita iva|p\.?iva|agente|rappresentant|idraulic|elettricist|muratore|parrucchier|estetist|ristorator|barista|tassist|autotrasport|coltivator|agricol/i, lavoro: 'autonomo' },
+  { re: /impiegat|operai|dirigent|quadro|insegnant|docent|infermier|dipendent|funzionar|magazzinier|commess|autist|metalmeccanic|bancari|militare|carabinier|polizi|vigile/i, lavoro: 'dipendente' },
+];
+function pensLavoroDaProfessione(p) {
+  var t = String(p || '');
+  if (!t.trim()) return null;
+  for (var i = 0; i < PENS_PROFESSIONI.length; i++) if (PENS_PROFESSIONI[i].re.test(t)) return PENS_PROFESSIONI[i].lavoro;
+  return null;
+}
+
+function pensDaCliente(id) {
+  var a = (typeof ANAG_CACHE !== 'undefined' && ANAG_CACHE || []).filter(function (x) { return x.id === id; })[0];
+  if (!a) { alert('Anagrafica non trovata.'); return; }
+  if (a.tipo === 'giuridica') { alert('Il calcolo della pensione si fa su una persona fisica, non su una società.'); return; }
+
+  var ov = document.getElementById('anag-overlay'); if (ov) ov.remove();
+  pensPulisci();
+  PENS.cliente = { id: a.id, nome: a.nominativo || '', telefono: a.cellulare || a.telefono || '' };
+
+  var eta = window.Pensione ? Pensione.etaDaNascita(a.data_nascita) : null;
+  var dedotto = pensLavoroDaProfessione(a.professione);
+  var i = document.getElementById('pens-eta'); if (i && eta) i.value = eta;
+  var l = document.getElementById('pens-lavoro'); if (l && dedotto) l.value = dedotto;
+
+  /* Si scrive COSA e' stato ripreso e COSA e' stato dedotto. Un campo
+     riempito da solo, senza dire da dove viene, e' un campo che nessuno
+     ricontrolla. */
+  var note = [];
+  if (eta) note.push('età <b>' + eta + ' anni</b> dalla data di nascita');
+  else note.push('<b>età non ricavabile</b>: in anagrafica manca la data di nascita, scrivila a mano');
+  if (dedotto) note.push('tipo di lavoro <b>' + esc(Pensione.LAVORI[dedotto].etichetta.toLowerCase()) + '</b> dedotto da «' + esc(a.professione) + '» — <b>controllalo</b>');
+  else if (a.professione) note.push('la professione in anagrafica («' + esc(a.professione) + '») non è riconducibile a un tipo: scegli tu');
+  else note.push('in anagrafica non c\'è la professione: scegli il tipo di lavoro');
+
+  var box = document.getElementById('pens-da-cliente');
+  if (box) {
+    box.innerHTML = '<div class="pv-nota" style="margin-top:0"><b>' + esc(a.nominativo) + '</b> — ripreso dalla scheda: ' +
+      note.join(' · ') + '.<br>Resta da chiedere: <b>a che età ha cominciato a lavorare</b> e quanto guadagna al mese.</div>';
+  }
+  showPage('previdenza');
+  if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+  pensAvvisi();
+  var r = document.getElementById('pens-reddito'); if (r && r.focus) r.focus();
 }
 
 function openVitaProd(key){
@@ -21902,6 +21913,7 @@ function apriAnagrafica(id) {
             <span class="sc-name">Dati cliente</span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button class="sc-edit" onclick="aprModificaAnag('${a.id}')"><i class="ti ti-pencil"></i> Modifica</button>
+              ${!isG ? `<button class="sc-edit" style="background:#eaf7f0;color:#02984e;border-color:#b9e3cd" onclick="pensDaCliente('${a.id}')"><i class="ti ti-chart-arrows-vertical"></i> Calcola pensione</button>` : ''}
               ${currentUser.role === 'admin' ? `<button class="sc-edit" style="background:#fde6e6;color:#c0392b;border-color:#f3c0c0" onclick="eliminaAnagrafica('${a.id}')"><i class="ti ti-trash"></i> Elimina</button>` : ''}
             </div>
           </div>

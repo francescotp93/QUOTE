@@ -2621,314 +2621,462 @@ const avvio = async () => {
       return 'quattro profili, con avviso su chi non puo\' quotare';
     });
 
-    /* ── Analisi previdenziale: la schermata dei tre calcolatori ─────────── */
-    await prova('previdenza: la schermata non contiene formule', async () => {
-      // Il calcolo sta nel motore, provato a parte. Un calcolo scritto dentro
-      // la pagina non si puo' provare senza un browser — ed e' il motivo per
-      // cui quello del Lab non era mai stato verificato.
+    /* ── PENSIONE · quattro campi, due minuti ─────────────────────────────
+       Il modulo e' stato rifatto da zero il 12/09/2026. Queste prove guardano
+       la SCHERMATA: che chiami il motore invece di calcolare per conto suo,
+       che quello che il motore marca arrivi davanti agli occhi di chi firma,
+       e che il foglio esca e vada a registro.
+       Il conto in se' sta provato altrove, senza browser:
+         node server/verifica/pensione.test.mjs   (37)
+         node server/verifica/irpef.test.mjs      (32)                      */
+
+    await prova('pensione: la schermata non contiene formule', async () => {
+      // Un calcolo scritto dentro la pagina non si puo' provare senza aprire
+      // un browser — ed e' il motivo per cui quello del Lab non era mai stato
+      // verificato. Qui dentro si raccolgono dati e si chiama il motore.
       const h = fs.readFileSync('index.html', 'utf8');
-      const i = h.indexOf('══ ANALISI PREVIDENZIALE'), j = h.indexOf('function openVitaProd(key){');
+      const i = h.indexOf('══ PENSIONE — quattro campi'), j = h.indexOf('function openVitaProd(key){');
       const corpo = h.slice(i, j);
       deve(i > 0 && j > i, 'non trovo il blocco della schermata');
-      for (const costante of ['13.5', '5164.57', '0.0375', '0.05710', 'COEFF_TFR']) {
-        deve(!corpo.includes(costante), 'la schermata contiene la costante ' + costante);
+      for (const costante of ['5164.57', '0.0919', '13.5', '0.044', '0.15', '* 12', '/ 12']) {
+        deve(!corpo.includes(costante), 'la schermata contiene la costante di calcolo ' + costante);
       }
-      deve(/Previdenza\.(pianoAzienda|prospettivaPensionistica|confrontoTfr|valutaSoluzione)/.test(corpo),
-        'la schermata non chiama il motore');
+      deve(/Pensione\.calcola\(/.test(corpo), 'la schermata non chiama il motore');
+      deve(/Pensione\.foglioHtml\(/.test(corpo), 'il foglio non lo produce il motore: sta scritto nella pagina');
+      deve(/Pensione\.schedaArchivio\(/.test(corpo), 'la riga d\'archivio non la prepara il motore');
       return 'nessuna costante di calcolo nella pagina';
     });
 
-    await prova('previdenza: i tre calcolatori rispondono davvero', async () => {
-      const r = await page.evaluate(async () => {
-        const out = {};
-        apriPrevidenza();
-        const scegli = (t) => { document.getElementById('prev-tipo').value = t; prevVai(2); };
-        const metti = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
-
-        scegli('pf');
-        metti('eta', 40); metti('etaPensionamento', 67); metti('redditoAnnuo', 30000);
-        metti('anniContributiGia', 15); metti('versamentoMensile', 100);
-        /* Si ASPETTA il calcolo: dal 05/09/2026 senza i numeri di legge non si
-           calcola, e se la lettura è ancora in volo `prevCalcola` la aspetta.
-           Chiamarla senza attendere leggerebbe la schermata un istante prima
-           che il risultato ci sia. */
-        await prevCalcola();
-        out.pf = document.getElementById('prev-esito').textContent;
-
-        scegli('azienda');
-        metti('dipendenti', 10); metti('stipendioMensile', 2000); metti('anni', 20);
-        await prevCalcola();
-        out.azienda = document.getElementById('prev-esito').textContent;
-
-        scegli('tfr');
-        metti('redditoAnnuo', 30000); metti('anni', 25); metti('anniAdesione', 25);
-        await prevCalcola();
-        out.tfr = document.getElementById('prev-esito').textContent;
-        return out;
-      });
-      deve(/Pensione stimata/.test(r.pf) && /Divario coperto/.test(r.pf), 'la persona non produce pensione e divario');
-      deve(/Risparmio complessivo/.test(r.azienda), 'l\'azienda non produce il risparmio');
-      deve(/Netto lasciandolo in azienda/.test(r.tfr) && /Netto portandolo nel fondo/.test(r.tfr), 'il confronto TFR non produce i due netti');
-      deve(/Dimissioni o licenziamento/.test(r.tfr), 'il confronto non riporta la nota sui due scenari');
-      return 'tre calcolatori, tre risultati';
+    await prova('pensione: il vecchio flusso non c\'e\' piu\', da nessuna parte', async () => {
+      /* Il motore vecchio era stato spedito, e su main c'era anche un secondo
+         motore «flash» che non chiamava nessuno: 381 righe e 33 prove verdi
+         sopra codice morto. Se uno dei due torna, o se torna un riferimento
+         che non risolve, questa prova lo dice. */
+      const h = fs.readFileSync('index.html', 'utf8');
+      for (const morto of ['apriPrevidenza', 'prevCalcola', 'PREV_CAMPI', 'window.Previdenza',
+                           'PrevidenzaFlash', 'motore/previdenza.js', 'motore/previdenza-flash.js']) {
+        deve(!h.includes(morto), 'index.html nomina ancora «' + morto + '»: il vecchio flusso non se n\'e\' andato tutto');
+      }
+      for (const f of ['tariffe/motore/previdenza.js', 'tariffe/motore/previdenza-flash.js',
+                       'server/verifica/previdenza-flash.test.mjs']) {
+        deve(!fs.existsSync(f), 'il file ' + f + ' e\' tornato');
+      }
+      deve(fs.existsSync('tariffe/motore/pensione.js') && fs.existsSync('tariffe/motore/irpef.js'),
+        'mancano i motori nuovi');
+      const r = await page.evaluate(() => ({ nuovo: typeof window.Pensione, fisco: typeof window.Irpef, vecchio: typeof window.Previdenza }));
+      deve(r.nuovo === 'object' && r.fisco === 'object', 'i motori nuovi non sono caricati nella pagina');
+      deve(r.vecchio === 'undefined', 'window.Previdenza esiste ancora nel browser');
+      return 'due motori nuovi caricati, zero tracce dei due vecchi';
     });
 
-    await prova('previdenza: i bottoni si vedono — niente bianco su bianco', async () => {
-      /* `background:var(--green)` con `--green` mai definita in questa pagina
-         rendeva i bottoni principali trasparenti, con la scritta bianca sopra:
-         invisibili. Nessuna prova guardava i colori.
-         IL CASO CHE DEVE FALLIRE: uno sfondo trasparente, o troppo vicino a
-         quello della pagina, sotto una scritta chiara. */
+    await prova('pensione: quattro campi e la risposta sulla stessa schermata', async () => {
       const r = await page.evaluate(() => {
-        apriPrevidenza();
-        const leggi = (c) => [...document.querySelectorAll('#page-previdenza ' + c)]
-          .filter(e => e.offsetParent !== null)
-          .map(e => { const s = getComputedStyle(e); return { t: e.textContent.trim().slice(0, 20), sfondo: s.backgroundColor, sfumatura: s.backgroundImage, testo: s.color }; });
-        return { primari: leggi('.btn-primary'), fantasma: leggi('.btn-ghost') };
-      });
-      /* Il FINE è «il bottone si vede», non «ha un background-color». Un fondo
-         a sfumatura lascia `background-color` trasparente e vive in
-         `background-image`: la prima versione di questa prova guardava solo il
-         primo e diventava rossa su un bottone perfettamente visibile — il mezzo
-         al posto del fine. Il guasto vero era non avere NÉ l'uno NÉ l'altro. */
-      const trasparente = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c);
-      const senzaFondo = (b) => trasparente(b.sfondo) && (!b.sfumatura || b.sfumatura === 'none');
-      deve(r.primari.length, 'nessun bottone principale visibile nella schermata');
-      for (const b of r.primari) {
-        deve(!senzaFondo(b), 'il bottone «' + b.t + '» non ha nessun fondo, né tinta né sfumatura: ' + JSON.stringify(b));
-        deve(b.sfondo !== b.testo, 'il bottone «' + b.t + '» ha scritta e sfondo dello stesso colore');
-        deve(!/rgb\(255, 255, 255\)/.test(b.sfumatura || ''), 'il bottone «' + b.t + '» ha una sfumatura bianca sotto una scritta bianca');
-      }
-      /* I bottoni chiari il fondo bianco ce l'hanno per scelta: quello che non
-         possono avere e' la scritta chiara sopra. */
-      for (const b of r.fantasma) {
-        deve(b.testo !== 'rgb(255, 255, 255)', 'il bottone chiaro «' + b.t + '» ha la scritta bianca su fondo bianco');
-      }
-      return r.primari.length + ' bottoni principali, fondo ' +
-        (r.primari[0].sfumatura && r.primari[0].sfumatura !== 'none' ? 'a sfumatura' : r.primari[0].sfondo);
-    });
-
-    await prova('previdenza: il tipo di prodotto cambia il conto, e il PIP rende meno del negoziale', async () => {
-      /* F-11: i costi del comparto entrano nel calcolo. Se il campo non
-         arrivasse al motore — o se i costi smettessero di contare — i tre
-         prodotti darebbero lo stesso numero e questa prova diventa rossa. */
-      const giro = (tipo) => page.evaluate((t) => {
-        apriPrevidenza();
-        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-        const metti = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
-        metti('eta', 40); metti('etaPensionamento', 67); metti('redditoAnnuo', 30000);
-        metti('anniContributiGia', 15); metti('versamentoMensile', 200);
-        const sel = document.getElementById('prev-f-tipoProdotto');
-        if (!sel) return { manca: 'lo step 2 non chiede il tipo di prodotto' };
-        sel.value = t;
-        prevCalcola();
-        return { testo: document.getElementById('prev-esito').textContent,
-                 rendita: PREV.valutazione && PREV.valutazione.soluzione.renditaAnnua,
-                 isc: PREV.valutazione && PREV.valutazione.soluzione.isc,
-                 opzioni: [...sel.options].map(o => o.value) };
-      }, tipo);
-
-      const neg = await giro('negoziale');
-      deve(!neg.manca, neg.manca || '');
-      const pip = await giro('pip');
-      deve(neg.opzioni.includes('negoziale') && neg.opzioni.includes('aperto') && neg.opzioni.includes('pip'),
-        'mancano i tre tipi di prodotto: ' + JSON.stringify(neg.opzioni));
-      deve(neg.isc < pip.isc, 'il PIP non costa più del negoziale: ' + neg.isc + ' contro ' + pip.isc);
-      deve(neg.rendita > pip.rendita,
-        'il tipo di prodotto non cambia la rendita: i costi non stanno arrivando al motore');
-      return 'negoziale ' + Math.round(neg.rendita) + ' €/anno contro PIP ' + Math.round(pip.rendita) + ' €/anno';
-    });
-
-    await prova('previdenza: il foglio stampato va a registro, e se non ci va lo dice', async () => {
-      /* Due casi in uno, e il secondo è quello che conta: un archivio che
-         perde pezzi in silenzio è peggio di non averlo, perché ci si conta.
-         Se un domani l'errore diventasse un `catch` muto, questa prova
-         diventa rossa. */
-      const giro = async (rispostaOk) => page.evaluate(async (ok) => {
-        apriPrevidenza();
-        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-        const metti = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
-        metti('eta', 40); metti('etaPensionamento', 67); metti('redditoAnnuo', 30000);
-        metti('anniContributiGia', 15); metti('versamentoMensile', 100);
-        prevCalcola();
-        prevVai(5);
-        document.getElementById('prev-cli').value = 'Mario Rossi';
-        document.getElementById('prev-cons').value = 'Francesco Oddo';
-
-        /* La finestra di stampa non si apre davvero: qui interessa cosa
-           succede DOPO. */
-        const apri = window.open;
-        window.open = () => ({ document: { write() {}, close() {} } });
-        const vecchioFetch = window.fetch;
-        let corpo = null;
-        window.fetch = async (url, opt) => {
-          if (String(url).includes('/analisi-previdenziali')) {
-            corpo = JSON.parse((opt && opt.body) || '{}');
-            return { ok: ok, status: ok ? 200 : 500,
-                     json: async () => (ok ? { ok: true, id: 'abc' } : { error: 'il database non risponde' }) };
-          }
-          return vecchioFetch(url, opt);
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-lavoro').value = 'dipendente';
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        const box = document.getElementById('pens-esito');
+        return {
+          testo: box.textContent,
+          numeri: [...box.querySelectorAll('.pv-n .v')].map(x => x.textContent),
+          proposte: [...box.querySelectorAll('.pv-prop')].length,
+          barra: [...box.querySelectorAll('.pv-barra span')].map(x => x.style.width),
+          gap: PENS.esito.gapMensile,
         };
-        try {
-          prevApriReport();
-          const box = document.getElementById('prev-archivio');
-          if (!box) return { testo: '', corpo, manca: 'la schermata non ha il posto dove dire com\'è andato l\'archivio (#prev-archivio)' };
-          for (let i = 0; i < 60 && !/archiviata|NON/.test(box.textContent); i++) await new Promise(r => setTimeout(r, 50));
-          return { testo: box.textContent, corpo };
-        } finally {
-          /* Si rimette a posto anche se qualcosa va storto: una `fetch`
-             lasciata finta manderebbe in rosso le prove che vengono dopo, e a
-             quel punto non si capisce piu' quale sia il guasto vero. */
-          window.open = apri; window.fetch = vecchioFetch;
+      });
+      deve(r.numeri.length >= 4, 'i numeri grandi non sono quattro: ' + r.numeri.length);
+      deve(r.proposte >= 3, 'meno di tre proposte di versamento: ' + r.proposte);
+      deve(r.barra.length === 3, 'la barra non ha i tre pezzi (pensione, fondo, scoperto)');
+      deve(/Ti mancheranno|Sei coperto/.test(r.testo), 'il divario non e\' scritto in chiaro');
+      deve(r.gap > 0, 'su questo profilo il divario dovrebbe esserci');
+      /* NIENTE PASSI. La risposta sta sotto i campi, sulla stessa schermata:
+         se per vederla bisogna cambiare pagina, il cliente smette di guardare. */
+      deve(!/passo 1|passo 2|Avanti/i.test(r.testo), 'e\' tornato un flusso a passi');
+      return r.numeri.join(' · ');
+    });
+
+    await prova('pensione: toccare una proposta rifa\' il conto con quel versamento', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 20;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        const primaGap = PENS.esito.gapMensile;
+        /* Si clicca quella che dichiara di azzerare: se il gesto funziona, il
+           divario dopo dev'essere zero. E' il gesto che chiude la
+           conversazione — «e con cento?» — e deve costare un dito. */
+        const azzera = [...document.querySelectorAll('#pens-esito .pv-prop')]
+          .find(b => /azzera il gap/i.test(b.textContent));
+        if (azzera) azzera.click();
+        return { primaGap, dopoGap: PENS.esito.gapMensile,
+                 campo: Number(document.getElementById('pens-versamento').value),
+                 cliccabile: !!azzera };
+      });
+      deve(r.cliccabile, 'non c\'e\' nessuna proposta marcata «azzera il gap»');
+      deve(r.campo > 20, 'il clic non ha riportato il versamento nel campo: ' + r.campo);
+      deve(r.primaGap > 0, 'il caso di partenza non aveva divario');
+      deve(r.dopoGap < 0.01, 'la proposta dice di azzerare e il divario resta di ' + Math.round(r.dopoGap) + ' €');
+      return 'divario ' + Math.round(r.primaGap) + ' € → 0 con ' + r.campo + ' €/mese';
+    });
+
+    await prova('pensione: «non lo so» sull\'inizio lavoro marca tutto come prudenziale', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        const noto = { gap: PENS.esito.gapMensile, testo: document.getElementById('pens-esito').textContent };
+        document.getElementById('pens-inizio-ignoto').checked = true;
+        pensIgnoto();
+        const ignoto = {
+          gap: PENS.esito.gapMensile,
+          testo: document.getElementById('pens-esito').textContent,
+          campoSpento: document.getElementById('pens-inizio').disabled,
+          campoVuoto: document.getElementById('pens-inizio').value === '',
+          prudenziale: PENS.esito.prudenziale,
+        };
+        return { noto, ignoto };
+      });
+      deve(r.ignoto.prudenziale, 'senza eta\' di inizio il risultato non e\' marcato prudenziale');
+      deve(/Stima prudenziale/i.test(r.ignoto.testo), 'lo scenario prudenziale non e\' scritto a schermo');
+      deve(!/Stima prudenziale/i.test(r.noto.testo), 'l\'avviso prudenziale compare anche quando l\'eta\' di inizio c\'e\'');
+      deve(r.ignoto.gap >= r.noto.gap, 'lo scenario prudenziale mostra un divario piu\' stretto di quello noto');
+      /* IL CAMPO SI SPEGNE E SI SVUOTA. Lasciare sullo schermo un numero che il
+         calcolo non sta usando e' il modo piu' facile per far dire al
+         consulente una cosa e al foglio un'altra. */
+      deve(r.ignoto.campoSpento && r.ignoto.campoVuoto, 'il campo dell\'eta\' di inizio resta acceso o pieno');
+      return 'divario ' + Math.round(r.noto.gap) + ' € → ' + Math.round(r.ignoto.gap) + ' €, e lo dichiara';
+    });
+
+    await prova('pensione: netto o lordo si sceglie, e cambia il risultato', async () => {
+      /* Sbagliare la base sposta il risultato di un quarto: e' l'errore muto
+         piu' costoso del modulo, e per questo la domanda e' due bottoni
+         visibili e non una tendina da cercare. */
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensBase('netto'); pensCalcola();
+        const netto = { pensione: PENS.esito.pensioneNettaMensile, base: PENS.esito.baseReddito };
+        pensBase('lordo');
+        const lordo = { pensione: PENS.esito.pensioneNettaMensile, base: PENS.esito.baseReddito };
+        const acceso = document.querySelector('#pens-nl button.on').getAttribute('data-base');
+        return { netto, lordo, acceso };
+      });
+      deve(r.netto.base === 'netto' && r.lordo.base === 'lordo', 'la base scelta non arriva al motore');
+      deve(r.acceso === 'lordo', 'il bottone acceso non segue la scelta');
+      deve(r.lordo.pensione < r.netto.pensione * 0.92,
+        'leggere 1.800 come lordo o come netto porta quasi allo stesso risultato: la conversione non avviene');
+      return 'pensione ' + Math.round(r.netto.pensione) + ' € (netto) contro ' + Math.round(r.lordo.pensione) + ' € (lordo)';
+    });
+
+    await prova('pensione: il TFR si confronta solo a chi ce l\'ha, e il riscatto si dice a tutti', async () => {
+      const r = await page.evaluate(() => {
+        const giro = (lavoro) => {
+          apriPensione();
+          PENS.parametri = 'ok'; PENS.avvisi = [];
+          document.getElementById('pens-eta').value = 38;
+          document.getElementById('pens-lavoro').value = lavoro;
+          document.getElementById('pens-reddito').value = 1800;
+          document.getElementById('pens-versamento').value = 100;
+          document.getElementById('pens-inizio').value = 25;
+          pensCalcola();
+          const t = document.getElementById('pens-esito').textContent;
+          return { tfr: /TFR in azienda/.test(t), riscatto: /Quando posso prendere prima i miei soldi/.test(t),
+                   inoccupazione: /48 mesi/.test(t), dimissioni: /dimissioni/i.test(t),
+                   sanitarie: /spese sanitarie/i.test(t), hdi: /HDI/.test(t) };
+        };
+        return { dip: giro('dipendente'), aut: giro('autonomo'), pro: giro('professionista') };
+      });
+      deve(r.dip.tfr, 'il dipendente non vede il confronto TFR');
+      deve(!r.aut.tfr && !r.pro.tfr, 'chi non ha il TFR vede un confronto che non lo riguarda');
+      /* «Quando riprendo i miei soldi» e' l'obiezione numero uno di CHIUNQUE,
+         non solo dei dipendenti: se non la si scrive, il cliente ci pensa lo
+         stesso, solo senza risposta davanti. */
+      for (const [chi, v] of Object.entries(r)) {
+        deve(v.riscatto, chi + ': manca il blocco sul riscatto anticipato');
+        deve(v.inoccupazione && v.dimissioni && v.sanitarie,
+          chi + ': il blocco sul riscatto non dice inoccupazione, dimissioni e spese sanitarie');
+        deve(v.hdi, chi + ': manca l\'avviso che i tempi di liquidazione vanno confermati con HDI');
+      }
+      return 'TFR solo al dipendente, riscatto a tutti e tre';
+    });
+
+    await prova('pensione: quello che non e\' confermato arriva davanti agli occhi di chi firma', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        const t = document.getElementById('pens-esito').textContent;
+        return { testo: t, quante: PENS.esito.daConfermare.length,
+                 hdi: /Tariffa HDI/.test(t), tassi: /tassi di sostituzione/i.test(t) };
+      });
+      deve(r.quante > 0, 'il motore non marca piu\' niente: i segnaposto HDI sono diventati numeri veri senza che nessuno lo decidesse');
+      deve(/Valori ancora da confermare/.test(r.testo), 'la lista dei valori da confermare non arriva a schermo');
+      deve(r.hdi, 'i segnaposto della tariffa HDI non compaiono nella lista');
+      deve(r.tassi, 'la tabella dei tassi di sostituzione non compare fra i valori da confermare');
+      return r.quante + ' voci marcate, tutte a schermo';
+    });
+
+    await prova('pensione: dove dedurre non conviene, la schermata lo dice invece di vendere', async () => {
+      /* E' IL CASO CHE VALE TUTTO IL MODULO. A certi redditi il versamento fa
+         perdere il trattamento integrativo e il risparmio diventa negativo:
+         versare costa piu' del versamento. Un modulo commerciale che moltiplica
+         un'aliquota per un importo quel caso non lo vede, e vende un danno
+         chiamandolo vantaggio. */
+      const r = await page.evaluate(() => {
+        let trovato = null;
+        for (let reddito = 700; reddito <= 1300 && !trovato; reddito += 10) {
+          for (const versa of [100, 200, 300, 430]) {
+            const e = Pensione.calcola({ eta: 40, lavoro: 'dipendente', redditoMensile: reddito,
+              baseReddito: 'netto', versamentoMensile: versa, etaInizioLavoro: 25 });
+            if (e.fiscale.disponibile && e.fiscale.inPerdita) { trovato = { reddito, versa }; break; }
+          }
         }
-      }, rispostaOk);
+        if (!trovato) return { trovato: false };
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        /* La scelta netto/lordo resta quella dell'ultimo giro: qui si dichiara,
+           altrimenti il caso cercato in netto verrebbe calcolato in lordo e
+           non sarebbe piu' lo stesso caso. */
+        pensBase('netto');
+        /* E anche il tipo di lavoro: la tendina tiene quello dell'ultimo giro,
+           e il caso e' stato cercato su un dipendente. */
+        document.getElementById('pens-lavoro').value = 'dipendente';
+        document.getElementById('pens-inizio-ignoto').checked = false;
+        document.getElementById('pens-inizio').disabled = false;
+        document.getElementById('pens-eta').value = 40;
+        document.getElementById('pens-reddito').value = trovato.reddito;
+        document.getElementById('pens-versamento').value = trovato.versa;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        return { trovato: true, caso: trovato, testo: document.getElementById('pens-esito').textContent };
+      });
+      deve(r.trovato, 'nessun caso in cui dedurre non conviene: il motore fiscale non lo vede piu\'');
+      deve(/NON conviene/.test(r.testo), 'la schermata non dice che a quel reddito dedurre non conviene');
+      deve(/trattamento integrativo/i.test(r.testo), 'non spiega il perche\': e\' il trattamento integrativo che si perde');
+      deve(!/Risparmio fiscale/.test(r.testo) || /perdita/.test(r.testo),
+        'mostra un «risparmio fiscale» su un conto che e\' in perdita');
+      return 'a ' + r.caso.reddito + ' €/mese versando ' + r.caso.versa + ' €: lo dice';
+    });
 
-      const bene = await giro(true);
-      deve(!bene.manca, bene.manca || '');
-      deve(/archiviata/i.test(bene.testo), 'il salvataggio riuscito non lo dice: ' + bene.testo);
-      deve(bene.corpo && bene.corpo.riga && bene.corpo.riga.versione_motore,
+    await prova('pensione: il foglio non esce senza intestatario e senza chi firma', async () => {
+      /* Meglio un pulsante che si rifiuta e dice perche', di un PDF con dei
+         trattini al posto dei nomi: il primo lo risolve il consulente in dieci
+         secondi, il secondo arriva al cliente. */
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        document.getElementById('pens-cli').value = '';
+        document.getElementById('pens-cons').value = '';
+        window.__COLLAUDO.alerts = [];
+        const apri = window.open; let aperta = false;
+        window.open = () => { aperta = true; return null; };
+        try { pensFoglio(); } finally { window.open = apri; }
+        return { aperta, avvisi: (window.__COLLAUDO.alerts || []).join(' ') };
+      });
+      deve(!r.aperta, 'ha aperto il foglio senza cliente e senza consulente');
+      deve(/cliente/i.test(r.avvisi) && /consulente|firma/i.test(r.avvisi),
+        'non dice cosa manca: ' + r.avvisi.slice(0, 120));
+      return 'si rifiuta, e dice cosa manca';
+    });
+
+    await prova('pensione: il foglio stampato va a registro, e se non ci va lo dice', async () => {
+      const r = await page.evaluate(async () => {
+        const giro = async (rispostaOk) => {
+          apriPensione();
+          PENS.parametri = 'ok'; PENS.avvisi = [];
+          document.getElementById('pens-eta').value = 38;
+          document.getElementById('pens-reddito').value = 1800;
+          document.getElementById('pens-versamento').value = 100;
+          document.getElementById('pens-inizio').value = 25;
+          pensCalcola();
+          document.getElementById('pens-cli').value = 'Mario Rossi';
+          document.getElementById('pens-cons').value = 'Francesco Oddo';
+          const apri = window.open;
+          const vecchioFetch = window.fetch;
+          let corpo = null, scritto = '';
+          window.open = () => ({ document: { write() {}, close() {} } });
+          window.fetch = async (url, opts) => {
+            if (String(url).includes('/analisi-previdenziali')) {
+              corpo = JSON.parse(opts.body);
+              return rispostaOk
+                ? { ok: true, status: 200, json: async () => ({ ok: true, id: 'x' }) }
+                : { ok: false, status: 500, json: async () => ({ error: 'database fermo' }) };
+            }
+            return vecchioFetch(url, opts);
+          };
+          try {
+            pensFoglio();
+            for (let i = 0; i < 40 && !/archiviata|NON/.test(scritto); i++) {
+              await new Promise(r => setTimeout(r, 25));
+              scritto = (document.getElementById('pens-archivio') || {}).textContent || '';
+            }
+          } finally {
+            /* Si rimette tutto com'era: una finestra finta lasciata in giro
+               manderebbe in rosso le prove che vengono dopo, e a quel punto non
+               si capisce piu' quale sia il guasto vero. */
+            window.open = apri; window.fetch = vecchioFetch;
+          }
+          return { corpo, testo: scritto };
+        };
+        return { bene: await giro(true), male: await giro(false) };
+      });
+      deve(/archiviata/i.test(r.bene.testo), 'il salvataggio riuscito non lo dice: ' + r.bene.testo);
+      deve(r.bene.corpo && r.bene.corpo.riga && r.bene.corpo.riga.versione_motore,
         'la scheda mandata a registro non porta la versione delle regole');
-      deve(bene.corpo.riga.parametri_usati && bene.corpo.riga.parametri_usati.coefficienti,
-        'la scheda non porta i parametri di quel giorno: fra un anno non si rifà il conto');
-      deve(!bene.corpo.riga.creato_da, 'il browser si intesta la riga da solo: deve dirlo il token');
-
-      const male = await giro(false);
-      deve(/NON/.test(male.testo) && /archivio/i.test(male.testo),
-        'un archivio che fallisce non avvisa il consulente: ' + male.testo);
-      deve(/stampato/i.test(male.testo), 'non chiarisce che il foglio è comunque uscito: ' + male.testo);
+      deve(r.bene.corpo.riga.parametri_usati && r.bene.corpo.riga.parametri_usati.legge,
+        'la scheda non porta i parametri di quel giorno: fra un anno non si rifa\' il conto');
+      deve(!r.bene.corpo.riga.creato_da, 'il browser si intesta la riga da solo: deve dirlo il token');
+      deve(/NON/.test(r.male.testo) && /archivio/i.test(r.male.testo),
+        'un archivio che fallisce non avvisa il consulente: ' + r.male.testo);
+      deve(/stampato/i.test(r.male.testo), 'non chiarisce che il foglio e\' comunque uscito: ' + r.male.testo);
       return 'archiviata, e quando non ci riesce lo scrive';
     });
 
-    await prova('previdenza: senza parametri non si calcola, e lo dice', async () => {
-      /* Prima, quando la tabella non rispondeva, il modulo ripiegava sui numeri
-         di riserva e mostrava un risultato con un avviso in cima: il consulente
-         leggeva l'80,1% e andava avanti. La copia di riserva non ha la serie
-         Eurostat né i requisiti proiettati, quindi il coefficiente resta fermo
-         e la pensione esce PIÙ ALTA del vero.
-         IL CASO CHE DEVE FALLIRE: se qualcuno rimettesse il ripiego, qui
-         comparirebbe di nuovo una pensione. */
+    await prova('pensione: senza i numeri di legge si calcola, ma l\'avviso resta acceso', async () => {
+      /* SCELTA DIVERSA DAL MODULO VECCHIO, ed e' voluta. Quello si fermava:
+         senza tabella, nessun numero. Ma quel modulo proiettava i coefficienti
+         di trasformazione, e senza tabella il coefficiente restava fermo e la
+         pensione usciva PIU' ALTA del vero — fermarsi era giusto.
+         Questo non proietta niente: i suoi numeri di riserva sono gli stessi
+         della tabella, e l'unico rischio e' che siano vecchi. Fermare un
+         consulente seduto davanti a un cliente per quello sarebbe sproporzionato.
+         Quindi si calcola E si avvisa, in cima e sul foglio. */
       const r = await page.evaluate(() => {
-        apriPrevidenza();
-        PREV.parametri = 'ko'; PREV.perParametri = 'il server non ha risposto';
-        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-        const m = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
-        m('eta', 40); m('etaPensionamento', 67); m('redditoAnnuo', 30000); m('anniContributiGia', 15); m('versamentoMensile', 100);
-        prevCalcola();
-        return { testo: document.getElementById('prev-esito').textContent,
-                 esito: !!PREV.esito, riprova: !!document.querySelector('#prev-esito button') };
+        apriPensione();
+        PENS.parametri = 'ko';
+        PENS.avvisi = ['I numeri di legge non sono stati letti dalla tabella (il server non ha risposto).'];
+        pensAvvisi();
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        return { banda: document.getElementById('pens-avvisi').textContent,
+                 esito: !!PENS.esito,
+                 riprova: !!document.querySelector('#pens-avvisi button') };
       });
-      deve(/Parametri non disponibili, riprova/.test(r.testo), 'non dice che i parametri non ci sono: ' + r.testo.slice(0, 120));
-      deve(!/Pensione stimata|%/.test(r.testo), 'ha prodotto dei numeri lo stesso: ' + r.testo.slice(0, 160));
-      deve(!r.esito, 'il calcolo è stato fatto comunque e resta in memoria');
-      deve(r.riprova, 'manca il tasto per riprovare: il consulente resterebbe fermo senza sapere che fare');
-      return 'nessun numero, e il tasto per riprovare';
+      deve(/non sono stati letti|riserva/i.test(r.banda), 'non avvisa che i numeri di legge non sono arrivati');
+      deve(r.esito, 'si e\' fermato: un consulente davanti a un cliente resta a mani vuote per dei parametri');
+      deve(r.riprova, 'manca il tasto per riprovare a leggere i parametri');
+      return 'calcola, avvisa, e offre di riprovare';
     });
 
-    await prova('previdenza: i dati mancanti si dicono, non si indovinano', async () => {
+    await prova('pensione: i dati mancanti si dicono, non si indovinano', async () => {
       const r = await page.evaluate(() => {
-        apriPrevidenza();
-        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-        document.getElementById('prev-f-eta').value = '';
-        document.getElementById('prev-f-redditoAnnuo').value = '';
-        prevCalcola();
-        return document.getElementById('prev-esito').textContent;
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = '';
+        document.getElementById('pens-reddito').value = '';
+        pensCalcola();
+        return { testo: document.getElementById('pens-esito').textContent, esito: !!PENS.esito };
       });
-      deve(/mancano dei dati/i.test(r), 'non avvisa che mancano dati');
-      deve(/eta|reddito/i.test(r), 'non elenca quali dati mancano');
+      deve(/età|eta/i.test(r.testo) && /reddito/i.test(r.testo), 'non elenca quali dati mancano: ' + r.testo.slice(0, 120));
+      deve(!r.esito, 'ha calcolato lo stesso e il risultato resta in memoria');
       return 'elenca cosa manca invece di calcolare a vuoto';
     });
 
-    await prova('previdenza: le ipotesi si vedono, e quelle di legge non si toccano', async () => {
+    await prova('pensione: dalla scheda cliente si riprende quello che sappiamo, e si dice cosa e\' stato dedotto', async () => {
+      /* La professione in anagrafica e' testo libero scritto da persone diverse
+         in momenti diversi. Indovinarla e tirare dritto vorrebbe dire calcolare
+         un autonomo come dipendente senza che nessuno se ne accorga — e sono
+         nove punti di aliquota. Si propone, si DICE che e' stata dedotta, e
+         resta modificabile. */
       const r = await page.evaluate(() => {
-        apriPrevidenza();
-        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-        prevVai(4);
-        const t = document.getElementById('prev-ipotesi');
-        return { testo: t.textContent, campi: t.querySelectorAll('input').length,
-                 bloccate: (t.textContent.match(/di legge/g) || []).length };
+        /* ANAG_CACHE e' dichiarata con `let`: sta nell'ambiente lessicale
+           globale, NON su window. Scrivendo `window.ANAG_CACHE` si creava una
+           seconda variabile che il modulo non legge, e la prova falliva
+           dicendo che mancava l'eta'. */
+        ANAG_CACHE = [{ id: 'a1', tipo: 'fisica', nominativo: 'ROSSI MARIO',
+          data_nascita: '1986-04-10', professione: 'Idraulico', cellulare: '3331234567' }];
+        pensDaCliente('a1');
+        return {
+          eta: document.getElementById('pens-eta').value,
+          lavoro: document.getElementById('pens-lavoro').value,
+          nota: document.getElementById('pens-da-cliente').textContent,
+          cliente: PENS.cliente,
+          modificabile: !document.getElementById('pens-lavoro').disabled,
+        };
       });
-      deve(/Rendimento netto del fondo/.test(r.testo), 'il rendimento non compare fra le ipotesi');
-      deve(/Divisore del TFR/.test(r.testo), 'il divisore del TFR non compare');
-      deve(r.campi >= 5, 'poche ipotesi correggibili: ' + r.campi);
-      deve(r.bloccate >= 5, 'le ipotesi di legge non risultano bloccate: ' + r.bloccate);
-      return r.campi + ' correggibili, ' + r.bloccate + ' bloccate perche\' di legge';
+      deve(Number(r.eta) >= 39, 'l\'eta\' non e\' stata ricavata dalla data di nascita: ' + r.eta);
+      deve(r.lavoro === 'autonomo', 'un idraulico non e\' stato riconosciuto come autonomo: ' + r.lavoro);
+      deve(/dedotto/i.test(r.nota), 'non dice che il tipo di lavoro e\' stato dedotto, non letto');
+      deve(/controllalo/i.test(r.nota), 'non chiede di controllare la deduzione');
+      deve(r.modificabile, 'il tipo di lavoro dedotto non e\' modificabile');
+      deve(/cominciato a lavorare/i.test(r.nota), 'non dice qual e\' l\'unica domanda nuova da fare');
+      deve(r.cliente && r.cliente.telefono === '3331234567', 'il telefono per WhatsApp non e\' stato ripreso');
+      return 'eta\' ' + r.eta + ', «Idraulico» → autonomo, dichiarato come dedotto';
     });
 
-    await prova('previdenza: correggere un\'ipotesi cambia davvero il risultato', async () => {
+    await prova('pensione: il messaggio WhatsApp e\' precompilato e non promette niente', async () => {
       const r = await page.evaluate(() => {
-        apriPrevidenza();
-        document.getElementById('prev-tipo').value = 'azienda'; prevVai(2);
-        document.getElementById('prev-f-dipendenti').value = 10;
-        document.getElementById('prev-f-stipendioMensile').value = 2000;
-        document.getElementById('prev-f-anni').value = 20;
-        prevCalcola();
-        const prima = document.getElementById('prev-esito').textContent;
-        prevVai(4);
-        const campo = document.getElementById('prev-ip-inflazione');
-        campo.value = '6'; prevCorreggi('inflazione', '%');
-        prevCalcola();
-        return { prima, dopo: document.getElementById('prev-esito').textContent };
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        PENS.cliente = { id: null, nome: 'Mario Rossi', telefono: '3331234567' };
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        document.getElementById('pens-cli').value = 'Mario Rossi';
+        document.getElementById('pens-cons').value = 'Francesco Oddo';
+        document.getElementById('pens-tel').value = '3331234567';
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return null; };
+        try { pensWhatsApp(); } finally { window.open = apri; }
+        return { url, testo: decodeURIComponent(String(url).split('text=')[1] || ''),
+                 nota: document.getElementById('pens-esito').textContent };
       });
-      deve(r.prima !== r.dopo, 'cambiare l\'inflazione non cambia il risultato');
-      return 'inflazione 3% → 6%: il conto si rifa\'';
+      deve(/^https:\/\/wa\.me\/393331234567\?text=/.test(r.url), 'il numero non e\' stato normalizzato col prefisso: ' + String(r.url).slice(0, 60));
+      deve(/Mario/.test(r.testo), 'il messaggio non saluta il cliente per nome');
+      deve(/illustrativo|non . una promessa/i.test(r.testo), 'il messaggio non dice che non e\' una promessa di rendimento');
+      deve(/Francesco Oddo/.test(r.testo), 'il messaggio non e\' firmato');
+      /* WhatsApp non allega file da un collegamento: dirlo evita che il
+         consulente creda di aver mandato il PDF e non l'abbia mandato. */
+      deve(/non permette di allegare/i.test(r.nota), 'la schermata non avverte che il PDF va allegato a mano');
+      return 'messaggio firmato, numero col prefisso, nessuna promessa';
     });
 
-    await prova('previdenza: gli avvisi da confermare arrivano a schermo', async () => {
+    await prova('pensione: i bottoni si vedono — niente bianco su bianco', async () => {
       const r = await page.evaluate(() => {
-        apriPrevidenza();
-        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-        document.getElementById('prev-f-eta').value = 40;
-        document.getElementById('prev-f-redditoAnnuo').value = 30000;
-        document.getElementById('prev-f-anniContributiGia').value = 15;
-        prevCalcola();
-        return document.getElementById('prev-esito').textContent;
+        apriPensione();
+        const leggi = (c) => [...document.querySelectorAll('#page-previdenza ' + c)]
+          .filter(b => b.offsetParent !== null)
+          .map(b => { const s = getComputedStyle(b); return { t: b.textContent.trim().slice(0, 24), fg: s.color, bg: s.backgroundColor, bgi: s.backgroundImage }; });
+        return { primari: leggi('.btn-primary'), ghost: leggi('.btn-ghost') };
       });
-      deve(/Prima di consegnarlo al cliente/.test(r), 'nessun avviso a schermo');
-      /* CAMBIATO il 03/09/2026. Prima qui si cercava la parola «verificare», e
-         la si trovava perche' i coefficienti di trasformazione erano quelli del
-         biennio sbagliato con la bandiera «da verificare» accesa. Adesso sono
-         quelli del decreto: l'avviso che resta e' sull'imposta sostitutiva, che
-         nessuno ha ancora confermato sul testo di legge. Il controllo guarda
-         quello — cioe' che il canale funzioni, non che esista quel guaio. */
-      const incerti = await page.evaluate(() => Previdenza.numeriDaConfermare(Previdenza.ipotesiAttive()).map(x => x.etichetta));
-      deve(incerti.length >= 1, 'nessun numero risulta da confermare: la prova non verificherebbe niente');
-      for (const et of incerti) deve(r.indexOf(et) >= 0, 'non arriva a schermo: ' + et);
-      deve(/Perche' questi numeri|Perche&#39; questi numeri|Perche/.test(r), 'i motivi non arrivano a schermo');
-      return 'avvisi e motivi visibili accanto ai numeri';
-    });
-
-    await prova('previdenza: se i parametri non arrivano, il modulo si ferma e lo dice', async () => {
-      /* Cambiata il 05/09/2026. Prima si calcolava con la copia di riserva e si
-         metteva un avviso in cima: il consulente leggeva l'80,1% e andava
-         avanti. E la copia di riserva non è allineata alla tabella — non ha la
-         serie Eurostat né i requisiti proiettati — quindi il coefficiente
-         restava fermo e la pensione usciva PIÙ ALTA del vero.
-         Un avviso sopra un numero sbagliato non protegge nessuno: adesso il
-         modulo si ferma. */
-      const r = await page.evaluate(async () => {
-        /* Questa prova i parametri se li nega da sé: la rete finta ormai li
-           serve, come fa il server vero. */
-        const veroFetch = window.fetch;
-        window.fetch = (u, o) => (String(u).includes('parametri-previdenziali')
-          ? Promise.resolve({ ok: false, status: 503, json: async () => ({ error: 'il server non risponde' }) })
-          : veroFetch(u, o));
-        try {
-          apriPrevidenza();
-          await caricaNumeriPrevidenza();
-          document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-          const m = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
-          m('eta', 40); m('etaPensionamento', 67); m('redditoAnnuo', 30000); m('anniContributiGia', 15); m('versamentoMensile', 100);
-          prevCalcola();
-          return { banda: document.getElementById('prev-avvisi').textContent,
-                   esito: document.getElementById('prev-esito').textContent,
-                   calcolato: !!PREV.esito, riserva: !!PREV.coefficienti };
-        } finally { window.fetch = veroFetch; }
-      });
-      deve(/Parametri non disponibili/.test(r.esito), 'il calcolo non si è fermato: ' + r.esito.slice(0, 120));
-      deve(!r.calcolato, 'ha calcolato lo stesso e il risultato è in memoria');
-      deve(!r.riserva, 'è rimasta in giro la copia di riserva: al prossimo calcolo tornerebbe a produrre numeri vecchi');
-      deve(/non disponibili|ferma/i.test(r.banda), 'la banda in cima non dice niente: ' + r.banda.slice(0, 80));
-      return 'nessun numero, e detto in due posti';
+      const chiaro = (c) => { const m = /rgba?\((\d+), ?(\d+), ?(\d+)/.exec(c || ''); if (!m) return false;
+        return (Number(m[1]) * 299 + Number(m[2]) * 587 + Number(m[3]) * 114) / 1000 > 200; };
+      deve(r.primari.length > 0, 'nessun bottone primario visibile nella pagina');
+      for (const b of r.primari) {
+        deve(chiaro(b.fg), 'bottone primario col testo scuro: «' + b.t + '»');
+        deve(b.bgi !== 'none' || !chiaro(b.bg), 'bottone primario col fondo chiaro: «' + b.t + '»');
+      }
+      for (const b of r.ghost) deve(!chiaro(b.fg), 'bottone chiaro col testo chiaro: «' + b.t + '»');
+      return r.primari.length + ' primari e ' + r.ghost.length + ' secondari, tutti leggibili';
     });
 
     /* ── Blocco C: la cronologia del cliente ─────────────────────────────── */
@@ -3617,7 +3765,7 @@ const avvio = async () => {
     await frame.waitForSelector('#page-previdenza.active', { timeout: 12000 }).catch(() => {});
     await page.waitForTimeout(1500);
 
-    await prova('scocca: aprendo l\'analisi previdenziale la chiamata parte CON il token', async () => {
+    await prova('scocca: aprendo il modulo pensione la chiamata parte CON il token', async () => {
       deve(chiamate.length, 'il modulo non ha nemmeno chiesto i parametri al server');
       const senza = chiamate.filter(c => !/^Bearer .+/.test(c.autorizzazione));
       deve(!senza.length,
@@ -3627,14 +3775,20 @@ const avvio = async () => {
 
     await prova('scocca: con i parametri letti il modulo calcola', async () => {
       const r = await frame.evaluate(() => {
-        document.getElementById('prev-tipo').value = 'pf'; prevVai(2);
-        const m = (k, v) => { const e = document.getElementById('prev-f-' + k); if (e) e.value = v; };
-        m('eta', 40); m('etaPensionamento', 67); m('redditoAnnuo', 30000); m('anniContributiGia', 15); m('versamentoMensile', 100);
-        prevCalcola();
-        return { stato: PREV.parametri, testo: document.getElementById('prev-esito').textContent };
+        const v = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+        v('pens-eta', 40); v('pens-reddito', 1800); v('pens-versamento', 100); v('pens-inizio', 25);
+        pensCalcola();
+        return { stato: PENS.parametri, testo: document.getElementById('pens-esito').textContent,
+                 esito: !!PENS.esito };
       });
       deve(r.stato === 'ok', 'i parametri non risultano letti: ' + r.stato);
-      deve(/Pensione stimata/.test(r.testo), 'il calcolo non è uscito: ' + r.testo.slice(0, 120));
+      deve(r.esito, 'il calcolo non è stato fatto dentro la scocca');
+      deve(/Pensione pubblica/.test(r.testo), 'il risultato non è uscito: ' + r.testo.slice(0, 120));
+      /* La pagina tiene l'id `page-previdenza` che aveva prima: la scocca
+         chiede `?page=previdenza`, e questa prova è l'unica che lo dimostra
+         ancora vero dopo la riscrittura. Rinominarlo avrebbe rotto il modulo
+         dentro IAM senza rompere nessuna prova del motore. */
+      return 'aperto da IAM come «previdenza», calcolato col token';
     });
 
     await prova('scocca: nessun errore JavaScript', async () => {
