@@ -1,33 +1,54 @@
-id: postmerge-1789219996  exit: 0  2026-09-12 13:33:52
+id: stato-1789220054  exit: 0  2026-09-12 13:34:25
 ----
-== HEAD backend
-b19e4e5 Merge pull request #134 from francescotp93/fix/sessioni-axa-groupama
-== autopull ultimo giro
-Sep 12 13:32:11 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Sep 12 13:32:18 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 12 13:32:18 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 12 13:32:18 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.948s CPU time over 6.762s wall clock time, 95.9M memory peak.
-Sep 12 13:33:16 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
-Sep 12 13:33:25 vps-d6443a46 autopull.sh[2150304]: [autopull] 2026-09-12 13:33:25 aggiorno bd184f9 -> b19e4e5
-Sep 12 13:33:26 vps-d6443a46 autopull.sh[2150304]: [autopull] withus-backend riavviato ✅
-Sep 12 13:33:42 vps-d6443a46 autopull.sh[2150304]: [autopull] axa-scraper riavviato (codice scraper cambiato)
-Sep 12 13:33:42 vps-d6443a46 autopull.sh[2150304]: [autopull] groupama-scraper riavviato (codice scraper cambiato)
-Sep 12 13:33:43 vps-d6443a46 autopull.sh[2150304]: [autopull] axa-scraper.service riavviato
-Sep 12 13:33:43 vps-d6443a46 autopull.sh[2150304]: [autopull] groupama-scraper.service riavviato
-Sep 12 13:33:43 vps-d6443a46 autopull.sh[2150304]: [autopull] fatto.
-Sep 12 13:33:43 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
-Sep 12 13:33:43 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
-Sep 12 13:33:43 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 10.006s CPU time over 27.167s wall clock time, 71.3M memory peak.
-== servizi
-withus-backend       active  attivo da: Sat 2026-09-12 13:33:26 UTC
-axa-scraper          active  attivo da: Sat 2026-09-12 13:33:43 UTC
-groupama-scraper     active  attivo da: Sat 2026-09-12 13:33:43 UTC
-hdi-scraper          active  attivo da: Fri 2026-09-11 07:42:03 UTC
-italiana-scraper     active  attivo da: Wed 2026-09-09 06:35:07 UTC
-allianz-scraper      active  attivo da: Fri 2026-09-11 07:47:56 UTC
-moto-scraper         active  attivo da: Wed 2026-09-09 06:36:36 UTC
-== health
-
-== file nuovi presenti?
--rw-r--r-- 1 root root 17661 Sep 12 13:33 /opt/withus-backend/server/esiti.js
--rw-r--r-- 1 root root  9184 Sep 12 13:33 /opt/withus-backend/server/otpPosta.js
+== porta backend
+LISTEN 0      511        127.0.0.1:4300      0.0.0.0:*    users:(("node",pid=1497493,fd=23))                        
+LISTEN 0      511        127.0.0.1:4200      0.0.0.0:*    users:(("node",pid=1899506,fd=22))                        
+LISTEN 0      511        127.0.0.1:4100      0.0.0.0:*    users:(("node",pid=1498809,fd=22))                        
+LISTEN 0      511        127.0.0.1:4600      0.0.0.0:*    users:(("node",pid=1497964,fd=23))                        
+LISTEN 0      511        127.0.0.1:4500      0.0.0.0:*    users:(("node",pid=2150756,fd=23))                        
+LISTEN 0      511        127.0.0.1:4400      0.0.0.0:*    users:(("node",pid=1898251,fd=23))                        
+LISTEN 0      511        127.0.0.1:4800      0.0.0.0:*    users:(("node",pid=2149270,fd=23))                        
+LISTEN 0      511        127.0.0.1:4700      0.0.0.0:*    users:(("node",pid=2150754,fd=23))                        
+LISTEN 0      511        127.0.0.1:5000      0.0.0.0:*    users:(("node",pid=1499103,fd=23))                        
+LISTEN 0      511        127.0.0.1:4900      0.0.0.0:*    users:(("node",pid=1497940,fd=23))                        
+== health (porte candidate)
+8080 -> 
+3000 -> {"ok":true}
+3001 -> 
+8081 -> 
+== stato login scraper
+axa        {"error":"endpoint sconosciuto"}
+groupama   {"error":"endpoint sconosciuto"}
+== log axa dopo il riavvio
+Sep 12 13:33:26 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: State 'final-sigterm' timed out. Killing.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: Killing process 1497962 (node) with signal SIGKILL.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: Failed with result 'timeout'.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: Consumed 1h 33min 19.812s CPU time over 3d 6h 58min 19.975s wall clock time, 1.2G memory peak.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: axa-scraper.service: Deactivated successfully.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
+Sep 12 13:33:47 vps-d6443a46 start-service.sh[2150620]: 🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
+Sep 12 13:33:49 vps-d6443a46 start-service.sh[2150754]: 13:33:49 [axa] telecomando HTTP su 127.0.0.1:4700
+Sep 12 13:34:08 vps-d6443a46 start-service.sh[2150754]: 13:34:08 [axa] sessione ripresa da auth.json: 102 cookie
+Sep 12 13:34:17 vps-d6443a46 start-service.sh[2150754]: 13:34:17 [axa] la sessione salvata non è più valida: serve un accesso con il codice
+Sep 12 13:34:17 vps-d6443a46 start-service.sh[2150754]: 13:34:17 [axa] PRONTO al login — attendo Accedi dall'utente
+== log groupama dopo il riavvio
+Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: [pid=1978153] <gracefully close start>
+Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: [pid=1978153] <forcefully close>
+Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: [pid=1978153] <kill>
+Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: [pid=1978153] <will force kill>
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: groupama-scraper.service: Deactivated successfully.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: groupama-scraper.service: Consumed 25min 27.109s CPU time over 20h 36min 24.666s wall clock time, 798.3M memory peak.
+Sep 12 13:33:42 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: Stopping groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500...
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: groupama-scraper.service: Deactivated successfully.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: Stopped groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: Started groupama-scraper.service - Groupama scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4500.
+Sep 12 13:33:47 vps-d6443a46 start-service.sh[2150639]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+Sep 12 13:33:49 vps-d6443a46 start-service.sh[2150756]: 13:33:49 [groupama] telecomando HTTP su 127.0.0.1:4500
+Sep 12 13:33:58 vps-d6443a46 start-service.sh[2150756]: 13:33:58 [groupama] sessione persistente attiva ✅
