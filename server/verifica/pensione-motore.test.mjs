@@ -798,6 +798,65 @@ prova('il foglio e l\'archivio dicono su quante mensilità è stato fatto il con
   return 'foglio e archivio dichiarano 13 / 13 / 12';
 });
 
+/* ── UNA FONTE SOLA, PIÙ RESE (12/09/2026) ───────────────────────────────
+   Il foglio esiste in due forme — la pagina da stampare e il PDF da allegare
+   su WhatsApp — e il contenuto si costruisce una volta sola. Scriverlo due
+   volte vorrebbe dire due posti che si scostano, ed è già successo in questo
+   modulo: la stessa frase stava nella schermata e nel foglio, e i due si
+   erano già disallineati. */
+
+prova('il contenuto del foglio è dati, non markup', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'dipendente' });
+  const c = P.contenutoFoglio({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(c.ok, (c.problemi || []).join('; '));
+  const testo = JSON.stringify(c.doc);
+  /* SE QUI DENTRO COMPARE UN TAG, il contenuto ha ricominciato a sapere come
+     viene disegnato — e il PDF erediterebbe l'HTML. */
+  deve(!/<[a-z/]/i.test(testo), 'nel contenuto del foglio è finito del markup: non è più indipendente dalla resa');
+  deve(!/class=|style=|#[0-9a-f]{6}/i.test(testo), 'nel contenuto sono finiti classi, stili o colori');
+  deve(c.doc.sezioni.length >= 4, 'il foglio ha meno di quattro sezioni: ' + c.doc.sezioni.length);
+  deve(c.doc.disclaimer && c.doc.avvisi && c.doc.firma, 'al contenuto mancano disclaimer, avvisi o firma');
+  return c.doc.sezioni.length + ' sezioni, zero markup';
+});
+
+prova('lo stesso contenuto regge tutte le forme del foglio, senza buchi', () => {
+  /* Si gira su molti profili e si controlla che ogni sezione abbia davvero
+     qualcosa dentro: una sezione con un titolo e niente sotto è un buco che
+     in HTML non si nota e in PDF diventa una pagina mezza vuota. */
+  let sezioni = 0;
+  for (const lavoro of ['dipendente', 'autonomo', 'professionista']) {
+    for (const versa of [0, 100, 600]) {
+      for (const inizio of [25, null]) {
+        const e = P.calcola({ ...BASE, lavoro, versamentoMensile: versa, etaInizioLavoro: inizio });
+        const c = P.contenutoFoglio({ esito: e, cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } });
+        deve(c.ok, (c.problemi || []).join('; '));
+        for (const s of c.doc.sezioni) {
+          deve(s.titolo, 'una sezione senza titolo');
+          const pieno = (s.numeri && s.numeri.length) || (s.paragrafi && s.paragrafi.length) ||
+            s.tabella || s.confronto || (s.note && s.note.length);
+          deve(pieno, 'la sezione «' + s.titolo + '» è vuota (' + lavoro + ', versa ' + versa + ')');
+          sezioni++;
+        }
+      }
+    }
+  }
+  return sezioni + ' sezioni controllate su 18 profili, nessuna vuota';
+});
+
+prova('il TFR resta fuori dal contenuto per chi non ce l\'ha', () => {
+  const conTfr = P.contenutoFoglio({ esito: P.calcola({ ...BASE, lavoro: 'dipendente' }),
+    cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } }).doc;
+  const senza = P.contenutoFoglio({ esito: P.calcola({ ...BASE, lavoro: 'autonomo' }),
+    cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } }).doc;
+  const ha = (doc) => doc.sezioni.some(s => /TFR: in azienda/.test(s.titolo));
+  deve(ha(conTfr), 'il dipendente non ha il confronto TFR nel contenuto');
+  deve(!ha(senza), 'l\'autonomo ha un confronto TFR che non lo riguarda');
+  /* Il riscatto invece va a tutti: è l'obiezione numero uno di chiunque. */
+  const riscatto = (doc) => doc.sezioni.some(s => /prendere prima i miei soldi/.test(s.titolo));
+  deve(riscatto(conTfr) && riscatto(senza), 'il blocco sul riscatto non arriva a tutti');
+  return 'TFR solo al dipendente, riscatto a tutti';
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

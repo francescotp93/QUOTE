@@ -877,7 +877,17 @@ function problemiDelFoglio(d) {
   return p;
 }
 
-function foglioHtml(d) {
+/* ══ IL FOGLIO, PRIMA COME CONTENUTO E POI COME DISEGNO ═══════════════════
+   Il foglio esiste in DUE forme: la pagina che si apre per stampare e il PDF
+   che si allega su WhatsApp. Scriverle due volte vorrebbe dire due posti che
+   si scostano — ed è già successo in questo modulo: la stessa frase stava
+   nella schermata e nel foglio, e i due si erano già disallineati.
+
+   Quindi il contenuto si costruisce UNA volta, qui, come dati puri: niente
+   markup, niente colori, niente millimetri. `foglioHtml` e `foglioPdf` lo
+   disegnano ciascuno a modo suo. Se domani serve una terza forma — una email,
+   un messaggio — si aggiunge un disegnatore, non si ricopia un testo. */
+function contenutoFoglio(d) {
   d = d || {};
   var problemi = problemiDelFoglio(d);
   if (problemi.length) return { ok: false, problemi: problemi };
@@ -885,72 +895,235 @@ function foglioHtml(d) {
   var e = d.esito;
   var cli = d.cliente || {}, con = d.consulente || {};
   var data = d.dataRiferimento || new Date().toLocaleDateString('it-IT');
-  var marchi = daConfermare();
 
-  /* LA FASCIA PRUDENZIALE, se serve, sta IN CIMA e non in fondo: un avviso
-     sotto la firma lo legge chi già sapeva. */
-  var fasciaPrudenziale = e.prudenziale
-    ? '<div class="prudenziale"><b>STIMA PRUDENZIALE</b> — l\'età di inizio dell\'attività lavorativa non è stata indicata' +
-      (e.datoIncoerente ? ' in modo utilizzabile' : '') + '. Il calcolo usa uno scenario peggiorativo (inizio a ' +
-      ETA_INIZIO_PRUDENZIALE + ' anni): pensione più bassa e divario più ampio di quelli probabili.</div>'
-    : '';
+  var avvisi = [];
+  /* LA FASCIA PRUDENZIALE STA IN CIMA e non in fondo: un avviso sotto la
+     firma lo legge chi già sapeva. */
+  if (e.prudenziale) {
+    avvisi.push({ tono: 'prudenziale', forte: 'STIMA PRUDENZIALE',
+      testo: '— l\'età di inizio dell\'attività lavorativa non è stata indicata' +
+        (e.datoIncoerente ? ' in modo utilizzabile' : '') + '. Il calcolo usa uno scenario peggiorativo (inizio a ' +
+        ETA_INIZIO_PRUDENZIALE + ' anni): pensione più bassa e divario più ampio di quelli probabili.' });
+  }
 
-  var righeProposte = e.proposte.map(function (p) {
-    return '<tr' + (p.eQuelloCheAzzera ? ' class="azzera"' : '') + '>' +
-      '<td><b>' + euro(p.versamentoMensile) + '</b> al mese</td>' +
-      '<td>' + euro(p.renditaMensileNetta) + ' al mese</td>' +
-      '<td>' + (p.azzera ? 'copre tutto il divario' : 'copre il ' + perc(p.coperturaGap) + ' del divario') +
-      (p.oltreIlTettoDeducibile ? ' <span class="nota">· oltre il tetto deducibile</span>' : '') +
-      (p.fuoriPortata ? ' <span class="nota">· oltre un quinto del reddito</span>' : '') + '</td></tr>';
-  }).join('');
+  var numeri = [
+    { etichetta: 'Oggi porti a casa', valore: euro(e.redditoNettoMensile), nota: 'al mese, netti', tono: 'neutro' },
+    { etichetta: 'Pensione pubblica', valore: euro(e.pensioneNettaMensile),
+      nota: perc(e.tassoSostituzioneNetto) + ' di quello che prendi oggi', tono: 'neutro' },
+    { etichetta: e.gapMensile > 0 ? 'Ti mancheranno' : 'Sei coperto', valore: euro(e.gapMensile),
+      nota: 'al mese' + (e.gapMensile > 0 ? ', il ' + perc(e.gapPercentuale) + ' del reddito di oggi' : ''),
+      tono: e.gapMensile > 0 ? 'gap' : 'ok' },
+  ];
 
-  var bloccoFiscale = e.fiscale.disponibile
-    ? (e.fiscale.inPerdita
-      ? '<div class="allarme"><b>Attenzione: a questo livello di reddito dedurre NON conviene.</b> ' +
-        'Il versamento farebbe perdere il trattamento integrativo, e il conto finale sarebbe in perdita di ' +
-        euro(Math.abs(e.fiscale.risparmioAnnuo)) + ' l\'anno. Il fondo resta utile per la pensione, ma il vantaggio fiscale qui non c\'è.</div>'
-      : '<p><b>' + euro(e.fiscale.risparmioAnnuo) + ' l\'anno</b> di minori imposte, versando ' +
-        euro(e.fiscale.versatoAnnuo) + '. Ogni euro dedotto vale ' + perc(e.fiscale.aliquotaEffettiva, 1) + '.' +
-        (e.fiscale.oltreIlTetto
-          ? ' <span class="nota">Il versamento supera il tetto di deducibilità di ' + euro(LEGGE.tettoDeducibilita.v, 2) +
-            ': ' + euro(e.fiscale.eccedenza) + ' l\'anno non danno diritto a deduzione.</span>' : '') +
-        (e.fiscale.impostaAzzerata ? ' <span class="nota">L\'imposta è già azzerata dalle detrazioni: la deduzione non produce risparmio.</span>' : '') +
-        '</p>')
-    : '<p class="nota">' + esc(e.fiscale.perche) + '</p>';
+  var sezioni = [];
 
-  var bloccoTfr = '';
+  sezioni.push({ titolo: 'Dove sei oggi, e dove arrivi', numeri: numeri, paragrafi: [
+    { tono: 'nota', testo: 'Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi + ' anni di contributi' +
+      (e.versamentoMensile > 0
+        ? '. Versando ' + euro(e.versamentoMensile) + ' al mese per i ' + e.anniAllaPensione +
+          ' anni che mancano, il fondo aggiungerebbe ' + euro(e.fondo.renditaMensileNetta) +
+          ' al mese (montante stimato ' + euro(e.fondo.montante) + ').'
+        : '. Oggi non stai versando in nessun fondo: il divario qui sopra è tutto scoperto.') },
+    /* LE MENSILITÀ SUL FOGLIO. Senza, un cliente che rifà il conto con la
+       calcolatrice non ritrova i numeri e smette di fidarsi di tutta la pagina. */
+    { tono: 'nota', parti: [
+      { t: 'Reddito calcolato su ' },
+      { t: e.mensilita + ' mensilità', forte: true },
+      { t: ' (' + euro(e.nettoAnnuo) + ' netti l\'anno). La pensione pubblica si riceve in ' + e.mensilitaPensione +
+           ' rate l\'anno, la rendita del fondo in ' + e.mensilitaRendita + '.' } ] },
+    { tono: 'nota', parti: [
+      { t: 'Tariffa di riferimento: ' },
+      { t: FONDO.prodotto.etichetta, forte: true },
+      { t: '. Alternativa: ' + FONDO.prodotto.alternativa + '.' } ] },
+  ] });
+
+  /* LE PROPOSTE. La nota su quale divario coprono serve: un cliente che legge
+     «ti mancheranno 350» e poi «20 € coprono il 6%» fa la divisione e non
+     torna, e un numero che non torna su un foglio firmato distrugge la
+     fiducia in tutto il resto. */
+  var proposte = {
+    titolo: 'Con quanto al mese lo copri',
+    paragrafi: (e.versamentoMensile > 0 && e.gapSenzaFondoMensile > e.gapMensile + 0.5)
+      ? [{ tono: 'nota', parti: [
+          { t: 'Sono ipotesi di versamento ' },
+          { t: 'al posto', forte: true },
+          { t: ' dei ' + euro(e.versamentoMensile) + ' di adesso, non in aggiunta: le percentuali si riferiscono al divario di ' },
+          { t: euro(e.gapSenzaFondoMensile), forte: true },
+          { t: ' al mese che resterebbe con la sola pensione pubblica.' } ] }]
+      : [],
+    tabella: {
+      intestazioni: ['Se versi', 'Ti tornano', 'Cosa copre'],
+      righe: e.proposte.map(function (p) {
+        return {
+          evidenzia: !!p.eQuelloCheAzzera,
+          celle: [
+            [{ t: euro(p.versamentoMensile), forte: true }, { t: ' al mese' }],
+            euro(p.renditaMensileNetta) + ' al mese',
+            (function () {
+              /* Ogni avvertenza e' un segmento suo, e lo spazio che le separa
+                 sta FUORI: dentro finirebbe nel grigio della nota, e in stampa
+                 si vede. */
+              var parti = [{ t: p.azzera ? 'copre tutto il divario' : 'copre il ' + perc(p.coperturaGap) + ' del divario' }];
+              if (p.oltreIlTettoDeducibile) { parti.push({ t: ' ' }); parti.push({ t: '· oltre il tetto deducibile', tono: 'nota' }); }
+              if (p.fuoriPortata) { parti.push({ t: ' ' }); parti.push({ t: '· oltre un quinto del reddito', tono: 'nota' }); }
+              return parti;
+            })(),
+          ],
+        };
+      }),
+    },
+  };
+  sezioni.push(proposte);
+
+  var fiscali = [];
+  if (!e.fiscale.disponibile) {
+    fiscali.push({ tono: 'nota', testo: e.fiscale.perche });
+  } else if (e.fiscale.inPerdita) {
+    fiscali.push({ tono: 'allarme', forte: 'Attenzione: a questo livello di reddito dedurre NON conviene.',
+      testo: 'Il versamento farebbe perdere il trattamento integrativo, e il conto finale sarebbe in perdita di ' +
+        euro(Math.abs(e.fiscale.risparmioAnnuo)) + ' l\'anno. Il fondo resta utile per la pensione, ma il vantaggio fiscale qui non c\'è.' });
+  } else {
+    /* Le due avvertenze stanno nella STESSA frase del risparmio, non in un
+       paragrafo a parte: sono precisazioni su quel numero, e staccarle le fa
+       leggere come due cose in piu' invece che come un limite di quella. */
+    var parti = [
+      { t: euro(e.fiscale.risparmioAnnuo) + ' l\'anno', forte: true },
+      { t: ' di minori imposte, versando ' + euro(e.fiscale.versatoAnnuo) +
+           '. Ogni euro dedotto vale ' + perc(e.fiscale.aliquotaEffettiva, 1) + '.' +
+           /* Lo spazio sta FUORI dalla nota, non dentro: dentro finirebbe nel
+              grigio e in stampa si vedrebbe. */
+           '' },
+    ];
+    /* Ogni avvertenza e' un segmento suo, separato da uno spazio che sta
+       FUORI: dentro finirebbe nel grigio della nota. */
+    if (e.fiscale.oltreIlTetto) {
+      parti.push({ t: ' ' });
+      parti.push({ t: 'Il versamento supera il tetto di deducibilità di ' + euro(LEGGE.tettoDeducibilita.v, 2) +
+        ': ' + euro(e.fiscale.eccedenza) + ' l\'anno non danno diritto a deduzione.', tono: 'nota' });
+    }
+    if (e.fiscale.impostaAzzerata) {
+      parti.push({ t: ' ' });
+      parti.push({ t: 'L\'imposta è già azzerata dalle detrazioni: la deduzione non produce risparmio.', tono: 'nota' });
+    }
+    fiscali.push({ parti: parti });
+  }
+  sezioni.push({ titolo: 'Quanto ti fa risparmiare di tasse', paragrafi: fiscali });
+
   if (e.mostraTfr) {
-    bloccoTfr =
-      '<h2>TFR: in azienda o nel fondo?</h2>' +
-      '<p class="nota">Un confronto, non un consiglio. La scelta dipende anche da cose che in questo foglio non ci sono.</p>' +
-      '<table class="confronto"><tr><th></th><th>TFR in azienda</th><th>TFR nel fondo</th></tr>' +
-      TFR.righe.map(function (r) {
-        return '<tr><th class="voce">' + esc(r.voce) + '</th><td>' + esc(r.azienda) + '</td><td>' + esc(r.fondo) + '</td></tr>';
-      }).join('') + '</table>';
+    sezioni.push({
+      titolo: 'TFR: in azienda o nel fondo?',
+      paragrafi: [{ tono: 'nota', testo: 'Un confronto, non un consiglio. La scelta dipende anche da cose che in questo foglio non ci sono.' }],
+      confronto: {
+        colonne: ['TFR in azienda', 'TFR nel fondo'],
+        righe: TFR.righe.map(function (r) { return { voce: r.voce, celle: [r.azienda, r.fondo] }; }),
+      },
+    });
   }
 
   /* IL BLOCCO DEL RISCATTO VA SEMPRE, anche a chi non ha TFR: «quando posso
-     riprendere i miei soldi» è l'obiezione numero uno di chiunque, non solo
-     dei dipendenti. Se non la si scrive, il cliente ci pensa lo stesso — solo
-     senza risposta davanti. */
+     riprendere i miei soldi» è l'obiezione numero uno di chiunque. Se non la
+     si scrive, il cliente ci pensa lo stesso — solo senza risposta davanti. */
   var q = TFR.quandoLiRiprendo;
-  var bloccoRiscatto =
-    '<h2>' + esc(q.titolo) + '</h2>' +
-    '<table class="confronto"><tr><th>Se il TFR resta in azienda</th><th>Nel fondo pensione</th></tr><tr>' +
-    '<td><ul>' + q.azienda.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '<td><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '</tr></table>' +
-    '<p class="nota">' + esc(q.fonte) + ' — ' + esc(q.daVerificare) + '</p>';
+  sezioni.push({
+    titolo: q.titolo,
+    confronto: {
+      colonne: ['Se il TFR resta in azienda', 'Nel fondo pensione'],
+      elenchi: [q.azienda.slice(), q.fondo.slice()],
+    },
+    /* `note` sta DOPO la tabella: e' il rimando alla norma, e un rimando
+       prima di quello a cui rimanda non lo legge nessuno. */
+    note: [{ tono: 'nota', testo: q.fonte + ' — ' + q.daVerificare }],
+  });
 
-  var bloccoMarchi = marchi.length
-    ? '<div class="daconfermare"><b>Valori ancora da confermare</b><ul>' +
-      marchi.map(function (m) { return '<li><b>' + esc(m.gruppo) + '</b> · ' + esc(m.etichetta) + ' — ' + esc(m.fonte) + '</li>'; }).join('') +
-      '</ul></div>'
-    : '';
+  return {
+    ok: true,
+    doc: {
+      titolo: 'La tua pensione, in una pagina',
+      cliente: cli.nome || '',
+      intestazione: [cli.nome, e.etichettaLavoro, e.eta + ' anni', data].filter(Boolean).join(' · '),
+      data: data,
+      logo: d.logo || null,
+      avvisi: avvisi,
+      sezioni: sezioni,
+      daConfermare: daConfermare(),
+      firma: {
+        nome: con.nome || '', ruolo: con.ruolo || '', rui: con.rui || '',
+        email: con.email || '', telefono: con.telefono || '',
+      },
+      disclaimer: disclaimer(e),
+    },
+  };
+}
+
+/* ── LA RESA IN HTML ──────────────────────────────────────────────────────
+   Disegna il contenuto qui sopra. Non decide niente e non calcola niente: se
+   una frase va cambiata si cambia in `contenutoFoglio`, e cambia in tutte e
+   due le forme insieme. */
+function foglioHtml(d) {
+  var c = contenutoFoglio(d);
+  if (!c.ok) return { ok: false, problemi: c.problemi };
+  var doc = c.doc;
+
+  /* Un testo puo' essere una stringa o un elenco di segmenti {t, forte}.
+     I segmenti servono perche' il grassetto sta a META' FRASE — «reddito
+     calcolato su 13 mensilita'» — e spezzare la frase in due paragrafi per
+     ottenerlo la renderebbe illeggibile. */
+  var segmenti = function (v) {
+    if (typeof v === 'string') return esc(v);
+    return (v || []).filter(function (x) { return x && x.t !== '' && x.t != null; }).map(function (x) {
+      var t = esc(x.t);
+      if (x.forte) t = '<b>' + t + '</b>';
+      if (x.tono === 'nota') t = '<span class="nota">' + t + '</span>';
+      return t;
+    }).join('');
+  };
+  var paragrafo = function (p) {
+    if (p.tono === 'allarme') return '<div class="allarme"><b>' + esc(p.forte || '') + '</b> ' + esc(p.testo) + '</div>';
+    var cls = p.tono === 'nota' ? ' class="nota"' : '';
+    var corpo = p.parti ? segmenti(p.parti) : ((p.forte ? '<b>' + esc(p.forte) + '</b> ' : '') + esc(p.testo));
+    return '<p' + cls + '>' + corpo + '</p>';
+  };
+
+  var sezione = function (s) {
+    var out = '<h2>' + esc(s.titolo) + '</h2>';
+    if (s.numeri) {
+      out += '<div class="numeri">' + s.numeri.map(function (n) {
+        return '<div class="n' + (n.tono === 'gap' ? ' gap' : n.tono === 'ok' ? ' ok' : '') + '">' +
+          '<div class="et">' + esc(n.etichetta) + '</div><div class="v">' + esc(n.valore) + '</div>' +
+          '<div class="nota">' + esc(n.nota) + '</div></div>';
+      }).join('') + '</div>';
+    }
+    (s.paragrafi || []).forEach(function (p) { out += paragrafo(p); });
+    if (s.tabella) {
+      out += '<table><tr>' + s.tabella.intestazioni.map(function (t) { return '<th>' + esc(t) + '</th>'; }).join('') + '</tr>' +
+        s.tabella.righe.map(function (r) {
+          return '<tr' + (r.evidenzia ? ' class="azzera"' : '') + '>' +
+            r.celle.map(function (cel) { return '<td>' + segmenti(cel) + '</td>'; }).join('') + '</tr>';
+        }).join('') + '</table>';
+    }
+    if (s.confronto) {
+      var cf = s.confronto;
+      out += '<table class="confronto"><tr>' + (cf.righe ? '<th></th>' : '') +
+        cf.colonne.map(function (t) { return '<th>' + esc(t) + '</th>'; }).join('') + '</tr>';
+      if (cf.righe) {
+        out += cf.righe.map(function (r) {
+          return '<tr><th class="voce">' + esc(r.voce) + '</th>' +
+            r.celle.map(function (cel) { return '<td>' + esc(cel) + '</td>'; }).join('') + '</tr>';
+        }).join('');
+      } else {
+        out += '<tr>' + cf.elenchi.map(function (el) {
+          return '<td><ul>' + el.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>';
+        }).join('') + '</tr>';
+      }
+      out += '</table>';
+    }
+    (s.note || []).forEach(function (p) { out += paragrafo(p); });
+    return out;
+  };
 
   var html =
 '<!doctype html><html lang="it"><head><meta charset="utf-8">' +
-'<title>Pensione · ' + esc(cli.nome) + '</title><style>' +
+'<title>Pensione · ' + esc(doc.cliente) + '</title><style>' +
 '*{box-sizing:border-box}body{font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1f2a37;margin:0;padding:28px 34px;max-width:860px}' +
 'h1{font-size:22px;margin:0 0 2px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#02984e;margin:26px 0 8px;border-bottom:1px solid #d8e3dc;padding-bottom:5px}' +
 '.testa{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #02984e;padding-bottom:12px;margin-bottom:16px}' +
@@ -976,59 +1149,31 @@ function foglioHtml(d) {
 '@media print{body{padding:0}h2{break-after:avoid}table{break-inside:avoid}}' +
 '</style></head><body>' +
 
-'<div class="testa"><div>' +
-  '<h1>La tua pensione, in una pagina</h1>' +
-  '<div class="sotto">' + esc(cli.nome) + ' · ' + esc(e.etichettaLavoro) + ' · ' + e.eta + ' anni · ' + esc(data) + '</div>' +
-'</div>' + (d.logo ? '<img src="' + esc(d.logo) + '" alt="">' : '') + '</div>' +
+'<div class="testa"><div><h1>' + esc(doc.titolo) + '</h1>' +
+  '<div class="sotto">' + esc(doc.intestazione) + '</div></div>' +
+  (doc.logo ? '<img src="' + esc(doc.logo) + '" alt="">' : '') + '</div>' +
 
-fasciaPrudenziale +
+doc.avvisi.map(function (a) {
+  return '<div class="' + (a.tono === 'allarme' ? 'allarme' : 'prudenziale') + '"><b>' + esc(a.forte) + '</b> ' + esc(a.testo) + '</div>';
+}).join('') +
 
-'<h2>Dove sei oggi, e dove arrivi</h2>' +
-'<div class="numeri">' +
-  '<div class="n"><div class="et">Oggi porti a casa</div><div class="v">' + euro(e.redditoNettoMensile) + '</div><div class="nota">al mese, netti</div></div>' +
-  '<div class="n"><div class="et">Pensione pubblica</div><div class="v">' + euro(e.pensioneNettaMensile) + '</div><div class="nota">' + perc(e.tassoSostituzioneNetto) + ' di quello che prendi oggi</div></div>' +
-  '<div class="n ' + (e.gapMensile > 0 ? 'gap' : 'ok') + '"><div class="et">' + (e.gapMensile > 0 ? 'Ti mancheranno' : 'Sei coperto') + '</div><div class="v">' +
-    euro(e.gapMensile) + '</div><div class="nota">al mese' + (e.gapMensile > 0 ? ', il ' + perc(e.gapPercentuale) + ' del reddito di oggi' : '') + '</div></div>' +
-'</div>' +
-'<p class="nota">Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi + ' anni di contributi' +
-  (e.versamentoMensile > 0
-    ? '. Versando ' + euro(e.versamentoMensile) + ' al mese per i ' + e.anniAllaPensione +
-      ' anni che mancano, il fondo aggiungerebbe ' + euro(e.fondo.renditaMensileNetta) + ' al mese (montante stimato ' + euro(e.fondo.montante) + ').'
-    : '. Oggi non stai versando in nessun fondo: il divario qui sopra è tutto scoperto.') +
-  '</p>' +
-/* LE MENSILITÀ SUL FOGLIO. Senza, un cliente che rifà il conto con la
-   calcolatrice non ritrova i numeri e smette di fidarsi di tutta la pagina. */
-'<p class="nota">Reddito calcolato su <b>' + e.mensilita + ' mensilità</b> (' + euro(e.nettoAnnuo) +
-  ' netti l\'anno). La pensione pubblica si riceve in ' + e.mensilitaPensione +
-  ' rate l\'anno, la rendita del fondo in ' + e.mensilitaRendita + '.</p>' +
-'<p class="nota">Tariffa di riferimento: <b>' + esc(FONDO.prodotto.etichetta) + '</b>. Alternativa: ' + esc(FONDO.prodotto.alternativa) + '.</p>' +
+doc.sezioni.map(sezione).join('') +
 
-'<h2>Con quanto al mese lo copri</h2>' +
-/* LA STESSA NOTA CHE STA A SCHERMO, e qui serve anche di più. Le proposte
-   sono versamenti TOTALI alternativi, quindi le percentuali si misurano sul
-   divario che resterebbe con la sola pensione pubblica. Senza questa riga, un
-   cliente che legge «ti mancheranno 350» e poi «20 € coprono il 6%» fa la
-   divisione e non torna: 33 diviso 350 fa il 9%. Un numero che non torna su un
-   foglio firmato è un numero che distrugge la fiducia in tutto il resto. */
-(e.versamentoMensile > 0 && e.gapSenzaFondoMensile > e.gapMensile + 0.5
-  ? '<p class="nota">Sono ipotesi di versamento <b>al posto</b> dei ' + euro(e.versamentoMensile) +
-    ' di adesso, non in aggiunta: le percentuali si riferiscono al divario di <b>' +
-    euro(e.gapSenzaFondoMensile) + '</b> al mese che resterebbe con la sola pensione pubblica.</p>'
+(doc.daConfermare.length
+  ? '<div class="daconfermare"><b>Valori ancora da confermare</b><ul>' +
+    doc.daConfermare.map(function (m) {
+      return '<li><b>' + esc(m.gruppo) + '</b> · ' + esc(m.etichetta) + ' — ' + esc(m.fonte) + '</li>';
+    }).join('') + '</ul></div>'
   : '') +
-'<table><tr><th>Se versi</th><th>Ti tornano</th><th>Cosa copre</th></tr>' + righeProposte + '</table>' +
 
-'<h2>Quanto ti fa risparmiare di tasse</h2>' + bloccoFiscale +
-
-bloccoTfr + bloccoRiscatto + bloccoMarchi +
-
-'<div class="firma"><b>' + esc(con.nome) + '</b>' +
-  (con.ruolo ? ' · ' + esc(con.ruolo) : '') +
-  (con.rui ? ' · RUI ' + esc(con.rui) : '') +
-  (con.email ? '<br>' + esc(con.email) : '') +
-  (con.telefono ? ' · ' + esc(con.telefono) : '') +
+'<div class="firma"><b>' + esc(doc.firma.nome) + '</b>' +
+  (doc.firma.ruolo ? ' · ' + esc(doc.firma.ruolo) : '') +
+  (doc.firma.rui ? ' · RUI ' + esc(doc.firma.rui) : '') +
+  (doc.firma.email ? '<br>' + esc(doc.firma.email) : '') +
+  (doc.firma.telefono ? ' · ' + esc(doc.firma.telefono) : '') +
 '</div>' +
 
-'<div class="disclaimer">' + esc(disclaimer(e)) + '</div>' +
+'<div class="disclaimer">' + esc(doc.disclaimer) + '</div>' +
 '</body></html>';
 
   return { ok: true, html: html };
@@ -1146,6 +1291,7 @@ var API = {
   numeriDiLegge: numeriDiLegge,
   etaPensioneAll: etaPensioneAll,
   disclaimer: disclaimer,
+  contenutoFoglio: contenutoFoglio,
   foglioHtml: foglioHtml,
   problemiDelFoglio: problemiDelFoglio,
   schedaArchivio: schedaArchivio,
