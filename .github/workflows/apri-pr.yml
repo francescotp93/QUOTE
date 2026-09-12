@@ -1,16 +1,7 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# APRI LE PULL REQUEST — usa e getta.
-#
-# Perché esiste: il collegamento GitHub di Claude ha il permesso di LEGGERE le
-# pull request ma non di aprirle («403 Resource not accessible by integration»),
-# e Francesco non vuole doverle aprire a mano ogni volta. GitHub però può
-# aprirle da sé: dentro una Action c'è un accesso con i permessi dichiarati qui
-# sotto, e non serve concedere niente a nessuno.
-#
-# Gira UNA VOLTA, al push di questo ramo, e apre le pull request dei rami di
-# lavoro elencati. Non unisce niente. Finito il giro, il ramo si cancella e di
-# questo file non resta traccia nel codice.
-# ─────────────────────────────────────────────────────────────────────────────
+# Apre le pull request in attesa. Ramo usa e getta: si cancella subito dopo.
+# Serve perché il collegamento GitHub di Claude legge le pull request ma non
+# può aprirle; dentro una Action invece c'è un accesso con i permessi
+# dichiarati qui sotto, e non serve concedere niente a nessuno.
 name: Apri le pull request in attesa
 
 on: push
@@ -23,6 +14,7 @@ jobs:
   apri:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Apri le pull request dei rami di lavoro
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -30,76 +22,14 @@ jobs:
         run: |
           set -u
           apri() {
-            ramo="$1"; titolo="$2"; corpo="$3"
+            ramo="$1"; titolo="$2"; file="$3"
             gia=$(gh pr list --repo "$REPO" --head "$ramo" --state open --json number --jq '.[0].number' 2>/dev/null || true)
-            if [ -n "${gia:-}" ]; then echo "· $ramo → esiste già: #$gia"; return; fi
-            if gh pr create --repo "$REPO" --base main --head "$ramo" --title "$titolo" --body "$corpo"; then
+            if [ -n "${gia:-}" ]; then echo "· $ramo → esiste già: #$gia"; return 0; fi
+            if gh pr create --repo "$REPO" --base main --head "$ramo" --title "$titolo" --body-file "$file"; then
               echo "· $ramo → aperta"
             else
-              echo "· $ramo → NON aperta (permesso negato anche qui: serve l'impostazione «Allow GitHub Actions to create and approve pull requests» nel repository)"
+              echo "· $ramo → NON aperta: serve l'impostazione «Allow GitHub Actions to create and approve pull requests» nelle impostazioni del repository"
             fi
           }
-
-          apri "fix/esiti-niente-catture" \
-            "Registro esiti: niente catture di rete, e Italiana dice subito cosa manca in voltura" \
-            "$(cat <<'TXT'
-Prima revisione serale del registro degli esiti, sul primo preventivo vero (una targa, cinque compagnie). Due difetti trovati guardando le righe, non a tavolino.
-
-## 1. Nel registro finivano dati del cliente (urgente)
-
-La pulizia toglieva i dati personali quando erano campi di un oggetto. La risposta di HDI via browser porta però con sé la cattura di rete del portale: 106 chiamate, ognuna con il corpo scritto **dentro una stringa di testo**. Lì i campi non sono campi, sono testo, e la pulizia non li vedeva. In quattro di quei corpi c'era il codice fiscale del cliente, più nome, data di nascita e indirizzo. La riga pesava 77 KB.
-
-Ora la pulizia guarda anche dentro il testo: se è un blocco JSON lo apre e lo ripulisce, e in ogni caso oscura codici fiscali, email e i valori dei campi vietati. Le catture di rete non entrano più affatto. Tre tetti: 60 elementi per lista, 2.000 caratteri per testo, 32 KB per riga. La stessa riga oggi pesa 208 byte e dice le stesse cose utili.
-
-**Già fatto sul database:** la riga è stata ripulita la sera dell'11/09. Le altre quattro non contenevano dati personali.
-
-## 2. Italiana in voltura: un minuto per una cosa decisa in partenza
-
-In voltura l'anagrafica non arriva dall'attestato. Senza codice fiscale del contraente il portale si ferma sempre allo step Anagrafiche, ma ci mette 60 secondi e non dice cosa fare. Ora non si parte: messaggio che dice cosa fare e riga di registro immediata. Vale anche per la Legge Bersani. Il rinnovo non è toccato.
-
-## 3. Perché HDI ha quotato dalla via lenta
-
-Il premio è arrivato dal browser, quindi i miglioramenti sul prezzo rilasciati quella mattina non si sono applicati e il premio può essere più caro del preventivo fatto a mano. Il motivo della caduta non era ricostruibile perché il registro non lo conservava. Ora lo conserva.
-
-## Come si annulla
-
-`git revert` di questo commit: nessuna migrazione, nessun dato toccato dal codice.
-
-## Prove
-
-Otto nuove, tutte rosse sul codice in produzione (contrapprova eseguita). esiti 18 verdi, italiana-voltura 5 verdi, scraper 16 verdi. Le quattro `parita-*` rosse lo erano già su main (manca Playwright in sandbox).
-TXT
-)"
-
-          apri "fix/sessioni-axa-groupama" \
-            "AXA: una volta dentro si resta dentro. E Groupama il codice se lo prende da solo" \
-            "$(cat <<'TXT'
-Misurato sulla macchina prima di toccare il codice.
-
-## AXA, tre difetti veri
-
-**1. La sessione salvata non veniva mai riletta.** Stesso difetto chiuso su Groupama l'11/09, rimasto aperto qui. Il file era anche fermo al 2 settembre, perché si salvava solo al login: anche rileggendolo avremmo rimesso dentro cookie morti. Ora si rilegge all'accensione, si tiene fresco ogni 20 minuti e si salva prima di spegnersi.
-
-**2. Il login del 12/09 è fallito e il giornale taceva.** Alle 07:55 «codice inserito OK», poi silenzio fino alla scadenza dell'attesa. Ora si scrive dove siamo finiti e cosa dice il portale (mai il contenuto dei campi), e il messaggio dice la cosa utile: il codice di AXA Guardian dura 30 secondi.
-
-**3. Il seme TOTP veniva usato senza controllarlo.** Se in quel campo finisce il codice a 6 cifre (già successo su Allianz) si mandano passcode sbagliati al portale fino a far bloccare l'utenza dell'agenzia. La guardia di Allianz ora vale anche per AXA, su entrambe le vie.
-
-## Groupama: il codice via email se lo prende da solo
-
-Il codice arriva via email e la posta dell'agenzia il backend la legge già. Ora, quando il portale lo chiede, il backend lo cerca nella posta e lo consegna da sé. Il pannello non aspetta: risponde subito come prima.
-
-Regole strette: solo i messaggi arrivati dopo l'avvio del login, solo dal dominio della compagnia, il codice non entra mai nel giornale, un messaggio già usato non si ripesca, e se manca la parola giusta accanto alle sei cifre non si indovina (il primo ripiego prendeva un numero di polizza: dopo tre tentativi falliti il freno chiude gli accessi). Se manca la casella o l'email non arriva, si torna a chiedere il codice a una persona.
-
-Per AXA questo non si può fare: il suo secondo fattore è l'app sul telefono, non un'email. Lì la strada resta il seme TOTP salvato in Fonti.
-
-In più, Groupama ora scrive quando cade la sessione e da quanto era attiva: serve a distinguere una sessione che scade per inattività da una con un tetto di durata fisso, che si curano in modo opposto.
-
-## Come si annulla
-
-`git revert` dei due commit: nessuna migrazione, nessun dato toccato.
-
-## Prove
-
-Ventidue nuove, tutte rosse sul codice in produzione. axa-sessione 9 verdi, otp-dalla-posta 13 verdi, suite scraper 16 verdi.
-TXT
-)"
+          apri "fix/esiti-niente-catture" "Registro esiti: niente catture di rete, e Italiana dice subito cosa manca in voltura" ".github/pr/esiti.md"
+          apri "fix/sessioni-axa-groupama" "AXA: una volta dentro si resta dentro. E Groupama il codice se lo prende da solo" ".github/pr/sessioni.md"
