@@ -489,8 +489,31 @@ del giorno.
 **Dentro non c'è il cliente.** Mai nome, cognome, codice fiscale, data di
 nascita, indirizzo, email, telefono: `server/esiti.js` toglie queste chiavi da
 richiesta e diagnostica **a qualunque profondità**, insieme alle fotografie di
-pagina degli scraper (`dump`, `log`, `raw`). Una prova lo sorveglia
-(`server/verifica/esiti.test.mjs`).
+pagina degli scraper (`dump`, `log`, `raw`) e alle **catture di rete** del
+portale (`api`, `sniff`, `har`, `body`, `headers`, `cookie`, `token`). Una
+prova lo sorveglia (`server/verifica/esiti.test.mjs`).
+
+> **La lezione dell'11/09/2026, la sera del primo preventivo vero.** La prima
+> versione toglieva le chiavi vietate quando erano chiavi di un oggetto. La
+> risposta HDI via browser però porta `api`: 106 chiamate del portale, ognuna
+> con il corpo serializzato **dentro una stringa**. Lì le chiavi non sono
+> chiavi, sono testo — e la pulizia non le vedeva. In quattro di quei corpi
+> c'era il codice fiscale del cliente, più nome, data di nascita e indirizzo,
+> finiti in tabella; la riga pesava 77 KB.
+> Adesso la pulizia guarda anche **dentro il testo**: se una stringa è JSON la
+> apre e la ripulisce, e in ogni caso oscura codici fiscali, email e i valori
+> delle chiavi vietate. Le liste lunghissime si fermano a 60 elementi, le
+> stringhe a 2.000 caratteri, la diagnostica a 32 KB. La stessa riga, oggi,
+> pesa 208 byte e dice le stesse cose utili.
+> *Un campo che non si legge come oggetto non è un campo innocuo.*
+
+**Quando il premio arriva dalla via lenta, il registro dice perché.** HDI ha
+due vie: quella diretta produce i campi che spiegano il prezzo (garanzie
+spente, valore del veicolo, sconto massimo, segnalazioni), il ripiego sul
+browser no. Se si ripiega, in `diagnostica` compaiono `diretta_fallita` con il
+motivo e `campi_prezzo_assenti`: senza, un premio più caro del preventivo
+fatto a mano non ha nessuna spiegazione in tabella, e il motivo va cercato nel
+giornale della macchina.
 
 **Non fa mai fallire una quotazione.** Il registro scrive con un tempo massimo
 di sei secondi, cattura ogni suo errore e, se non riesce, scrive nel giornale

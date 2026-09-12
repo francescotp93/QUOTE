@@ -270,7 +270,19 @@ motoRouter.post('/preventivoHDI/start', (req, res) => {
         premio_con_sconto_max_dichiarato: d.premio_con_sconto_max_dichiarato_num != null ? d.premio_con_sconto_max_dichiarato_num : null,
         sconto_max_parziale: !!d.sconto_max_parziale,
       }];
-      const esito_id = await esito(req, Object.assign(base, { compagnia: risultati[0].compagnia, prodotto: d.prodotto || null, risposta: d, premio: d.premio_annuale_num, fonte: d.via || (dFallback ? 'browser' : (HDI_DIRECT ? 'diretta' : 'browser')), durata_ms: Date.now() - t0 }));
+      /* SE IL PREMIO ARRIVA DAL BROWSER, NEL REGISTRO DEVE RESTARE PERCHE'.
+         La via diretta produce i campi che servono a capire il prezzo (garanzie
+         spente, valore del veicolo, sconto massimo, segnalazioni del portale);
+         il browser no. Quando si ripiega, quei campi mancano e il premio può
+         essere più caro del preventivo fatto a mano — ed e' esattamente quello
+         che e' successo la sera dell'11/09/2026, senza che il registro sapesse
+         dire il motivo della caduta. Ora lo dice: `diretta_fallita` porta il
+         messaggio, e chi rivede la giornata non deve andare a cercarlo nel
+         giornale della macchina. */
+      const viaUsata = d.via || (viaBrowser ? 'browser' : (HDI_DIRECT ? 'diretta' : 'browser'));
+      if (viaBrowser && dErr) risultati[0].diretta_fallita = String(dErr).slice(0, 300);
+      const esito_id = await esito(req, Object.assign(base, { compagnia: risultati[0].compagnia, prodotto: d.prodotto || null, risposta: d, premio: d.premio_annuale_num, fonte: viaUsata, durata_ms: Date.now() - t0,
+        diagnostica_extra: viaBrowser ? { diretta_fallita: dErr || 'motivo non riportato dallo scraper', campi_prezzo_assenti: 'via browser: niente garanzie spente, valore veicolo, sconto massimo' } : null }));
       jobsHDI.set(jobId, { status: 'done', risultati, veicolo: d.veicolo || null, esito_id, t: Date.now() });
     } catch (e) {
       const msg = 'Scraper HDI non raggiungibile o timeout: ' + e.message;
@@ -728,13 +740,31 @@ motoRouter.get('/premio', async (req, res) => {
   const cf = String(req.query.cf || '').toUpperCase().trim();       // CF contraente (Voltura)
   const indirizzo = String(req.query.indirizzo || '').trim();       // indirizzo contraente (Voltura)
   if (!targa) return res.status(400).json({ error: 'Targa obbligatoria.' });
+  const t0 = Date.now();
+  const base = { linea: 'auto', compagnia: 'Italiana Assicurazioni', targa, richiesta: req.query, fonte: 'pagina' };
+  /* VOLTURA SENZA CONTRAENTE: il portale non ce la fa, e ci mette un minuto a
+     dirlo. Nel rinnovo l'anagrafica arriva dall'attestato; nella voltura no, e
+     senza codice fiscale il wizard Plurima si ferma allo step «Anagrafiche»
+     con «Errore creazione preventivo: anagrafica mancante» — cognome, nome e
+     indirizzo di contraente e proprietario tutti vuoti. Visto la sera
+     dell'11/09/2026 sul primo preventivo vero: 60 secondi di attesa per un
+     errore deciso in partenza.
+     Si ferma qui, subito, con un messaggio che dice cosa fare. Vale anche il
+     bersani: è l'altro caso in cui il contraente non arriva dall'attestato. */
+  const serveContraente = /voltura|bersani|nuova immatricolazione/i.test(situazione) || !!bersani;
+  if (serveContraente && !cf) {
+    const msg = 'Per la ' + (bersani ? 'Legge Bersani' : situazione) +
+      ', Italiana chiede i dati del contraente: apri lo step Contraente, compila codice fiscale e indirizzo, poi ricalcola. Senza, il portale si ferma allo step Anagrafiche e il preventivo non esce.';
+    return res.status(400).json({
+      error: msg, avviso: msg, errore_portale: true,
+      esito_id: await esito(req, Object.assign({}, base, { esito: 'non_quotabile', errore: msg, durata_ms: Date.now() - t0 })),
+    });
+  }
   const q = new URLSearchParams({ targa, situazione });
   if (bersani) q.set('bersani', bersani);
   if (garanzie) q.set('garanzie', garanzie);
   if (cf) q.set('cf', cf);
   if (indirizzo) q.set('indirizzo', indirizzo);
-  const t0 = Date.now();
-  const base = { linea: 'auto', compagnia: 'Italiana Assicurazioni', targa, richiesta: req.query, fonte: 'pagina' };
   try {
     const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 175000);
     const r = await fetch(ITALIANA + '/premio?' + q.toString(), { signal: ctrl.signal }); clearTimeout(to);

@@ -27,24 +27,72 @@ import { Router } from 'express';
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://ekjxrnsfqxnfxzrthdcf.supabase.co').replace(/\/$/, '');
 const TABELLA = 'quote_quotazioni_esiti';
 const TEMPO_MAX_MS = 6000;          // oltre, si rinuncia a scrivere: la quotazione non aspetta il registro
-const LIMITE_DIAGNOSTICA = 120 * 1024; // byte serializzati: sopra, si tiene solo l'elenco delle chiavi
+/* Quanto può pesare la diagnostica di una riga. Era 120 KB, ed era troppo: la
+   prima quotazione HDI vera ne ha scritti 77 KB, quasi tutti cattura di rete
+   del portale. Un registro da rileggere la sera non è un archivio di traffico.
+   (revisione serale 11/09/2026) */
+const LIMITE_DIAGNOSTICA = 32 * 1024;
+const LIMITE_TESTO = 2000;          // una singola stringa: oltre, si tronca
+const MAX_ELEMENTI = 60;            // una singola lista: oltre, si tiene il conto
 
 export const ESITI = ['ok', 'errore', 'timeout', 'non_quotabile'];
 
-/* Chiavi che NON entrano nel registro, a nessuna profondità. Sono i dati
-   della persona (contraente, proprietario) e le fotografie di pagina degli
-   scraper (dump, log, testo grezzo), che possono contenerli. `targa` e
-   `bersani` NON sono qui: la targa ha la sua colonna, e la targa Bersani
-   serve a riprodurre il preventivo. */
-const CHIAVI_VIETATE = /^(nome|cognome|nominativo|nome_completo|ragione_sociale|partita_iva|piva|cf|codice_fiscale|codicefiscale|nascita|data_nascita|datanascita|dob|sesso|email|indirizzo_email|telefono|cellulare|indirizzo|indirizzo_solo|indirizzo_completo|via|civico|civ|numero_civico|comune|citta|residenza|dataset_indirizzo|anagrafica|contraente|proprietario|intestatario|assicurato|dump|_dump|prevdump|log|raw|_text|html|screenshot|shot)$/i;
+/* Chiavi che NON entrano nel registro, a nessuna profondità. Tre famiglie:
+   · i dati della persona (contraente, proprietario);
+   · le fotografie di pagina degli scraper (dump, log, testo grezzo);
+   · le CATTURE DI RETE del portale (api, sniff, har…) e i pezzi di una
+     chiamata HTTP (body, headers, cookie, token).
+   La terza famiglia è entrata l'11/09/2026, la sera del primo preventivo
+   vero: la risposta HDI via browser porta con sé `api`, 106 chiamate del
+   portale con i corpi serializzati, e in quattro di quei corpi c'era il
+   codice fiscale del cliente, più nome, data di nascita e indirizzo. Nel
+   registro non erano mai dovuti entrare.
+   `targa` e `bersani` NON sono qui: la targa ha la sua colonna, e la targa
+   Bersani serve a riprodurre il preventivo. */
+const CHIAVI_VIETATE = /^(nome|cognome|nominativo|nome_completo|ragione_sociale|partita_iva|piva|cf|codice_fiscale|codicefiscale|nascita|data_nascita|datanascita|dob|sesso|email|indirizzo_email|telefono|cellulare|indirizzo|indirizzo_solo|indirizzo_completo|via|civico|civ|numero_civico|comune|citta|residenza|dataset_indirizzo|anagrafica|contraente|proprietario|intestatario|assicurato|dump|_dump|prevdump|log|raw|_text|html|screenshot|shot|api|apis|catture|cattura|sniff|har|network|traffico|richieste|body|payload|headers|cookie|cookies|token|authorization|password|pwd|totp|otp|segreto)$/i;
+
+/* La rete di sicurezza, per quello che le chiavi non prendono. Un corpo di
+   chiamata arriva spesso come STRINGA con dentro il JSON del portale: lì le
+   chiavi non sono chiavi, sono testo, e la pulizia per nome non le vede. Qui
+   si guarda il testo. */
+const CF_NEL_TESTO = /\b[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]\b/g;
+const EMAIL_NEL_TESTO = /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g;
+/* «"cognome":"ROSSI"» dentro una stringa: la chiave è vietata, quindi il
+   valore si oscura lasciando la struttura leggibile a chi cerca un guasto. */
+const COPPIA_VIETATA = /("(?:nome|cognome|nominativo|ragione_?sociale|codice_?fiscale|cf|data_?(?:di_?)?nascita|dataNascita|email|telefono|cellulare|indirizzo|toponimo|civico|comune|citta)"\s*:\s*)"[^"]*"/gi;
+
+export function pulisciTesto(s) {
+  let t = String(s);
+  /* Se la stringa è JSON, la si apre e la si ripulisce come un oggetto: così
+     restano struttura e campi tecnici, e sparisce la persona. Se non si apre,
+     si passa comunque dalle maschere qui sotto. */
+  if (/^\s*[[{]/.test(t) && t.length <= LIMITE_DIAGNOSTICA) {
+    try {
+      const dentro = pulisci(JSON.parse(t), 1);
+      t = JSON.stringify(dentro);
+    } catch (_) { /* non era JSON: restano le maschere */ }
+  }
+  t = t.replace(COPPIA_VIETATA, '$1"[rimosso]"')
+       .replace(CF_NEL_TESTO, '[cf]')
+       .replace(EMAIL_NEL_TESTO, '[email]');
+  return t.length > LIMITE_TESTO ? t.slice(0, LIMITE_TESTO) + '…[troncato]' : t;
+}
 
 function eOggetto(v) { return v !== null && typeof v === 'object'; }
 
-/* Copia un valore togliendo le chiavi vietate, a qualunque profondità. Non
-   modifica l'originale: quello continua a servire alla risposta. */
+/* Copia un valore togliendo le chiavi vietate, a qualunque profondità, e
+   ripulendo anche il TESTO. Non modifica l'originale: quello continua a
+   servire alla risposta verso il browser. */
 export function pulisci(v, profondita = 0) {
   if (profondita > 12) return undefined;
-  if (Array.isArray(v)) return v.map(x => pulisci(x, profondita + 1)).filter(x => x !== undefined);
+  if (typeof v === 'string') return pulisciTesto(v);
+  if (Array.isArray(v)) {
+    const out = v.slice(0, MAX_ELEMENTI).map(x => pulisci(x, profondita + 1)).filter(x => x !== undefined);
+    /* Una lista lunghissima è quasi sempre una cattura: si tiene il conto, non
+       il contenuto. */
+    if (v.length > MAX_ELEMENTI) out.push({ _troncato: v.length - MAX_ELEMENTI + ' elementi in più non registrati' });
+    return out;
+  }
   if (!eOggetto(v)) return v;
   const out = {};
   for (const k of Object.keys(v)) {
@@ -69,10 +117,14 @@ export function richiestaPulita(params) {
    meno i dati personali e le fotografie. Se è troppo grande, si tiene solo
    l'elenco delle chiavi: un registro da leggere la sera non è un archivio di
    pagine HTML. */
-export function diagnosticaPulita(d) {
-  if (!eOggetto(d)) return null;
-  const p = pulisci(d);
+export function diagnosticaPulita(d, extra) {
+  if (!eOggetto(d) && !eOggetto(extra)) return null;
+  const p = eOggetto(d) ? pulisci(d) : {};
   for (const k of ['premio_annuale_num', 'premio_totale_num', 'ok', 'esito_id']) delete p[k];
+  /* Quello che sa la ROTTA e non sa lo scraper: per esempio, che il premio è
+     arrivato dal browser perché la via diretta era caduta, e con quale motivo.
+     Passa dalla stessa pulizia del resto. */
+  if (eOggetto(extra)) Object.assign(p, pulisci(extra));
   const testo = JSON.stringify(p);
   if (testo && testo.length > LIMITE_DIAGNOSTICA) {
     return { troncata: true, byte: testo.length, chiavi: Object.keys(p) };
@@ -181,7 +233,7 @@ export function preparaRiga(e) {
     fonte: fonte ? String(fonte).replace(/^mii\/.*$/, 'mii') : null,
     durata_ms: e.durata_ms != null ? Math.max(0, Math.round(e.durata_ms)) : null,
     errore: e.errore ? String(e.errore).slice(0, 1000) : null,
-    diagnostica: diagnosticaPulita(d),
+    diagnostica: diagnosticaPulita(d, e.diagnostica_extra),
   };
 }
 
