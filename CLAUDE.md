@@ -119,14 +119,24 @@ Costano mezz'ora a chi non le conosce, perché somigliano a rossi veri.
 | Sintomo | Causa | Cosa fare |
 |---|---|---|
 | 5 rosse: «non trovo index.html della scocca IAM» | quelle prove leggono il repo gemello `agente-sospesi`, che non c'è | **non è un guasto tuo**: rosse per la strada, non per il contenuto |
-| `PARITÀ TARIFFE: 0 superate, 5 fallite` — «nessun commit contiene più…» | il clone è *shallow*: quelle prove cercano nella storia | `git fetch --depth=1000` o ignorale in sessione web |
+| «nessun commit contiene più… il riferimento è andato perso» — in `parita-tariffe` (5 rosse) **e** `parita-catastrofali` (2) | il clone è *shallow*: quelle prove cercano il codice vecchio nella storia, che qui non c'è (`test -f .git/shallow` lo conferma) | `git fetch --depth=1000` o ignorale in sessione web |
 | `PathError: Unexpected ( at index 18` sulle prove `vigilanza-*` | hai installato **express 5**; il repo vuole **express 4** | `npm i --no-save express@4` |
 | `Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-…` | versione di Playwright ≠ build di Chromium installata | `npm i --no-save playwright@1.55`; il fallback del repo punta a `/opt/pw-browsers/chromium`, che **è** il binario |
+| `Cannot find package 'mailparser'` / `'imapflow'` — e `otp-dalla-posta` con 11 rosse che dicono «`otpPosta.js` non c'è» | mancano i pacchetti della posta: il messaggio incolpa il FILE, che invece c'è | `npm i --no-save mailparser imapflow` (insieme agli altri, vedi sotto) |
 | «window.jspdf.jsPDF non esiste», o le prove del PDF che si dichiarano saltate | manca `jspdf`: il collaudo lo serve da `node_modules` all'indirizzo del CDN, perché dalla sandbox jsDelivr non si raggiunge | `npm i --no-save jspdf@2.5.2` |
 
 `npm i --no-save X` **pota** i pacchetti installati prima allo stesso modo:
-installali insieme (`npm i --no-save playwright@1.55 express@4 jspdf@2.5.2`) o te ne sparisce
-uno mentre non guardi.
+installali **tutti in una riga sola** o te ne sparisce
+uno mentre non guardi:
+
+```bash
+npm i --no-save playwright@1.55 express@4 jspdf@2.5.2 pdfjs-dist@4.0.379 mailparser imapflow
+```
+
+Con questi, le 30 prove di `server/verifica/` sono tutte verdi. Senza, tre
+file danno rossi che sembrano guasti del codice e sono solo pacchetti
+mancanti — e il più ingannevole è `otp-dalla-posta`, che accusa un file
+esistente di non esistere.
 
 ### Una prova che non può diventare rossa non è una prova
 
