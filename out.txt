@@ -1,9 +1,33 @@
-id: axaver-1789214323  exit: 0  2026-09-12 11:58:55
+id: postmerge-1789219996  exit: 0  2026-09-12 13:33:52
 ----
-ora: 2026-09-12 11:58:55 UTC
-=== AXA /verifica (non fa login, non consuma tentativi)
-{"error":"endpoint sconosciuto"}
-=== stato subito dopo
-loggato: False | url: https://mobility.axa-italia.it/portal/?code=KAFGoBy8YH1xN9wqTMngLu-d5XV6sCFNeCY7x3TuJr8&state=5d46b7
-=== giornale
--- No entries --
+== HEAD backend
+b19e4e5 Merge pull request #134 from francescotp93/fix/sessioni-axa-groupama
+== autopull ultimo giro
+Sep 12 13:32:11 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 12 13:32:18 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 12 13:32:18 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 12 13:32:18 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 5.948s CPU time over 6.762s wall clock time, 95.9M memory peak.
+Sep 12 13:33:16 vps-d6443a46 systemd[1]: Starting withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati)...
+Sep 12 13:33:25 vps-d6443a46 autopull.sh[2150304]: [autopull] 2026-09-12 13:33:25 aggiorno bd184f9 -> b19e4e5
+Sep 12 13:33:26 vps-d6443a46 autopull.sh[2150304]: [autopull] withus-backend riavviato ✅
+Sep 12 13:33:42 vps-d6443a46 autopull.sh[2150304]: [autopull] axa-scraper riavviato (codice scraper cambiato)
+Sep 12 13:33:42 vps-d6443a46 autopull.sh[2150304]: [autopull] groupama-scraper riavviato (codice scraper cambiato)
+Sep 12 13:33:43 vps-d6443a46 autopull.sh[2150304]: [autopull] axa-scraper.service riavviato
+Sep 12 13:33:43 vps-d6443a46 autopull.sh[2150304]: [autopull] groupama-scraper.service riavviato
+Sep 12 13:33:43 vps-d6443a46 autopull.sh[2150304]: [autopull] fatto.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: withus-autopull.service: Deactivated successfully.
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: Finished withus-autopull.service - WithUs auto-deploy (git pull + restart dei servizi cambiati).
+Sep 12 13:33:43 vps-d6443a46 systemd[1]: withus-autopull.service: Consumed 10.006s CPU time over 27.167s wall clock time, 71.3M memory peak.
+== servizi
+withus-backend       active  attivo da: Sat 2026-09-12 13:33:26 UTC
+axa-scraper          active  attivo da: Sat 2026-09-12 13:33:43 UTC
+groupama-scraper     active  attivo da: Sat 2026-09-12 13:33:43 UTC
+hdi-scraper          active  attivo da: Fri 2026-09-11 07:42:03 UTC
+italiana-scraper     active  attivo da: Wed 2026-09-09 06:35:07 UTC
+allianz-scraper      active  attivo da: Fri 2026-09-11 07:47:56 UTC
+moto-scraper         active  attivo da: Wed 2026-09-09 06:36:36 UTC
+== health
+
+== file nuovi presenti?
+-rw-r--r-- 1 root root 17661 Sep 12 13:33 /opt/withus-backend/server/esiti.js
+-rw-r--r-- 1 root root  9184 Sep 12 13:33 /opt/withus-backend/server/otpPosta.js
