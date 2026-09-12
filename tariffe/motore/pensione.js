@@ -62,24 +62,23 @@
    Come gli altri motori di questa cartella, il file lo caricano DUE mondi: la
    pagina nel browser (<script src>) e Node (require) per le prove.
 
-   ── ATTENZIONE AL NOME: ESISTE UN ALTRO `pensione.js` ─────────────────────
-   `server/pensione.js` e' un terzo motore previdenziale, server-side, in ESM
-   puro, con 63 prove sue in `server/pensione.test.mjs`. Al 12/09/2026 NON LO
-   CHIAMA NESSUNO: l'unico posto del repository che lo nomina e' un commento
-   dentro index.html. E' stato trovato mentre si scriveva questo file, ed e'
-   stato lasciato dov'era — non era fra le cose da sostituire, e cancellare
-   32 KB di codice corretto senza chiederlo sarebbe una decisione di
-   qualcun altro.
+   ── QUESTO E' L'UNICO MOTORE PENSIONE CHE RESTA ───────────────────────────
+   Il 12/09/2026 ce n'erano TRE in questo repository, e due non li chiamava
+   nessuno:
+     · `tariffe/motore/previdenza.js` — il flusso a cinque passi, quello che
+       girava davvero in produzione. Sostituito da questo file;
+     · `tariffe/motore/previdenza-flash.js` — 381 righe e 33 prove verdi,
+       spedito su main con la PR #127 e mai collegato a niente;
+     · `server/pensione.js` — 32 KB e 63 prove verdi, server-side in ESM puro,
+       nominato solo da un commento.
+   I tre se ne sono andati tutti, con le loro prove. Una suite verde sopra
+   codice che non chiama nessuno non protegge niente: tiene occupato chi la
+   legge e fa credere che quel pezzo sia sorvegliato.
 
-   NON SI COLLEGANO. Quello e' ESM con import/export e gira solo in Node;
-   questo deve girare anche nel browser con un <script src>, e in questa
-   cartella non c'e' compilazione. Farli parlare vorrebbe dire introdurre un
-   passo di build, che questo repository ha scelto di non avere.
-
-   Se un giorno serve un'API previdenziale lato server, quello e' il posto
-   giusto da cui ripartire. Se non serve, va cancellato insieme alle sue
-   prove: una suite verde sopra codice che non chiama nessuno tiene occupato
-   chi la legge e non protegge niente.
+   Quindi: se domani serve un motore previdenziale, si parte da qui. Se ne
+   serve uno lato server per un'API, lo si costruisce SOPRA questo file
+   (gira anche in Node con require), non accanto. Un quarto motore parallelo
+   e' il modo in cui si torna al punto di partenza.
    ═══════════════════════════════════════════════════════════════════════════ */
 (function () {
 'use strict';

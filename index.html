@@ -12921,10 +12921,12 @@ function aggiornaBadgeEmiss(){
   if (b){ b.textContent = n; b.style.display = n > 0 ? 'inline-flex' : 'none'; }
 }
 /* ══════════ PARAMETRI PREVIDENZIALI ═════════════════════════════════════════
-   I numeri di legge del calcolo pensione. Il motore (server/pensione.js) non ne
-   conosce nemmeno uno: se ne manca uno si ferma e dice quale. Stanno qui, e qui
-   si cambiano — così quando a novembre esce il decreto nuovo sui coefficienti
-   si tocca una riga, non il codice, e non serve un rilascio.
+   I numeri di legge del calcolo pensione. Il motore (tariffe/motore/pensione.js)
+   ne tiene una copia di riserva per quando il server non risponde, ma la copia
+   buona è questa: il modulo legge da qui a ogni apertura, e quando usa la
+   riserva lo scrive in cima alla schermata e sul foglio del cliente. Stanno
+   qui, e qui si cambiano — così quando esce il decreto nuovo si tocca una
+   riga, non il codice, e non serve un rilascio.
 
    OGNI VALORE PORTA LA SUA DATA, e sono due cose diverse:
      · SCADE — dopo quella data il valore non vale più (i coefficienti);
