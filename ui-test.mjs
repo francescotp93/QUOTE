@@ -3031,6 +3031,35 @@ const avvio = async () => {
       return 'eta\' ' + r.eta + ', «Idraulico» → autonomo, dichiarato come dedotto';
     });
 
+    await prova('pensione: la professione si deduce nell\'ordine giusto — «agente di polizia» non e\' un autonomo', async () => {
+      /* IL CASO CHE DEVE FALLIRE. Nel primo giro «Agente di polizia» finiva
+         fra gli autonomi, perche' nell'elenco «agente» veniva prima di
+         «polizia». Un agente di polizia calcolato come autonomo perde nove
+         punti di aliquota di computo — 33% contro 24% — e il numero che esce
+         resta perfettamente credibile. Se qualcuno riordina quell'elenco,
+         questa prova lo ferma. */
+      const r = await page.evaluate(() => {
+        const casi = [
+          ['Agente di polizia', 'dipendente'], ['Agente immobiliare', 'autonomo'],
+          ['Impiegato amministrativo', 'dipendente'], ['Commerciante', 'autonomo'],
+          ['Avvocato', 'professionista'], ['Medico di base', 'professionista'],
+          ['Infermiere', 'dipendente'], ['Vigile del fuoco', 'dipendente'],
+          ['Titolare di bar', 'autonomo'], ['Idraulico', 'autonomo'],
+          ['', null], ['Astronauta', null],
+        ];
+        return casi.map(([p, atteso]) => ({ p, atteso, avuto: pensLavoroDaProfessione(p) }));
+      });
+      for (const c of r) {
+        deve(c.avuto === c.atteso,
+          '«' + (c.p || '(vuoto)') + '» dedotto come ' + c.avuto + ' invece di ' + c.atteso);
+      }
+      /* E quando non si riconosce NON si indovina: null, e la scheda chiede
+         al consulente di scegliere. */
+      deve(r.filter(c => c.atteso === null).every(c => c.avuto === null),
+        'una professione non riconosciuta viene comunque attribuita a un tipo');
+      return r.length + ' professioni, nessuna attribuita male';
+    });
+
     await prova('pensione: il messaggio WhatsApp e\' precompilato e non promette niente', async () => {
       const r = await page.evaluate(() => {
         apriPensione();

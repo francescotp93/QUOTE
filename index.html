@@ -4272,7 +4272,11 @@ function pensWhatsApp() {
      senza il piu' e senza spazi. Senza numero si apre lo stesso, e il
      consulente sceglie il destinatario dalla rubrica. */
   var n = String(d.cliente.telefono || '').replace(/\D/g, '');
-  if (n && n.length === 10 && n[0] === '3') n = '39' + n;
+  /* Nove-undici cifre senza prefisso e' un numero italiano scritto come lo
+     scrive un italiano: si mette il 39. Non solo i cellulari — un fisso
+     senza prefisso apre WhatsApp su un numero che non esiste, e il consulente
+     se ne accorge solo dopo aver scritto il messaggio. */
+  if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
   var url = 'https://wa.me/' + n + '?text=' + encodeURIComponent(testo);
   window.open(url, '_blank');
 }
@@ -4319,10 +4323,17 @@ async function pensArchivia(d) {
    tirare dritto vorrebbe dire calcolare un autonomo come dipendente senza che
    nessuno se ne accorga — e sono nove punti di aliquota. Si propone, si dice
    che e' stata dedotta, e resta modificabile. */
+/* L'ORDINE CONTA, e il primo giro lo aveva sbagliato: «Agente di polizia»
+   finiva fra gli autonomi, perche' «agente» compariva prima di «polizia».
+   Un agente di polizia calcolato come autonomo perde nove punti di aliquota
+   di computo, e il numero che esce resta credibile.
+   Si va dal piu' specifico al piu' generico: i titoli professionali, poi i
+   mestieri da dipendente, e in fondo le parole larghe («agente», «titolare»,
+   «autonomo») che da sole non bastano a decidere. */
 var PENS_PROFESSIONI = [
   { re: /avvoc|medic|chirurg|ingegn|architett|commercialist|notai|geometr|dentist|odontoiatr|veterinar|psicolog|farmacist|attuar|biolog|chimic|agronom|giornalist/i, lavoro: 'professionista' },
+  { re: /impiegat|operai|dirigent|quadro|insegnant|docent|infermier|dipendent|funzionar|magazzinier|commess|autist|metalmeccanic|bancari|militare|carabinier|polizi|vigile|oss\b|educator|bidell/i, lavoro: 'dipendente' },
   { re: /artigian|commerciant|negoz|imprendit|titolare|autonom|partita iva|p\.?iva|agente|rappresentant|idraulic|elettricist|muratore|parrucchier|estetist|ristorator|barista|tassist|autotrasport|coltivator|agricol/i, lavoro: 'autonomo' },
-  { re: /impiegat|operai|dirigent|quadro|insegnant|docent|infermier|dipendent|funzionar|magazzinier|commess|autist|metalmeccanic|bancari|militare|carabinier|polizi|vigile/i, lavoro: 'dipendente' },
 ];
 function pensLavoroDaProfessione(p) {
   var t = String(p || '');
@@ -4351,7 +4362,7 @@ function pensDaCliente(id) {
   var note = [];
   if (eta) note.push('età <b>' + eta + ' anni</b> dalla data di nascita');
   else note.push('<b>età non ricavabile</b>: in anagrafica manca la data di nascita, scrivila a mano');
-  if (dedotto) note.push('tipo di lavoro <b>' + esc(Pensione.LAVORI[dedotto].etichetta.toLowerCase()) + '</b> dedotto da «' + esc(a.professione) + '» — <b>controllalo</b>');
+  if (dedotto && window.Pensione) note.push('tipo di lavoro <b>' + esc(Pensione.LAVORI[dedotto].etichetta.toLowerCase()) + '</b> dedotto da «' + esc(a.professione) + '» — <b>controllalo</b>');
   else if (a.professione) note.push('la professione in anagrafica («' + esc(a.professione) + '») non è riconducibile a un tipo: scegli tu');
   else note.push('in anagrafica non c\'è la professione: scegli il tipo di lavoro');
 
