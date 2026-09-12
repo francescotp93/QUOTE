@@ -1,16 +1,16 @@
-id: risalva3-1789221560  exit: 0  2026-09-12 14:02:36
+id: pomeriggio-1789229345  exit: 0  2026-09-12 16:09:35
 ----
-sorveglio auth.json di AXA per 3 minuti, una lettura ogni 15 secondi
-13:59:35  axa=13:59:03  groupama=13:53:52
-13:59:50  axa=13:59:03  groupama=13:53:52
-14:00:05  axa=13:59:03  groupama=13:53:52
-14:00:20  axa=13:59:03  groupama=13:53:52
-14:00:35  axa=13:59:03  groupama=13:53:52
-14:00:50  axa=13:59:03  groupama=13:53:52
-14:01:05  axa=13:59:03  groupama=13:53:52
-14:01:20  axa=13:59:03  groupama=13:53:52
-14:01:35  axa=13:59:03  groupama=13:53:52
-14:01:50  axa=13:59:03  groupama=13:53:52
-14:02:05  axa=13:59:03  groupama=13:53:52
-14:02:20  axa=13:59:03  groupama=13:53:52
-== ultimi log axa
+== ora
+2026-09-12 16:09:35
+== auth.json
+axa       2026-09-12 15:59:03  17881 byte
+groupama  2026-09-12 15:53:53  5935 byte
+== stato login
+axa        {"running":false,"step":"loggato","since":1789220293734,"msg":"Login completato ✅"}
+groupama   {"running":false,"step":"loggato","since":1789220038252,"msg":"Sessione attiva"}
+== axa: cadute e rientri dal login delle 13:38
+== groupama: cadute e rientri
+Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: 13:33:42 [groupama] SIGTERM: salvo la sessione prima di chiudere
+Sep 12 13:33:42 vps-d6443a46 start-service.sh[1978140]: 13:33:42 [groupama] sessione NON salvata: browserContext.storageState: Target page, context or browser has been closed
+Sep 12 13:33:47 vps-d6443a46 start-service.sh[2150639]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
+Sep 12 13:33:58 vps-d6443a46 start-service.sh[2150756]: 13:33:58 [groupama] sessione persistente attiva ✅
