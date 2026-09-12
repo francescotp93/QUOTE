@@ -1,17 +1,5 @@
-echo "=== quante caselle di posta sono configurate (solo il conteggio e il dominio, nessun indirizzo intero)"
-python3 - <<'PY'
-import json,os,re
-p='/opt/withus-backend/server/fonti.store.json'
-try:
-    d=json.load(open(p))
-except Exception as e:
-    print('store non leggibile:', e); raise SystemExit
-mail=d.get('__caselle_mail') or d.get('caselle_mail') or {}
-print('caselle configurate nel pannello:', len(mail))
-for k in mail: print('  casella su dominio:', k.split('@')[-1])
-env=open('/opt/withus-backend/server/.env').read() if os.path.exists('/opt/withus-backend/server/.env') else ''
-print('MAIL_USER nell ambiente:', 'si' if re.search(r'^MAIL_USER=', env, re.M) else 'no')
-PY
-echo
-echo "=== a quale indirizzo Groupama manda il codice (lo dice il portale, mascherato, nel giornale?)"
-journalctl -u groupama-scraper --since '-7 days' --no-pager 2>/dev/null | grep -iE "inviato a|email|\*\*\*|destinatar" | tail -8 | cut -c1-180
+echo "ora: $(date '+%F %T %Z')"
+for p in "axa 4700" "groupama 4500" "allianz 4200" "italiana 4300" "hdi 4400"; do set -- $p
+  printf '%-10s %s\n' "$1" "$(curl -s -m 8 http://127.0.0.1:$2/status | python3 -c 'import sys,json;d=json.load(sys.stdin);print("dentro" if d.get("loggato") else ("FUORI" if d.get("loggato") is False else "non so"), "|", (d.get("login_msg") or d.get("sessione") or "")[:70])' 2>/dev/null || echo '(non risponde)')"
+done
+echo "preventivi passati dal backend oggi: $(journalctl -u withus-backend --since today --no-pager 2>/dev/null | grep -cE ' (GET|POST) +/(moto/(preventivo|premio)|api/v1/quote)')"
