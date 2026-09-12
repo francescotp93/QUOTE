@@ -678,6 +678,126 @@ prova('si dice SEMPRE di quale prodotto HDI sono i numeri', () => {
   return P.FONDO.prodotto.etichetta;
 });
 
+/* ── LE MENSILITÀ (12/09/2026) ───────────────────────────────────────────
+   Il reddito ANNUO si ricava da quello mensile, e sul reddito annuo si calcola
+   l'IRPEF, che è progressiva. Una mensilità di scarto sposta l'imponibile
+   dell'8%: abbastanza da attraversare una soglia di detrazione senza che il
+   numero smetta di sembrare credibile. */
+
+prova('ogni tipo di lavoro ha le SUE mensilità: la tredicesima è del subordinato', () => {
+  /* La tredicesima è una gratifica del rapporto di lavoro dipendente. Un
+     artigiano non ce l'ha mai vista, e il suo «reddito mensile» è l'annuo
+     diviso dodici. Applicare 13 a tutti sarebbe l'errore di prima al
+     contrario. */
+  deve(P.calcola({ ...BASE, lavoro: 'dipendente' }).mensilita === 13, 'il dipendente non è a 13 mensilità');
+  deve(P.calcola({ ...BASE, lavoro: 'autonomo' }).mensilita === 12, 'l\'autonomo ha una tredicesima che non esiste');
+  deve(P.calcola({ ...BASE, lavoro: 'professionista' }).mensilita === 12, 'il professionista ha una tredicesima che non esiste');
+  return 'dipendente 13 · autonomo 12 · professionista 12';
+});
+
+prova('il reddito annuo è il mensile per le mensilità, e l\'imponibile lo segue', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'dipendente', redditoMensile: 1800, baseReddito: 'netto' });
+  deve(vicino(e.nettoAnnuo, 1800 * 13, 0.01),
+    'il netto annuo di un dipendente a 1.800 €/mese non è 13 mensilità: ' + eur(e.nettoAnnuo));
+  const a = P.calcola({ ...BASE, lavoro: 'autonomo', redditoMensile: 1800, baseReddito: 'netto' });
+  deve(vicino(a.nettoAnnuo, 1800 * 12, 0.01),
+    'il netto annuo di un autonomo a 1.800 €/mese non è 12 mensilità: ' + eur(a.nettoAnnuo));
+  /* E il mensile mostrato dev'essere quello dichiarato: si divide per le
+     stesse mensilità con cui si è moltiplicato. */
+  deve(vicino(e.redditoNettoMensile, 1800, 0.01), 'il netto mensile non torna quello dichiarato');
+  return 'dipendente ' + eur(e.nettoAnnuo) + ' · autonomo ' + eur(a.nettoAnnuo);
+});
+
+prova('LA MENSILITÀ PUÒ ROVESCIARE IL CONSIGLIO, non solo spostarlo di qualche euro', () => {
+  /* IL CASO CHE GIUSTIFICA TUTTA QUESTA PARTE. A ~850 € netti al mese,
+     calcolando su 12 mensilità il versamento risulta IN PERDITA di 1.200 €
+     l'anno (si perde il trattamento integrativo); calcolando su 13, che è la
+     realtà di un dipendente, risparmia 251 €.
+
+     Non è uno scarto: è il contrario. Con il conto sbagliato il consulente
+     direbbe «a lei versare conviene NON farlo», e sarebbe una raccomandazione
+     falsa, data con la faccia seria davanti a un cliente. */
+  const caso = { eta: 38, lavoro: 'dipendente', redditoMensile: 850, baseReddito: 'netto', versamentoMensile: 100, etaInizioLavoro: 25 };
+  const su12 = P.calcola({ ...caso, mensilita: 12 });
+  const su13 = P.calcola({ ...caso, mensilita: 13 });
+  deve(su12.fiscale.inPerdita === true, 'a 850 €/mese su 12 mensilità il versamento non risulta più in perdita: il caso è cambiato');
+  deve(su13.fiscale.inPerdita === false, 'a 850 €/mese su 13 mensilità il versamento risulta ancora in perdita');
+  deve(su13.fiscale.risparmioAnnuo > 0 && su12.fiscale.risparmioAnnuo < 0,
+    'il segno del risparmio non si rovescia più fra 12 e 13 mensilità');
+  /* E il valore di riserva del dipendente dev'essere quello giusto, senza
+     doverlo passare a mano. */
+  const senzaDirlo = P.calcola(caso);
+  deve(senzaDirlo.fiscale.inPerdita === false,
+    'senza indicare le mensilità un dipendente viene calcolato su 12: è il guasto che questa prova sorveglia');
+  return 'su 12: ' + eur(su12.fiscale.risparmioAnnuo) + ' · su 13: ' + eur(su13.fiscale.risparmioAnnuo);
+});
+
+prova('la pensione INPS si divide per 13 SEMPRE, anche per chi una tredicesima non l\'ha mai avuta', () => {
+  /* La tredicesima sulle pensioni spetta a chiunque, qualunque sia la
+     gestione di provenienza: anche all'artigiano. */
+  deve(P.MENSILITA_PENSIONE === 13, 'la pensione non è più su 13 rate');
+  for (const lavoro of ['dipendente', 'autonomo', 'professionista']) {
+    const e = P.calcola({ ...BASE, lavoro });
+    const attesa = e.pensioneNettaMensile * 13;
+    const annua = e.tassoSostituzioneNetto * e.nettoAnnuo;
+    deve(vicino(attesa, annua, 1),
+      lavoro + ': la pensione mensile non è l\'annua divisa per 13 (' + eur(attesa) + ' contro ' + eur(annua) + ')');
+  }
+  return 'tutte e tre le gestioni: pensione annua / 13';
+});
+
+prova('la rendita del fondo resta su 12: è un contratto di rendita, non una busta paga', () => {
+  deve(P.MENSILITA_RENDITA === 12, 'la rendita del fondo non è più su 12 rate');
+  const r = P.renditaFondo(100, 30, 30);
+  const aliq = P.aliquotaPrestazione(30);
+  const lordaAnnua = r.montante * P.FONDO.coeffRendita.v;
+  deve(vicino(r.renditaMensileNetta, (lordaAnnua * (1 - aliq)) / 12, 0.01),
+    'la rendita mensile non è l\'annua divisa per 12');
+  return 'rendita annua / 12, nessuna tredicesima di polizza';
+});
+
+prova('le mensilità si possono correggere, ma un valore assurdo viene rifiutato', () => {
+  /* I contratti a 14 mensilità esistono e vanno accettati. Un 3 o un 200 no:
+     produrrebbero un reddito annuo assurdo su cui si calcolerebbero imposte
+     assurde, e il numero uscirebbe lo stesso. */
+  deve(P.calcola({ ...BASE, lavoro: 'dipendente', mensilita: 14 }).mensilita === 14, 'il contratto a 14 mensilità non è accettato');
+  for (const assurdo of [0, 3, 11, 17, 200, -5, NaN, 'tanto']) {
+    const e = P.calcola({ ...BASE, lavoro: 'dipendente', mensilita: assurdo });
+    deve(e.mensilita === 13, 'la mensilità assurda «' + assurdo + '» è stata accettata: ' + e.mensilita);
+  }
+  const a = P.calcola({ ...BASE, lavoro: 'autonomo', mensilita: 99 });
+  deve(a.mensilita === 12, 'ripiegando, l\'autonomo non torna alle sue 12');
+  return '14 accettato, otto valori assurdi respinti sul valore del tipo di lavoro';
+});
+
+prova('il divario mette in fila importi con mensilità diverse, e il risultato resta coerente', () => {
+  /* Sì, il reddito arriva 13 volte, la pensione 13 e la rendita 12. È voluto:
+     la domanda è «in un mese normale quanto mi manca», e in un mese normale
+     quelle sono le tre cifre che entrano. */
+  const e = P.calcola({ ...BASE, lavoro: 'dipendente' });
+  const atteso = Math.max(0, e.redditoNettoMensile - e.pensioneNettaMensile - e.fondo.renditaMensileNetta);
+  deve(vicino(e.gapMensile, atteso, 0.01), 'il divario non è la differenza fra i tre importi mensili');
+  deve(e.mensilitaPensione === 13 && e.mensilitaRendita === 12 && e.mensilita === 13,
+    'il risultato non dichiara le tre mensilità usate: chi legge non può rifare il conto');
+  return 'reddito 13 · pensione 13 · rendita 12, tutte dichiarate nel risultato';
+});
+
+prova('il foglio e l\'archivio dicono su quante mensilità è stato fatto il conto', () => {
+  /* Un cliente che rifà il conto con la calcolatrice e non ritrova i numeri
+     smette di fidarsi di tutta la pagina, non solo di quella riga. E fra un
+     anno, davanti al foglio, senza le mensilità l'analisi non si rifà uguale. */
+  const e = P.calcola({ ...BASE, lavoro: 'dipendente' });
+  const f = P.foglioHtml({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(f.ok, (f.problemi || []).join('; '));
+  deve(/13 mensilità/.test(f.html), 'il foglio non dice su quante mensilità è calcolato il reddito');
+  deve(/13 rate/.test(f.html) && /rendita del fondo in 12/.test(f.html),
+    'il foglio non distingue le rate della pensione da quelle della rendita');
+  const a = P.schedaArchivio({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(a.riga.dati.mensilita === 13 && a.riga.dati.mensilitaPensione === 13 && a.riga.dati.mensilitaRendita === 12,
+    'la riga d\'archivio non porta le mensilità: fra un anno il conto non si rifà uguale');
+  return 'foglio e archivio dichiarano 13 / 13 / 12';
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

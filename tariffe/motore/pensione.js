@@ -155,6 +155,38 @@ var FONDO = {
     fonte: 'Segnaposto — da leggere sulle Condizioni generali HDI (base demografica della convenzione)', daConfermare: true },
 };
 
+/* ══ LE MENSILITÀ ════════════════════════════════════════════════════════
+   Quante volte l'anno arriva un importo. Sembra un dettaglio di formattazione
+   e non lo è: il reddito ANNUO si ricava da quello mensile moltiplicando per
+   questo numero, e sul reddito annuo si calcola l'IRPEF, che è progressiva.
+   Sbagliarlo di una mensilità sposta l'imponibile dell'8% — abbastanza da far
+   attraversare a una persona una soglia di detrazione senza che nessuno se ne
+   accorga, perché il numero che esce resta credibile.
+
+   TRE NUMERI DIVERSI, e sono diversi per ragioni diverse:
+
+   · IL REDDITO DA LAVORO — 13 per il dipendente, 12 per l'autonomo. La
+     tredicesima è una gratifica del rapporto di lavoro subordinato: un
+     artigiano o un professionista non ce l'ha, e il suo «reddito mensile» è
+     semplicemente l'annuo diviso dodici. Applicare 13 a tutti sarebbe lo
+     stesso errore di prima, al contrario. Il numero è modificabile da fuori:
+     ci sono contratti a 14 mensilità, e chi ha davanti quel cliente lo cambia.
+
+   · LA PENSIONE PUBBLICA — 13, sempre, per tutti. La tredicesima sulle
+     pensioni INPS spetta a chiunque, qualunque sia la gestione di
+     provenienza: anche all'artigiano che una tredicesima non l'ha mai vista.
+
+   · LA RENDITA DEL FONDO — 12. È una rendita contrattuale pagata in rate
+     mensili: nessuna tredicesima, salvo diversa previsione di polizza.
+
+   Sì, il divario mette insieme importi che arrivano un numero diverso di
+   volte l'anno. È voluto e giusto: la domanda del cliente è «in un mese
+   normale, quanto mi manca», e in un mese normale quelle sono le tre cifre
+   che entrano. A dicembre ne entrano di più, e non è un problema da correggere
+   — è una cosa in più, non una in meno. */
+var MENSILITA_PENSIONE = 13;
+var MENSILITA_RENDITA = 12;
+
 /* ══ I TIPI DI LAVORO ════════════════════════════════════════════════════
    Tre voci, e servono a due cose insieme: al calcolo (che gestione
    previdenziale, quale tabella di tassi) e al CRM (che tipo di cliente è).
@@ -165,6 +197,9 @@ var LAVORI = {
     etichetta: 'Lavoratore dipendente',
     gestione: 'dipendenti_privati',
     haTfr: true,
+    /* Tredicesima: la norma per il lavoro subordinato. Chi ha un contratto a
+       14 mensilità cambia il campo nella schermata. */
+    mensilita: 13,
     /* Il 33% di aliquota di computo è il motivo per cui il dipendente ha il
        tasso di sostituzione più alto dei tre. */
     nota: 'Aliquota di computo 33%: è la carriera che accumula di più.',
@@ -178,6 +213,9 @@ var LAVORI = {
        risparmio fiscale vale qualche euro. */
     gestione: 'artigiani',
     haTfr: false,
+    /* Niente tredicesima: il reddito mensile di un autonomo è l'annuo diviso
+       dodici, e basta. */
+    mensilita: 12,
     nota: 'Aliquota di computo 24%: a parità di carriera accumula circa tre quarti di un dipendente.',
     affidabilita: 'buona',
   },
@@ -185,6 +223,7 @@ var LAVORI = {
     etichetta: 'Libero professionista',
     gestione: 'gs_professionisti',
     haTfr: false,
+    mensilita: 12,
     /* IL CASO PIÙ VARIABILE DI TUTTI, e non per poco: chi ha una cassa
        privata (avvocati, medici, ingegneri, commercialisti) segue il
        regolamento della sua cassa, che può essere retributivo, reddituale o
@@ -329,8 +368,8 @@ function renditaFondo(versamentoMensile, anniAllaPensione, anniPartecipazione, p
   return {
     montante: m,
     versatoTotale: pos(versamentoMensile) * 12 * Math.floor(pos(anniAllaPensione)),
-    renditaMensileLorda: lordaAnnua / 12,
-    renditaMensileNetta: (lordaAnnua * (1 - aliq)) / 12,
+    renditaMensileLorda: lordaAnnua / MENSILITA_RENDITA,
+    renditaMensileNetta: (lordaAnnua * (1 - aliq)) / MENSILITA_RENDITA,
     aliquotaPrestazione: aliq,
     rendimentoNetto: rendimentoNetto(par),
   };
@@ -474,18 +513,27 @@ function calcola(dati) {
      costoso di tutto il modulo. */
   var base = (dati.baseReddito === 'lordo') ? 'lordo' : 'netto';
   var mensileDichiarato = pos(dati.redditoMensile);
+
+  /* LE MENSILITÀ DECIDONO L'IMPONIBILE, e quindi l'imposta. Vedi la nota in
+     cima: 13 per il dipendente, 12 per l'autonomo, e comunque modificabile —
+     i contratti a 14 esistono. Un valore fuori scala si ignora invece di
+     produrre un reddito annuo assurdo su cui poi si calcolerebbero imposte
+     assurde. */
+  var mensilita = Math.round(pos(dati.mensilita)) || L.mensilita || 12;
+  if (mensilita < 12 || mensilita > 16) mensilita = L.mensilita || 12;
+
   var lordoAnnuo, nettoAnnuo, fiscoDisponibile = !!(IRPEF && IRPEF.lordoDaNetto);
 
   if (!fiscoDisponibile) {
     /* Senza motore fiscale non si converte: si tiene quello che è stato
        dichiarato su entrambi i lati e si dice che manca il conto. */
-    lordoAnnuo = mensileDichiarato * 12;
-    nettoAnnuo = mensileDichiarato * 12;
+    lordoAnnuo = mensileDichiarato * mensilita;
+    nettoAnnuo = mensileDichiarato * mensilita;
   } else if (base === 'lordo') {
-    lordoAnnuo = mensileDichiarato * 12;
+    lordoAnnuo = mensileDichiarato * mensilita;
     nettoAnnuo = IRPEF.nettoDaLordo(lordoAnnuo, L.gestione);
   } else {
-    nettoAnnuo = mensileDichiarato * 12;
+    nettoAnnuo = mensileDichiarato * mensilita;
     lordoAnnuo = IRPEF.lordoDaNetto(nettoAnnuo, L.gestione);
   }
 
@@ -505,8 +553,11 @@ function calcola(dati) {
   var versamento = pos(dati.versamentoMensile);
   var fondo = renditaFondo(versamento, car.anniAllaPensione, car.anniAllaPensione, FONDO);
 
-  var nettoMensile = nettoAnnuo / 12;
-  var pensioneMensile = pensioneNettaAnnua / 12;
+  /* Ogni importo si divide per le SUE mensilità: il reddito per quelle del
+     contratto, la pensione per 13 (INPS le paga a tutti), la rendita per 12
+     (contratto di rendita, nessuna tredicesima). */
+  var nettoMensile = nettoAnnuo / mensilita;
+  var pensioneMensile = pensioneNettaAnnua / MENSILITA_PENSIONE;
   var totaleMensile = pensioneMensile + fondo.renditaMensileNetta;
   var gap = Math.max(0, nettoMensile - totaleMensile);
   /* Il divario NUDO: quello che manca contando solo la pensione pubblica.
@@ -529,6 +580,9 @@ function calcola(dati) {
     gestione: L.gestione,
     eta: eta,
     baseReddito: base,
+    mensilita: mensilita,
+    mensilitaPensione: MENSILITA_PENSIONE,
+    mensilitaRendita: MENSILITA_RENDITA,
     redditoMensileDichiarato: mensileDichiarato,
     versamentoMensile: versamento,
 
@@ -546,12 +600,12 @@ function calcola(dati) {
     lordoAnnuo: lordoAnnuo,
     nettoAnnuo: nettoAnnuo,
     redditoNettoMensile: nettoMensile,
-    redditoLordoMensile: lordoAnnuo / 12,
+    redditoLordoMensile: lordoAnnuo / mensilita,
 
     // ── la pensione pubblica
     tassoSostituzioneLordo: tLordo,
     tassoSostituzioneNetto: tassoNetto,
-    pensioneLordaMensile: pensioneLordaAnnua / 12,
+    pensioneLordaMensile: pensioneLordaAnnua / MENSILITA_PENSIONE,
     pensioneNettaMensile: pensioneMensile,
 
     // ── il fondo
@@ -942,6 +996,11 @@ fasciaPrudenziale +
       ' anni che mancano, il fondo aggiungerebbe ' + euro(e.fondo.renditaMensileNetta) + ' al mese (montante stimato ' + euro(e.fondo.montante) + ').'
     : '. Oggi non stai versando in nessun fondo: il divario qui sopra è tutto scoperto.') +
   '</p>' +
+/* LE MENSILITÀ SUL FOGLIO. Senza, un cliente che rifà il conto con la
+   calcolatrice non ritrova i numeri e smette di fidarsi di tutta la pagina. */
+'<p class="nota">Reddito calcolato su <b>' + e.mensilita + ' mensilità</b> (' + euro(e.nettoAnnuo) +
+  ' netti l\'anno). La pensione pubblica si riceve in ' + e.mensilitaPensione +
+  ' rate l\'anno, la rendita del fondo in ' + e.mensilitaRendita + '.</p>' +
 '<p class="nota">Tariffa di riferimento: <b>' + esc(FONDO.prodotto.etichetta) + '</b>. Alternativa: ' + esc(FONDO.prodotto.alternativa) + '.</p>' +
 
 '<h2>Con quanto al mese lo copri</h2>' +
@@ -1000,6 +1059,7 @@ function schedaArchivio(d) {
       dati: {
         eta: e.eta, lavoro: e.lavoro, etichettaLavoro: e.etichettaLavoro,
         baseReddito: e.baseReddito, redditoMensileDichiarato: e.redditoMensileDichiarato,
+        mensilita: e.mensilita, mensilitaPensione: e.mensilitaPensione, mensilitaRendita: e.mensilitaRendita,
         versamentoMensile: e.versamentoMensile,
         etaInizioUsata: e.etaInizioUsata, prudenziale: e.prudenziale, datoIncoerente: e.datoIncoerente,
         dataRiferimento: d.dataRiferimento || null,
@@ -1070,6 +1130,8 @@ var API = {
   TASSI_LORDI: TASSI_LORDI,
   TFR: TFR,
   ETA_INIZIO_PRUDENZIALE: ETA_INIZIO_PRUDENZIALE,
+  MENSILITA_PENSIONE: MENSILITA_PENSIONE,
+  MENSILITA_RENDITA: MENSILITA_RENDITA,
   etaDaNascita: etaDaNascita,
   carriera: carriera,
   tassoLordo: tassoLordo,

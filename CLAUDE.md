@@ -218,6 +218,17 @@ Trovate dalle prove, non dal ragionamento. Se un giorno qualcuno le
 - **Il netto non cresce sempre col lordo.** Ci sono tre gradini fra 5.000 e
   60.000 — i salti del trattamento integrativo — quindi esistono netti che
   nessun lordo produce.
+- **«Reddito mensile × 12» è sbagliato, e non di poco.** Il reddito ANNUO si
+  ricava dalle mensilità, e sull'annuo si calcola l'IRPEF, che è progressiva.
+  Tre numeri diversi, per ragioni diverse: **13** il reddito di un dipendente
+  (12 quello di un autonomo, che una tredicesima non l'ha mai vista, e 14 dove
+  il contratto la prevede), **13** la pensione INPS per tutti, **12** la
+  rendita del fondo, che è un contratto di rendita.
+  A ~850 € netti al mese la differenza fra 12 e 13 non sposta il risultato:
+  **lo rovescia.** Su 12 il versamento risulta in perdita di 1.200 € l'anno
+  (si perde il trattamento integrativo), su 13 risparmia 251 €. Col conto
+  sbagliato il consulente direbbe «a lei versare conviene non farlo», e sarebbe
+  una raccomandazione falsa data con la faccia seria.
 
 ---
 

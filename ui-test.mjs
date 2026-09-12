@@ -2783,6 +2783,59 @@ const avvio = async () => {
       return 'pensione ' + Math.round(r.netto.pensione) + ' € (netto) contro ' + Math.round(r.lordo.pensione) + ' € (lordo)';
     });
 
+    await prova('pensione: le mensilita\' si propongono dal tipo di lavoro e restano modificabili', async () => {
+      /* Il reddito annuo si ricava dalle mensilita', e sul reddito annuo si
+         calcola l'IRPEF, che e' progressiva: a certi redditi 12 invece di 13
+         fa uscire un versamento «in perdita» quando in realta' conviene. Il
+         campo non puo' essere un'ipotesi nascosta. */
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = []; pensBase('netto');
+        const sel = document.getElementById('pens-mensilita');
+        const lav = document.getElementById('pens-lavoro');
+        lav.value = 'dipendente'; pensLavoroScelto();
+        const dip = Number(sel.value);
+        lav.value = 'autonomo'; pensLavoroScelto();
+        const aut = Number(sel.value);
+        /* Scelta a mano: da qui in poi il campo non si muove piu' da solo. */
+        sel.value = '14'; pensMensilitaScelta();
+        lav.value = 'dipendente'; pensLavoroScelto();
+        const dopoAMano = Number(sel.value);
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        const usate = PENS.esito.mensilita, annuo = PENS.esito.nettoAnnuo;
+        pensPulisci();
+        return { dip, aut, dopoAMano, usate, annuo, dopoPulisci: Number(sel.value) };
+      });
+      deve(r.dip === 13, 'al dipendente non vengono proposte 13 mensilita\': ' + r.dip);
+      deve(r.aut === 12, 'all\'autonomo viene proposta una tredicesima che non ha: ' + r.aut);
+      deve(r.dopoAMano === 14, 'la scelta a mano viene sovrascritta cambiando il tipo di lavoro: ' + r.dopoAMano);
+      deve(r.usate === 14 && Math.abs(r.annuo - 1800 * 14) < 1,
+        'la scelta non arriva al motore: usate ' + r.usate + ', annuo ' + Math.round(r.annuo));
+      deve(r.dopoPulisci === 13, 'dopo «Pulisci» non si torna alla proposta del tipo di lavoro: ' + r.dopoPulisci);
+      return 'dipendente 13, autonomo 12, 14 a mano rispettato, Pulisci ripristina';
+    });
+
+    await prova('pensione: la schermata dice su quante mensilita\' ha fatto il conto', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = []; pensBase('netto');
+        document.getElementById('pens-lavoro').value = 'dipendente'; pensLavoroScelto();
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        return document.getElementById('pens-esito').textContent;
+      });
+      deve(/13 mensilità/.test(r), 'la schermata non dice su quante mensilita\' e\' calcolato il reddito');
+      deve(/13 rate/.test(r), 'non dice in quante rate arriva la pensione');
+      return 'mensilita\' del reddito e rate della pensione, scritte a schermo';
+    });
+
     await prova('pensione: il TFR si confronta solo a chi ce l\'ha, e il riscatto si dice a tutti', async () => {
       const r = await page.evaluate(() => {
         const giro = (lavoro) => {
@@ -2857,9 +2910,11 @@ const avvio = async () => {
            altrimenti il caso cercato in netto verrebbe calcolato in lordo e
            non sarebbe piu' lo stesso caso. */
         pensBase('netto');
-        /* E anche il tipo di lavoro: la tendina tiene quello dell'ultimo giro,
-           e il caso e' stato cercato su un dipendente. */
+        /* E anche il tipo di lavoro e le mensilita': le tendine tengono quello
+           dell'ultimo giro, e il caso e' stato cercato su un dipendente con il
+           suo valore di riserva. */
         document.getElementById('pens-lavoro').value = 'dipendente';
+        PENS.mensilitaAMano = false; pensMensilitaProposta();
         document.getElementById('pens-inizio-ignoto').checked = false;
         document.getElementById('pens-inizio').disabled = false;
         document.getElementById('pens-eta').value = 40;
