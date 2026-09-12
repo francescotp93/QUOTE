@@ -262,13 +262,89 @@ prova('la stampa non aspetta l\'archivio', () => {
      mezzo — server lento, rete che non va — il foglio non esce. Prima si
      stampa, poi si archivia. */
   const html = fs.readFileSync(path.join(radice, 'index.html'), 'utf8');
-  const f = html.slice(html.indexOf('function pensFoglio()'), html.indexOf('async function pensArchivia'));
+  /* IL RITAGLIO DEV'ESSERE SOLO pensFoglio. Prima arrivava fino a
+     `async function pensArchivia`, e appena fra le due e' comparsa
+     `pensSalva` — che l'archivio lo aspetta eccome, perche' deve dire com'e'
+     andata — la prova ha cominciato a dire che la stampa aspettava. Adesso si
+     ferma alla funzione successiva, qualunque sia. (12/09/2026) */
+  const da = html.indexOf('function pensFoglio()');
+  const resto = html.slice(da + 10);
+  const f = html.slice(da, da + 10 + resto.search(/\n(?:async )?function /));
   deve(f.includes('pensArchivia('), 'il foglio non viene più archiviato');
   deve(f.indexOf('w.document.write(r.html)') < f.indexOf('pensArchivia('),
     'l\'archiviazione precede la stampa: un archivio lento terrebbe fermo il foglio');
   deve(!/await\s+pensArchivia/.test(f), 'la stampa aspetta l\'archivio');
   deve(/NON \S+ finito in archivio|NON è finito in archivio/.test(html),
     'un archivio che fallisce in silenzio è peggio di non averlo: manca l\'avviso al consulente');
+});
+
+/* ── CHI VEDE COSA (12/09/2026) ──────────────────────────────────────────
+   Il backend usa la chiave di servizio, che scavalca le RLS: la riservatezza
+   la garantisce il filtro nel codice, non il database. Queste prove stanno
+   sopra le due decisioni dove un errore NON si vede — una query senza filtro
+   mostra i clienti di un collega, e un controllo di proprieta' sbagliato li
+   lascia aprire. */
+
+prova('l\'elenco di un collaboratore porta SEMPRE il filtro su chi l\'ha fatto', () => {
+  const q = A.parametriElenco ? A.parametriElenco({}, IO.id, false) : manca('parametriElenco');
+  deve(q.ok, q.errore || '');
+  const t = q.params.toString();
+  deve(t.includes('creato_da=eq.' + IO.id),
+    'la query dell\'elenco non filtra per collaboratore: mostrerebbe le analisi di tutti');
+  deve(!t.includes('scope'), 'lo scope finisce nella query invece di decidere il filtro');
+  return 'filtro presente, ordinamento e limite compresi';
+});
+
+prova('nemmeno chiedendo scope=all un collaboratore vede le analisi altrui', () => {
+  /* IL CASO CHE DEVE FALLIRE. `?scope=all` arriva dal browser, cioe' da
+     chiunque: se bastasse scriverlo nell'indirizzo per vedere tutto, il
+     controllo non esisterebbe. Lo scope vale solo se chi chiede e' staff. */
+  const q = A.parametriElenco({ scope: 'all' }, IO.id, false);
+  deve(q.ok && !q.scopeAll, 'un collaboratore ottiene lo scope «tutte» chiedendolo');
+  deve(q.params.toString().includes('creato_da=eq.' + IO.id),
+    'chiedendo scope=all il filtro sparisce anche per un collaboratore: chiunque vedrebbe i clienti di chiunque');
+  /* Allo staff invece spetta, ed e' l'unico caso in cui il filtro non c'e'. */
+  const s = A.parametriElenco({ scope: 'all' }, IO.id, true);
+  /* `creato_da=eq.`, non `creato_da`: la colonna compare anche nella lista
+     del select, e cercarla nuda faceva passare la prova per il motivo
+     sbagliato. */
+  deve(s.scopeAll && !s.params.toString().includes('creato_da=eq.'), 'allo staff che chiede tutte il filtro resta attaccato');
+  return 'collaboratore filtrato anche chiedendo tutto, staff no';
+});
+
+prova('un riferimento anagrafica storto si rifiuta, non diventa «tutte»', () => {
+  /* Se una stringa non valida venisse semplicemente ignorata, la scheda di
+     Mario Rossi mostrerebbe le analisi di tutti i clienti. Si dice di no. */
+  for (const storto of ['pippo', '', '123', "' OR 1=1 --", 'null', '../../etc']) {
+    const q = A.parametriElenco({ anagrafica_id: storto }, IO.id, false);
+    deve(!q.ok, 'il riferimento storto «' + storto + '» è stato accettato');
+    deve(/non è valido/.test(q.errore || ''), 'non dice che il riferimento non va bene');
+  }
+  const buono = A.parametriElenco({ anagrafica_id: UNALTRO }, IO.id, false);
+  deve(buono.ok && buono.params.toString().includes('anagrafica_id=eq.' + UNALTRO),
+    'un riferimento valido non arriva nella query');
+  return '6 riferimenti storti respinti, uno valido passa';
+});
+
+prova('una scheda altrui non si apre, e allo staff sì', () => {
+  deve(A.puoVedere({ creato_da: IO.id }, IO.id, false) === true, 'non si riesce ad aprire la propria analisi');
+  deve(A.puoVedere({ creato_da: UNALTRO }, IO.id, false) === false,
+    'si apre l\'analisi di un altro collaboratore: dentro c\'è il reddito di un suo cliente');
+  deve(A.puoVedere({ creato_da: UNALTRO }, IO.id, true) === true, 'lo staff non riesce ad aprire un\'analisi');
+  deve(A.puoVedere(null, IO.id, true) === false, 'una riga che non c\'è risulta visibile');
+  return 'propria sì, altrui no, staff sì, inesistente no';
+});
+
+prova('l\'elenco non tira su l\'analisi intera: in una lista non si guarda', () => {
+  /* Ogni riga porta parametri e risultato completi, decine di KB. Un elenco
+     che se li trascina dietro diventa lento e non serve a niente. */
+  const col = A.COLONNE_ELENCO || '';
+  deve(!col.includes('risultato'), 'l\'elenco tira su anche il risultato intero');
+  deve(!col.includes('parametri_usati'), 'l\'elenco tira su anche i parametri di quel giorno');
+  for (const c of ['id', 'creata_il', 'anagrafica_id', 'titolo']) {
+    deve(col.includes(c), 'all\'elenco manca la colonna «' + c + '», che serve per mostrarlo');
+  }
+  return col.split(',').length + ' colonne, senza il corpo dell\'analisi';
 });
 
 /* ── esecuzione ──────────────────────────────────────────────────────────── */

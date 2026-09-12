@@ -4242,8 +4242,15 @@ function pensRendi(e) {
   /* IL FOGLIO E L'INVIO. */
   h += '<div class="pv-card"><div class="pv-sec">Il foglio per il cliente</div>' +
     '<div class="aw-grid">' +
-    '<div class="aw-field"><label>Cliente</label><input id="pens-cli" placeholder="Nome e cognome" value="' +
-      esc((PENS.cliente && PENS.cliente.nome) || '') + '"></div>' +
+    /* CERCARE INVECE DI RIDIGITARE. Il cliente quasi sempre c'e' gia' in
+       portafoglio: scrivendo il nome a mano si perde il collegamento alla
+       scheda, e il progetto non compare piu' sotto di lui. Due lettere e si
+       sceglie; chi non e' in portafoglio si scrive lo stesso, a mano. */
+    '<div class="aw-field geo-wrap"><label>Cliente</label>' +
+      '<input id="pens-cli" placeholder="Cerca in portafoglio, o scrivi il nome" autocomplete="off" ' +
+      'value="' + esc((PENS.cliente && PENS.cliente.nome) || '') + '" oninput="pensClienteCerca(this.value)">' +
+      '<div id="pens-cli-res" class="geo-res"></div>' +
+      '<div id="pens-cli-legame" style="font-size:11.5px;margin-top:4px">' + pensLegameHtml() + '</div></div>' +
     '<div class="aw-field"><label>Consulente che firma</label><input id="pens-cons" value="' +
       esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '') + '"></div>' +
     '<div class="aw-field"><label>Ruolo</label><input id="pens-ruolo" value="Consulente previdenziale"></div>' +
@@ -4255,6 +4262,11 @@ function pensRendi(e) {
     '</div>' +
     '<div class="pv-azioni">' +
       '<button class="btn-primary" onclick="pensFoglio()"><i class="ti ti-printer"></i> Apri il foglio da stampare</button>' +
+      /* SALVARE SENZA STAMPARE. Prima l'unico modo di mandare un progetto a
+         registro era stampare il foglio: chi voleva solo tenerselo per il
+         richiamo fra due settimane doveva aprire una finestra di stampa e
+         chiuderla. */
+      '<button class="btn-ghost" onclick="pensSalva()"><i class="ti ti-device-floppy"></i> Salva sul cliente</button>' +
       '<button class="btn-ghost" onclick="pensWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Messaggio WhatsApp</button>' +
     '</div>' +
     '<div class="pv-piccolo" style="margin-top:9px">WhatsApp non permette di allegare un file da un collegamento: ' +
@@ -4322,6 +4334,82 @@ function pensWhatsApp() {
   window.open(url, '_blank');
 }
 
+/* ── CERCARE IL CLIENTE IN PORTAFOGLIO ───────────────────────────────────
+   Lo stesso gesto degli altri moduli (vedi vitaClienteSearch): due lettere,
+   sei risultati, si sceglie. Quello che cambia qui e' cosa succede DOPO: non
+   si riempie solo il nome, si aggancia l'id — ed e' l'aggancio che fa comparire
+   il progetto sotto quel cliente nella sua scheda. Un nome scritto a mano
+   produce un foglio identico e un progetto che non si ritrova piu'. */
+var PENS_CERCA_T = null;
+function pensClienteCerca(q) {
+  var box = document.getElementById('pens-cli-res');
+  clearTimeout(PENS_CERCA_T);
+  /* Se il consulente riscrive il nome a mano, il legame di prima non vale
+     piu': tenerlo vorrebbe dire salvare il progetto sotto un cliente che non
+     e' quello scritto nel campo. */
+  if (PENS.cliente && PENS.cliente.id && (q || '').trim() !== (PENS.cliente.nome || '').trim()) {
+    PENS.cliente = { id: null, nome: q, telefono: (PENS.cliente && PENS.cliente.telefono) || '' };
+    pensLegameAggiorna();
+  }
+  if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
+  PENS_CERCA_T = setTimeout(async function () {
+    try {
+      var qs = sbq(q);
+      var r = await db.from('quote_anagrafiche').select('*')
+        .or('nominativo.ilike.%' + qs + '%,codice_fiscale.ilike.%' + qs + '%,partita_iva.ilike.%' + qs + '%')
+        .limit(6);
+      var dati = (r && r.data) || [];
+      /* Il fondo pensione e' di una persona: una societa' non si propone. */
+      dati = dati.filter(function (a) { return a.tipo !== 'giuridica'; });
+      window.__PENS_CERCA = dati;
+      if (!box) return;
+      box.innerHTML = dati.length
+        ? dati.map(function (a, i) {
+            return '<div class="geo-item" onclick="pensClienteScelto(' + i + ')"><b>' + esc(a.nominativo) + '</b> · ' +
+              esc(a.codice_fiscale || a.partita_iva || '') + '</div>';
+          }).join('')
+        : '<div class="geo-item" style="color:var(--muted)">Nessun cliente in portafoglio con questo nome — scrivilo pure a mano</div>';
+      box.classList.add('show');
+    } catch (e) {}
+  }, 300);
+}
+
+function pensClienteScelto(i) {
+  var a = (window.__PENS_CERCA || [])[i];
+  if (!a) return;
+  PENS.cliente = { id: a.id, nome: a.nominativo || '', telefono: a.cellulare || a.telefono || '' };
+  var campo = document.getElementById('pens-cli'); if (campo) campo.value = PENS.cliente.nome;
+  var tel = document.getElementById('pens-tel');
+  if (tel && !tel.value && PENS.cliente.telefono) tel.value = PENS.cliente.telefono;
+  var box = document.getElementById('pens-cli-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+  pensLegameAggiorna();
+}
+
+/* Il legame si DICE. Un progetto salvato senza aggancio non compare nella
+   scheda del cliente, e chi lo ha salvato lo scopre fra due settimane. */
+function pensLegameHtml() {
+  if (PENS.cliente && PENS.cliente.id) {
+    return '<span style="color:#02984e"><i class="ti ti-link" style="vertical-align:-2px"></i> Collegato alla scheda di <b>' +
+      esc(PENS.cliente.nome) + '</b>: il progetto comparirà lì sotto, in Previdenza.</span>';
+  }
+  return '<span style="color:var(--muted)">Nessun cliente collegato: il progetto si salva lo stesso, ma non comparirà in nessuna scheda.</span>';
+}
+function pensLegameAggiorna() {
+  var e = document.getElementById('pens-cli-legame');
+  if (e) e.innerHTML = pensLegameHtml();
+}
+
+/* ── SALVARE SENZA STAMPARE ──────────────────────────────────────────────
+   Stesso archivio del foglio, stessa riga: cambia solo che non si apre nessuna
+   finestra di stampa. Il risultato si dice sempre — riuscito o no. */
+async function pensSalva() {
+  if (!PENS.esito) { alert('Prima calcola: non c\'è ancora niente da salvare.'); return; }
+  var d = pensDatiFoglio();
+  if (!String(d.cliente.nome || '').trim()) { alert('Scrivi o cerca il cliente: un progetto senza intestatario non si ritrova più.'); return; }
+  if (!String(d.consulente.nome || '').trim()) { alert('Manca il consulente che firma.'); return; }
+  await pensArchivia(d);
+}
+
 /* ── L'ANALISI VA A REGISTRO ──────────────────────────────────────────────
    Ogni foglio stampato lascia la sua riga: chi, per chi, con quali numeri e
    con quale versione delle regole. Serve fra un anno, quando i parametri
@@ -4351,6 +4439,100 @@ async function pensArchivia(d) {
   } catch (e) {
     dica('Il foglio è stato stampato ma NON è finito in archivio: ' + (e && e.message ? e.message : e) +
       '. Segnalalo: questa analisi non risulterà a registro.', 'var(--pv-rosso)');
+  }
+}
+
+/* ── I PROGETTI PENSIONISTICI DEL CLIENTE ─────────────────────────────────
+   Stanno accanto ai preventivi nella scheda, e si leggono dall'archivio —
+   quello in cui finisce ogni foglio stampato. La riservatezza la decide il
+   server (un collaboratore vede i propri, lo staff tutti): qui si mostra
+   quello che risponde, senza filtrare per conto proprio. */
+async function caricaPrevidenzaCliente(anagraficaId) {
+  var box = document.getElementById('cl-prevd');
+  if (!box) return;
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/analisi-previdenziali?anagrafica_id=' + encodeURIComponent(anagraficaId),
+      { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    PENS_ELENCO = d.items || [];
+    box.innerHTML = pensElencoHtml(PENS_ELENCO, anagraficaId);
+  } catch (e) {
+    /* NON si finge che non ce ne siano: «nessun progetto» e «non sono
+       riuscito a leggerli» sono due cose diverse, e confonderle fa rifare al
+       consulente un lavoro che aveva gia' fatto. */
+    box.innerHTML = '<div class="cl-empty" style="color:#c0392b">Non sono riuscito a leggere i progetti pensionistici: ' +
+      esc(e && e.message ? e.message : e) + '</div>';
+  }
+}
+
+var PENS_ELENCO = [];
+
+function pensElencoHtml(righe, anagraficaId) {
+  var nuovo = '<div style="margin-bottom:10px"><button class="btn-emetti" style="padding:5px 12px" ' +
+    'onclick="pensDaCliente(\'' + anagraficaId + '\')"><i class="ti ti-plus"></i> Nuovo progetto pensionistico</button></div>';
+  if (!righe.length) {
+    return nuovo + '<div class="cl-empty">Nessun progetto pensionistico per questo cliente. ' +
+      'Il pulsante qui sopra apre il calcolo con i dati che sappiamo già.</div>';
+  }
+  return nuovo + '<div style="display:flex;flex-direction:column;gap:8px">' + righe.map(function (x) {
+    var d = x.dati || {}, o = x.obiettivo || {};
+    var quando = x.creata_il ? new Date(x.creata_il).toLocaleDateString('it-IT') : (d.dataRiferimento || '');
+    /* IL DIVARIO E' IL NUMERO CHE SI CERCA guardando questo elenco: sta
+       grande, il resto sta piccolo. */
+    var gap = (o.gapMensile != null) ? pensEuro(o.gapMensile) : '—';
+    return '<div style="border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">' +
+        '<div style="font-weight:700">' + esc(d.etichettaLavoro || 'Progetto pensionistico') +
+          (d.eta ? ' · ' + d.eta + ' anni' : '') + '</div>' +
+        '<div style="font-size:17px;font-weight:800;color:#c0392b">' + gap + '<span style="font-size:11px;font-weight:600;color:var(--muted)"> /mese scoperti</span></div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + esc(quando) +
+        (d.versamentoMensile ? ' · versamento ipotizzato ' + pensEuro(d.versamentoMensile) : '') +
+        (d.mensilita ? ' · ' + d.mensilita + ' mensilità' : '') +
+        (d.prudenziale ? ' · <b style="color:#b06a00">stima prudenziale</b>' : '') +
+      '</div>' +
+      '<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">' +
+        '<button class="sc-edit" onclick="pensRiapri(\'' + x.id + '\')"><i class="ti ti-rotate"></i> Riapri e ricalcola</button>' +
+      '</div></div>';
+  }).join('') + '</div>';
+}
+
+/* Riaprire un progetto NON vuol dire rimostrare i numeri di allora: vuol dire
+   rimettere nel modulo i dati che erano stati inseriti e RIFARE il conto con
+   i parametri di oggi. I numeri di allora restano in archivio, ed e' li' che
+   si guardano quando il cliente torna col foglio in mano. */
+async function pensRiapri(id) {
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/analisi-previdenziali/' + encodeURIComponent(id),
+      { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    var riga = d.item || {}, dati = riga.dati || {};
+    var ov = document.getElementById('anag-overlay'); if (ov) ov.remove();
+    pensPulisci();
+    PENS.cliente = { id: riga.anagrafica_id || null, nome: dati.cliente || '', telefono: '' };
+    var set = function (campo, valore) { var e = document.getElementById(campo); if (e && valore != null && valore !== '') e.value = valore; };
+    set('pens-eta', dati.eta); set('pens-lavoro', dati.lavoro);
+    set('pens-reddito', dati.redditoMensileDichiarato); set('pens-versamento', dati.versamentoMensile);
+    if (dati.mensilita) { PENS.mensilitaAMano = true; set('pens-mensilita', dati.mensilita); }
+    else pensMensilitaProposta();
+    pensBase(dati.baseReddito === 'lordo' ? 'lordo' : 'netto');
+    if (dati.prudenziale) { var c = document.getElementById('pens-inizio-ignoto'); if (c) { c.checked = true; pensIgnoto(); } }
+    else set('pens-inizio', dati.etaInizioUsata);
+    var nota = document.getElementById('pens-da-cliente');
+    if (nota) nota.innerHTML = '<div class="pv-nota" style="margin-top:0">Riaperto il progetto del <b>' +
+      esc(riga.creata_il ? new Date(riga.creata_il).toLocaleDateString('it-IT') : '') + '</b>' +
+      (dati.cliente ? ' per <b>' + esc(dati.cliente) + '</b>' : '') +
+      '. I dati sono quelli di allora, <b>il conto lo rifaccio adesso</b> con i parametri di oggi: se qualcosa è cambiato, i numeri saranno diversi.</div>';
+    showPage('previdenza');
+    if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+    pensAvvisi();
+    await pensCalcola();
+  } catch (e) {
+    alert('Non riesco a riaprire il progetto: ' + (e && e.message ? e.message : e));
   }
 }
 
@@ -22027,6 +22209,11 @@ function apriAnagrafica(id) {
                  separati e nessuna storia. -->
             <button class="cl-tab" data-t="note" onclick="clTab('note')"><i class="ti ti-notes"></i> Note</button>
             <button class="cl-tab" data-t="tratt" onclick="clTab('tratt')"><i class="ti ti-chart-arrows-vertical"></i> Trattative</button>
+            <!-- I progetti pensionistici salvati per questo cliente. Stanno qui
+                 accanto ai preventivi e non in un riquadro tutto loro: per chi
+                 guarda la scheda sono la stessa cosa — una posizione aperta su
+                 quella persona, da riprendere in mano. -->
+            <button class="cl-tab" data-t="prevd" onclick="clTab('prevd')"><i class="ti ti-pig-money"></i> Previdenza</button>
             <button class="cl-tab" data-t="cro" onclick="clTab('cro')"><i class="ti ti-history"></i> Cronologia</button>
           </div>
           <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
@@ -22035,6 +22222,7 @@ function apriAnagrafica(id) {
           <div id="cl-sin" class="cl-pane" style="display:none"></div>
           <div id="cl-note" class="cl-pane" style="display:none"></div>
           <div id="cl-tratt" class="cl-pane" style="display:none"></div>
+          <div id="cl-prevd" class="cl-pane" style="display:none"><div class="cl-empty">Caricamento…</div></div>
           <div id="cl-cro" class="cl-pane" style="display:none"></div>
         </div>
       </div>
@@ -22055,6 +22243,7 @@ function apriAnagrafica(id) {
   document.body.insertAdjacentHTML('beforeend', html);
   caricaCollegati(a.id, a.nominativo);
   caricaGruppiCliente(a.id);
+  caricaPrevidenzaCliente(a.id);
   // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
   // Clienti): lo carico e riempio la riga quando c'è.
   if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.classList.remove('empty'); } } });
@@ -22884,7 +23073,7 @@ async function decidiResidenza(id, campi, riga){
 }
 
 function clTab(t) {
-  ['pol','prev','doc','sin','note','tratt','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  ['pol','prev','doc','sin','note','tratt','cro','prevd'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
   document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
 }
 async function caricaCollegati(id, nominativo) {

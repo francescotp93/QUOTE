@@ -3144,6 +3144,116 @@ const avvio = async () => {
       return 'messaggio firmato, numero col prefisso, nessuna promessa';
     });
 
+    await prova('pensione: il cliente si cerca in portafoglio, e il legame si vede', async () => {
+      /* Scrivere il nome a mano produce un foglio identico e un progetto che
+         non si ritrova piu': non compare sotto nessuna scheda. Il legame
+         quindi non basta che ci sia — si deve VEDERE. */
+      const r = await page.evaluate(async () => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = []; pensBase('netto');
+        const v = (i, x) => { const e = document.getElementById(i); if (e) e.value = x; };
+        v('pens-eta', 38); v('pens-reddito', 1800); v('pens-versamento', 100); v('pens-inizio', 25);
+        pensCalcola();
+        const prima = document.getElementById('pens-cli-legame').textContent;
+        /* Si simula la scelta dall'elenco, che e' quello che fa il clic. */
+        window.__PENS_CERCA = [{ id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', nominativo: 'ROSSI MARIO', cellulare: '3331234567' }];
+        pensClienteScelto(0);
+        const dopo = document.getElementById('pens-cli-legame').textContent;
+        const agganciato = PENS.cliente && PENS.cliente.id;
+        const tel = document.getElementById('pens-tel').value;
+        /* E adesso il consulente riscrive il nome a mano: il legame di prima
+           NON puo' restare, o si salverebbe il progetto sotto un cliente che
+           non e' quello scritto nel campo. */
+        pensClienteCerca('Bianchi Giuseppe');
+        return { prima, dopo, agganciato, tel, dopoAMano: PENS.cliente.id,
+                 legameFinale: document.getElementById('pens-cli-legame').textContent };
+      });
+      deve(/Nessun cliente collegato/.test(r.prima), 'in partenza non dice che manca il collegamento');
+      deve(r.agganciato === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'scegliendo dall\'elenco non si aggancia l\'id del cliente');
+      deve(/ROSSI MARIO/.test(r.dopo) && /Previdenza/.test(r.dopo), 'non dice a quale scheda si e\' collegato');
+      deve(r.tel === '3331234567', 'il telefono del cliente non viene ripreso per WhatsApp');
+      deve(!r.dopoAMano, 'riscrivendo il nome a mano il legame col cliente di prima resta attaccato');
+      deve(/Nessun cliente collegato/.test(r.legameFinale), 'dopo aver staccato il legame la schermata continua a dire che c\'e\'');
+      return 'aggancia, lo dice, e si stacca se riscrivi il nome';
+    });
+
+    await prova('pensione: si salva sul cliente senza dover stampare', async () => {
+      /* Prima l'unico modo di mandare un progetto a registro era aprire la
+         finestra di stampa. Chi voleva solo tenerselo per il richiamo doveva
+         stampare e chiudere. */
+      const r = await page.evaluate(async () => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = []; pensBase('netto');
+        const v = (i, x) => { const e = document.getElementById(i); if (e) e.value = x; };
+        v('pens-eta', 38); v('pens-reddito', 1800); v('pens-versamento', 100); v('pens-inizio', 25);
+        pensCalcola();
+        PENS.cliente = { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', nome: 'ROSSI MARIO', telefono: '' };
+        v('pens-cli', 'ROSSI MARIO'); v('pens-cons', 'Francesco Oddo');
+        const vecchioFetch = window.fetch; const apri = window.open;
+        let corpo = null, stampata = false;
+        window.open = () => { stampata = true; return { document: { write() {}, close() {} } }; };
+        window.fetch = async (url, opts) => {
+          if (String(url).includes('/analisi-previdenziali')) { corpo = JSON.parse(opts.body); return { ok: true, status: 200, json: async () => ({ ok: true, id: 'x' }) }; }
+          return vecchioFetch(url, opts);
+        };
+        let scritto = '';
+        try {
+          await pensSalva();
+          for (let k = 0; k < 40 && !/archiviat|NON/.test(scritto); k++) {
+            await new Promise(r => setTimeout(r, 25));
+            scritto = (document.getElementById('pens-archivio') || {}).textContent || '';
+          }
+        } finally { window.fetch = vecchioFetch; window.open = apri; }
+        return { corpo, scritto, stampata };
+      });
+      deve(!r.stampata, 'per salvare ha aperto comunque la finestra di stampa');
+      deve(r.corpo && r.corpo.riga, 'il salvataggio non ha mandato niente a registro');
+      deve(r.corpo.riga.anagrafica_id === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        'la riga non porta il collegamento al cliente: il progetto non comparira\' nella sua scheda');
+      deve(/archiviat/i.test(r.scritto), 'non dice che ha salvato: ' + r.scritto);
+      return 'salvato e collegato, senza aprire la stampa';
+    });
+
+    await prova('pensione: la scheda cliente ha la sua sezione, e distingue «nessuno» da «non ci riesco»', async () => {
+      const r = await page.evaluate(async () => {
+        /* NIENTE querySelectorAll QUI: la scheda cliente e' una finestra che
+           esiste solo quando la apri, quindi in pagina di linguette non ce
+           n'e' nessuna e la prova passerebbe o fallirebbe per il motivo
+           sbagliato. Si guarda la sorgente, come fa la prova della
+           cronologia. */
+        const tab = null;
+        /* L'elenco vuoto invita, non lascia il vuoto. */
+        const vuoto = pensElencoHtml([], 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+        /* Un elenco pieno mostra il divario, che e' il numero che si cerca. */
+        const pieno = pensElencoHtml([{ id: 'i1', creata_il: '2026-09-12T10:00:00Z',
+          dati: { etichettaLavoro: 'Lavoratore dipendente', eta: 38, versamentoMensile: 100, mensilita: 13, prudenziale: true },
+          obiettivo: { gapMensile: 350 } }], 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+        /* E quando la lettura fallisce lo dice, invece di fingere zero. */
+        const box = document.createElement('div'); box.id = 'cl-prevd'; document.body.appendChild(box);
+        const vecchioFetch = window.fetch;
+        window.fetch = async () => ({ ok: false, status: 500, json: async () => ({ error: 'database fermo' }) });
+        try { await caricaPrevidenzaCliente('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'); }
+        finally { window.fetch = vecchioFetch; }
+        const guasto = box.textContent; box.remove();
+        return { tab, vuoto, pieno, guasto };
+      });
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/data-t="prevd"/.test(h), 'manca la linguetta «Previdenza» accanto ai preventivi');
+      deve(/id="cl-prevd"/.test(h), 'manca il riquadro che la linguetta Previdenza dovrebbe accendere');
+      deve(/'prevd'/.test((h.match(/\[((?:'[a-z]+',\s*)*'[a-z]+')\]\.forEach\(k => \{ const e = document\.getElementById\('cl-'/) || [])[1] || ''),
+        'clTab non conosce la linguetta Previdenza: cliccandola non si accende niente');
+      deve(/Nessun progetto/.test(r.vuoto) && /Nuovo progetto/.test(r.vuoto), 'l\'elenco vuoto non invita a farne uno');
+      deve(/350/.test(r.pieno) && /scoperti/.test(r.pieno), 'l\'elenco non mostra il divario, che e\' il numero che si cerca');
+      deve(/prudenziale/i.test(r.pieno), 'un progetto prudenziale non e\' marcato nell\'elenco');
+      deve(/Riapri/.test(r.pieno), 'manca il tasto per riaprire un progetto');
+      /* «Nessun progetto» e «non sono riuscito a leggerli» sono due cose
+         diverse: confonderle fa rifare al consulente un lavoro gia' fatto. */
+      deve(/non sono riuscito/i.test(r.guasto) && !/Nessun progetto/.test(r.guasto),
+        'una lettura fallita viene mostrata come «nessun progetto»: ' + r.guasto.slice(0, 90));
+      return 'scheda presente, vuoto che invita, guasto che si dichiara';
+    });
+
+
     await prova('pensione: i bottoni si vedono — niente bianco su bianco', async () => {
       const r = await page.evaluate(() => {
         apriPensione();
@@ -3270,7 +3380,13 @@ const avvio = async () => {
          (Note e Trattative) e la prova ha iniziato a dire che clTab non
          conosceva la Cronologia, che invece c'era. Si controlla che ci siano
          quelle che servono, non che siano ESATTAMENTE quelle. (04/09/2026) */
-      const linguette = (h.match(/\[((?:'[a-z]+',\s*)+'cro')\]\.forEach/) || [])[1] || '';
+      /* SECONDO GIRO DELLO STESSO ERRORE (12/09/2026). La correzione del
+         04/09 aveva tolto l'elenco esatto ma lasciato 'cro' inchiodato come
+         ULTIMO: aggiungendo la linguetta Previdenza in fondo, la prova e'
+         tornata a dire che clTab non conosceva la Cronologia — che invece
+         c'era. Adesso si prende l'elenco qualunque sia, e si controlla che
+         dentro ci siano le linguette che servono. */
+      const linguette = (h.match(/\[((?:'[a-z]+',\s*)*'[a-z]+')\]\.forEach\(k => \{ const e = document\.getElementById\('cl-'/) || [])[1] || '';
       deve(linguette, 'clTab non elenca più le linguette');
       for (const k of ['pol', 'prev', 'doc', 'sin', 'cro']) {
         deve(linguette.indexOf("'" + k + "'") >= 0, 'clTab non conosce la linguetta ' + k);
