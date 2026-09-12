@@ -85,8 +85,15 @@ prova('da sloggati NON si sovrascrive la copia buona', () => {
   const blocco = da < 0 ? '' : src.slice(da, da + 1400);
   deve(/const viva =/.test(blocco) && /if \(viva\)/.test(blocco),
     'allo spegnimento si salva senza guardare se la sessione e\' viva: una copia da sloggati cancella quella buona');
+  /* Il keep-alive si prende INTERO, dalla sua prima riga alla sua chiusura, non
+     a misura di caratteri: contarli rende la prova fragile a qualunque commento
+     aggiunto dentro il blocco — è successo il 12/09/2026, con la prova diventata
+     rossa su codice che si comportava esattamente come prima. Quello che si
+     verifica non cambia di una virgola. */
   const ka = src.indexOf('let kaTick = 0;');
-  const keepalive = ka < 0 ? '' : src.slice(ka, ka + 2200);
+  const fine = src.indexOf('}, 4 * 60 * 1000)', ka);
+  const keepalive = (ka < 0 || fine < 0) ? '' : src.slice(ka, fine);
+  deve(keepalive, 'non trovo più il keep-alive: prova da riscrivere, non da cancellare');
   deve(/else if \(kaTick % \d+ === 0\) await salvaSessione/.test(keepalive),
     'il salvataggio periodico non e\' legato al ramo «la password NON compare»: si rischia di salvare una sessione gia\' caduta');
   return 'si salva solo quando c\'è qualcosa di buono da salvare';
