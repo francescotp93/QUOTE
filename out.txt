@@ -1,10 +1,9 @@
-id: axa3-1789214244  exit: 0  2026-09-12 11:57:54
+id: axaver-1789214323  exit: 0  2026-09-12 11:58:55
 ----
-ora: 2026-09-12 11:57:50 UTC
-=== AXA adesso
-loggato: False | passo: loggato | msg: Login completato ✅
-url: https://mobility.axa-italia.it/portal/?code=KAFGoBy8YH1xN9wqTMngLu-d5XV6sCFNeCY7x3TuJr8&state=5d46b7f5-1ae9-48
-=== giornale AXA ultimi 6 minuti
+ora: 2026-09-12 11:58:55 UTC
+=== AXA /verifica (non fa login, non consuma tentativi)
+{"error":"endpoint sconosciuto"}
+=== stato subito dopo
+loggato: False | url: https://mobility.axa-italia.it/portal/?code=KAFGoBy8YH1xN9wqTMngLu-d5XV6sCFNeCY7x3TuJr8&state=5d46b7
+=== giornale
 -- No entries --
-=== GROUPAMA adesso
-loggato: None | passo: loggato | Login completato ✅
