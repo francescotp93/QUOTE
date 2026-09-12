@@ -56,6 +56,15 @@ function mailAccounts() {
   try { for (const c of caselleMailStore()) push(c.email, c.pass, c); } catch (_) {}
   return out;
 }
+/* Le caselle configurate e la connessione IMAP servono anche FUORI dalle rotte
+   della posta: il recupero automatico del codice di accesso dei portali
+   (server/otpPosta.js) deve poter guardare nelle stesse caselle, senza
+   ricostruirsi da capo host, porte e credenziali — due copie di quella logica
+   divergerebbero al primo provider aggiunto. Si esportano le funzioni, non i
+   segreti: la password resta dentro, come prima. */
+export function caselleDisponibili() { return mailAccounts().map(a => a.email); }
+export async function conImap(casella, fn) { return withImap(casella, fn); }
+
 function accountFor(casella) {
   const accs = mailAccounts();
   if (!accs.length) throw new Error('Nessuna casella configurata (MAIL_USER/MAIL_PASS).');

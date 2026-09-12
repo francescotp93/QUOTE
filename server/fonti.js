@@ -16,6 +16,9 @@ import { fileURLToPath } from 'url';
 import { sondaScraper, sondaTutte, invalidaSonda, statoInterruttori } from './fontiSonda.js';
 // Le catture dell'estensione Chrome (With Us · Connettore): dove arrivano e si leggono. Vedi server/connettore.js.
 import { montaConnettore } from './connettore.js';
+/* Il codice di accesso che arriva via email lo pesca il backend dalla posta
+   dell'agenzia, invece di farlo copiare a mano (server/otpPosta.js). */
+import { attendiCodice, MITTENTI_OTP } from './otpPosta.js';
 
 export const fontiRouter = Router();
 
@@ -472,9 +475,49 @@ fontiRouter.post('/:id/accedi', async (req, res) => {
      buttare la sessione e rientrare da capo. Lo scraper che non conosce questo
      parametro lo ignora e si comporta come prima. (Francesco, 09/09/2026) */
   const dove = req.query.forza === '1' ? '/accedi?forza=1' : '/accedi';
+  /* Il momento in cui il login parte: da qui in avanti, e solo da qui, si
+     guarda la posta per il codice. Si prende PRIMA della chiamata, perché
+     l'email può arrivare mentre lo scraper sta ancora lavorando. */
+  const partito = Date.now();
   const out = await proxyScraper(req.params.id, store, dove, 165000); // login lunghi (AXA SiteMinder+Auth0 ~90s)
+  /* IL CODICE VIA EMAIL SE LO PRENDE DA SOLO. Per i portali che mandano il
+     codice per posta (oggi Groupama) non c'è motivo di far fare a una persona
+     il giro «apri la posta, copia sei cifre, incolla»: la casella dell'agenzia
+     il backend la legge già. Se il codice si trova, il login si chiude da sé;
+     se non si trova — casella non configurata, email che non arriva, posta che
+     non risponde — resta esattamente il comportamento di prima, cioè lo
+     schermo che chiede il codice. Non si aspetta la risposta: il pannello
+     intanto polla /loginstate e vedrà «loggato» quando è fatta. */
+  if (out.body && /attesa_otp|serve_codice/i.test(String(out.body.step || out.body.stato || ''))) {
+    codiceDallaPosta(req.params.id, partito).catch(() => {});
+  }
   return res.status(out.status === 502 ? 502 : 200).json(out.body);
 });
+
+/* Pesca il codice dalla posta e lo consegna allo scraper, una volta sola.
+   Vive per conto suo: qualunque cosa vada storta qui dentro non deve toccare
+   la risposta del login, che è già partita. */
+const otpInCorso = new Set();
+async function codiceDallaPosta(id, dopo) {
+  if (!MITTENTI_OTP[String(id).toLowerCase()]) return;   // portale che non manda codici per email
+  if (otpInCorso.has(id)) return;                        // già in ascolto: due ricerche insieme sprecherebbero il codice
+  otpInCorso.add(id);
+  try {
+    const t = await attendiCodice({ fonte: id, dopo, log: (m) => { try { console.log(m); } catch (_) {} } });
+    if (!t) return;
+    const store = load();
+    /* Si salva come fa la rotta a mano, così lo stato del pannello resta
+       coerente e il codice non viene poi scartato «per vecchiaia». */
+    const f = FONTI.find(x => x.id === id);
+    const s = f ? (store[f.id] = store[f.id] || {}) : (store.__custom || {})[id];
+    if (s) { s.codice = enc(t.codice); s.codice_ts = Date.now(); save(store); }
+    const out = await proxyScraper(id, store, '/codice?codice=' + encodeURIComponent(t.codice), 40000);
+    const esito = (out.body && (out.body.loggato ? 'dentro' : (out.body.msg || out.body.step || 'non accettato'))) || 'senza risposta';
+    console.log('[otp-posta] codice di ' + id + ' consegnato al portale → ' + esito);
+  } catch (e) {
+    console.log('[otp-posta] recupero automatico non riuscito (' + String(e && e.message || e).slice(0, 120) + '): il codice resta da inserire a mano');
+  } finally { otpInCorso.delete(id); }
+}
 // POST /fonti/:id/conferma-codice — schermata 2: salva il codice e lo conferma SUL PORTALE (sincrono).
 fontiRouter.post('/:id/conferma-codice', async (req, res) => {
   const codice = (req.body && req.body.codice || '').trim();

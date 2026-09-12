@@ -102,6 +102,25 @@ function totpAt(secretBase32, offset = 0) {
   return String(bin % 1000000).padStart(6, '0');
 }
 const totpNow = (s) => totpAt(s, 0);
+/* IL SEME NON E' IL CODICE. Stessa guardia che protegge Allianz, e qui mancava.
+   Nel campo del segreto va la stringa lunga del QR (16+ caratteri, lettere e
+   numeri in base32); il codice a 6 cifre dell'app è un'altra cosa e dura 30
+   secondi. Se ci finisce il codice, il servizio genererebbe passcode sbagliati
+   e li manderebbe al portale uno dopo l'altro — cioè il modo più rapido per
+   farsi bloccare l'utenza dell'agenzia. È già successo su Allianz: nel campo
+   del seme c'erano sei cifre. Meglio non tentare e dirlo. */
+const SEME_MIN = 16;
+function semePlausibile(v) {
+  const s = String(v || '').replace(/\s+/g, '');
+  return s.length >= SEME_MIN && /^[A-Z2-7]+=*$/i.test(s);
+}
+function motivoSemeNonValido(v) {
+  const s = String(v || '').replace(/\s+/g, '');
+  if (!s || semePlausibile(s)) return '';
+  return 'nel campo del segreto TOTP ci sono ' + s.length + ' caratteri' +
+    (/^[0-9]+$/.test(s) ? ' e sono tutte cifre: è un CODICE dell\'app, non un seme.' : ': troppo corto per essere un seme.') +
+    ' Il seme è la stringa lunga del QR di AXA Guardian (16+ caratteri). Rigenerare il codice non serve: va incollato il seme giusto.';
+}
 // Lista di codici da provare in ordine: finestra corrente, poi precedente e successiva (tolleranza clock).
 const totpCandidates = (s) => [totpAt(s, 0), totpAt(s, -1), totpAt(s, 1)].filter(Boolean);
 
@@ -128,6 +147,51 @@ async function launchCtx() {
 }
 let ctx = await launchCtx();
 let page = ctx.pages()[0] || await ctx.newPage();
+
+// ── LA SESSIONE NON DEVE MORIRE A OGNI RIAVVIO ────────────────────────────────
+/* Lo stesso difetto chiuso su Groupama, e qui era rimasto aperto: `auth.json`
+   veniva SCRITTO ad ogni login riuscito e non veniva RILETTO mai, da nessuna
+   parte — una rete di sicurezza stesa e mai agganciata.
+   La sessione del portale vive nei COOKIE DI SESSIONE, quelli senza data di
+   scadenza. Chromium li tiene in MEMORIA e non li scrive nel profilo su disco:
+   basta che il servizio si riavvii — e si riavvia ad ogni rilascio che tocca
+   questa cartella — perché il portale ci veda come sconosciuti. Da fuori si
+   legge «ho fatto l'accesso e mi ha buttato fuori», con un altro codice
+   Guardian da inserire.
+   Misurato il 12/09/2026: `auth.json` di AXA era fermo al 2 settembre, dieci
+   giorni prima. Veniva scritto solo al login e mai più — quindi anche
+   rileggendolo avremmo rimesso dentro cookie di dieci giorni prima, cioè
+   niente. Da qui in avanti: si rilegge all'accensione, si tiene aggiornato
+   mentre si lavora, e si salva prima di spegnersi. */
+const AUTH = path.join(__dir, 'auth.json');
+async function salvaSessione(motivo = '') {
+  try { await ctx.storageState({ path: AUTH }); if (motivo) log('sessione salvata su disco (' + motivo + ')'); return true; }
+  catch (e) { log('sessione NON salvata:', e.message); return false; }
+}
+/* Rimette nel browser appena acceso la sessione salvata. NON promette di essere
+   dentro: lo dice il controllo che viene dopo. Se il portale l'ha invalidata,
+   cookie vecchi non fanno danno — si finisce sulla schermata di accesso, come
+   succedeva prima ad ogni riavvio. Al peggio si sta come si stava. */
+async function ripristinaSessione() {
+  let s = null;
+  try { s = JSON.parse(fs.readFileSync(AUTH, 'utf8')); } catch { return false; }  // prima accensione o file illeggibile
+  const cookies = (s && Array.isArray(s.cookies)) ? s.cookies : [];
+  if (!cookies.length) return false;
+  try { await ctx.addCookies(cookies); } catch (e) { log('cookie salvati non rimessi:', e.message); return false; }
+  /* Anche quello che il portale si era scritto nel browser: Mobility è una SPA
+     e ci tiene dei pezzi di stato. Best effort: se non riesce restano i cookie,
+     che sono la parte che conta. */
+  const org = (s.origins || []).filter(o => o && Array.isArray(o.localStorage) && o.localStorage.length);
+  if (org.length) {
+    try {
+      await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.evaluate(voci => { try { for (const [k, v] of voci) localStorage.setItem(k, v); } catch (e) {} },
+        org.flatMap(o => o.localStorage.map(v => [v.name, v.value])));
+    } catch (e) { log('memoria di pagina non rimessa (non grave):', e.message); }
+  }
+  log('sessione ripresa da auth.json:', cookies.length, 'cookie');
+  return true;
+}
 
 // ── SNIFF (per mappare in seguito il preventivatore Prima) ──────────────────────
 const SNIFF = { on: false, buf: [], max: 1500, t0: 0 };
@@ -482,10 +546,15 @@ async function doAccedi() {
       }
     }
     if (await otpField()) {
-      if (c.totpSecret) {
+      /* Il seme si usa SOLO se è un seme. Se nel campo c'è il codice a 6 cifre
+         dell'app, provarlo comunque vorrebbe dire mandare passcode sbagliati al
+         portale uno dopo l'altro, e farsi bloccare l'utenza. */
+      const semeKo = motivoSemeNonValido(c.totpSecret);
+      if (semeKo) log('ATTENZIONE segreto TOTP non utilizzabile: ' + semeKo);
+      if (c.totpSecret && !semeKo) {
         setState('invio_totp', 'Genero il codice Guardian…', true);
         for (const code of totpCandidates(c.totpSecret)) { if (await fillOtpCode(code)) { await trustDevice(); await page.waitForTimeout(300); await clickConfirm(); await page.waitForTimeout(4000); if (await isLogged()) break; } }
-        if (await isLogged()) { await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); return setState('loggato', 'Login completato ✅ (codice automatico)'); }
+        if (await isLogged()) { await salvaSessione('login automatico'); return setState('loggato', 'Login completato ✅ (codice automatico)'); }
       }
       HOLD = true; HOLD_DA = Date.now(); log('schermata 2FA Guardian raggiunta: attendo il codice dall\'utente'); return setState('attesa_otp', 'Credenziali OK — apri AXA Guardian, prendi il codice e premi Conferma');
     }
@@ -521,10 +590,63 @@ async function doCodice(codice) {
     // dopo la conferma c'è il redirect OIDC verso il portale: può durare 15-25s → attendo con pazienza.
     // Nei primi secondi ri-provo a spuntare "ricorda 30 giorni": alcune versioni di Guardian mostrano la
     // casella su una schermata SUCCESSIVA al codice ("Vuoi ricordare questo dispositivo?").
-    for (let i = 0; i < 30; i++) { await page.waitForTimeout(1000); if (i < 5) await trustDevice().catch(() => {}); if (await isLogged()) break; if (/\/portal\//i.test(page.url() || '')) break; }
-    if ((await isLogged()) || /\/portal\//i.test(page.url() || '')) { HOLD = false; await ctx.storageState({ path: path.join(__dir, 'auth.json') }).catch(() => {}); setState('loggato', 'Login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+    /* «SONO DENTRO» LO DICE LA HOME, NON L'INDIRIZZO.
+       Fino al 12/09/2026 bastava che l'indirizzo contenesse «/portal/» per
+       cantare vittoria. Ma quell'indirizzo ce l'ha anche la pagina di RIMBALZO
+       dell'autenticazione — `mobility.axa-italia.it/portal/?code=…&state=…` —
+       cioè il passaggio intermedio subito dopo il codice. Due volte quel
+       giorno, alle 07:55 e alle 13:50, il portale si è fermato proprio lì: il
+       pannello diceva «Login completato ✅» e la sessione non c'era. Francesco
+       ha creduto due volte di essere entrato, e il primo preventivo del
+       pomeriggio sarebbe fallito lo stesso.
+       Un indirizzo che porta ancora `code=` o `state=` è il rimbalzo, non la
+       home: la si aspetta, e se non arriva si dice che non è arrivata. */
+    const soloRimbalzo = (u) => /[?&](code|state)=/.test(String(u || ''));
+    let dentro = false;
+    for (let i = 0; i < 30 && !dentro; i++) {
+      await page.waitForTimeout(1000);
+      if (i < 5) await trustDevice().catch(() => {});
+      dentro = await isLogged();
+      /* Il giro OIDC può restare appeso sul rimbalzo: una navigazione pulita
+         sulla home, senza i parametri, lo fa concludere. Si tenta una volta
+         sola, a metà attesa, per non disturbare un login che sta riuscendo. */
+      if (!dentro && i === 12 && soloRimbalzo(page.url())) {
+        log('il portale è fermo sulla pagina di rimbalzo: apro la home per far concludere l\'accesso');
+        await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+      }
+    }
+    if (dentro) { HOLD = false; await salvaSessione('login riuscito'); setState('loggato', 'Login completato ✅'); log('login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+    /* PERCHE' NON E' ANDATA: fino al 12/09/2026 qui il giornale taceva. Nel
+       giornale si leggeva «2FA inserito OK», poi piu' niente: impossibile
+       sapere se il codice era scaduto, se il pulsante di conferma non era stato
+       premuto o se il portale aveva rifiutato. Adesso si scrive dove siamo
+       finiti e che cosa dice la pagina — solo il messaggio d'errore del
+       portale, mai il contenuto dei campi. */
+    const dove = (page.url() || '').split('?')[0];
+    const avviso = await page.evaluate(() => {
+      const e = [...document.querySelectorAll('[role=alert],.error,.alert,[class*=error i],[class*=alert i]')]
+        .map(x => (x.innerText || '').trim()).filter(Boolean)[0] || '';
+      return e.slice(0, 200);
+    }).catch(() => '');
+    /* DUE FALLIMENTI DIVERSI, DUE MESSAGGI DIVERSI. Se siamo ancora sulla
+       pagina di rimbalzo, il codice è stato accettato ma il portale non ha
+       aperto la sessione: mandare l'agente a cercare un nuovo codice lo
+       manderebbe dalla parte sbagliata — è già capitato con «rigenera il
+       segreto TOTP» su Allianz, e ha fatto perdere mezza giornata. */
+    const rimasto = soloRimbalzo(page.url());
+    if (rimasto) {
+      log('il codice è passato ma il portale non ha aperto la sessione: fermo sulla pagina di rimbalzo —', dove, avviso ? ('· il portale dice: ' + avviso) : '');
+      setState('attesa_otp', 'Il portale non ha completato l\'accesso: riprova con Accedi.');
+      return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Il codice è stato accettato, ma il portale AXA non ha aperto la sessione: è rimasto sulla pagina di passaggio. Premi di nuovo Accedi e inserisci un codice nuovo. Se si ripete, il portale sta rifiutando l\'accesso a monte e va guardato con una cattura.' };
+    }
+    log('codice NON accettato — pagina:', dove, avviso ? ('· il portale dice: ' + avviso) : '· il portale non dà un messaggio');
     setState('attesa_otp', 'Codice non accettato — genera un nuovo codice e riprova.');
-    return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato. Apri AXA Guardian, prendi il nuovo codice a 6 cifre e riprova.' };
+    /* Il codice di AXA Guardian vive 30 secondi. Fra il momento in cui si legge
+       sull'app e quello in cui arriva qui passano la digitazione, l'invio e
+       questa procedura: se si tarda, il codice arriva già morto e il portale lo
+       rifiuta senza spiegare. Dirlo nel messaggio evita il giro di tentativi
+       che è costato la mattinata del 12/09/2026. */
+    return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Codice non accettato' + (avviso ? ' (' + avviso + ')' : '') + '. Il codice di AXA Guardian dura 30 secondi: apri l\'app, e appena leggi il codice incollalo e premi Conferma subito. Se continua a non andare, salva il segreto TOTP in Fonti: da lì in poi il codice se lo genera il sistema e non te lo chiede più.' };
   } catch (e) { return { ok: false, step: LOGIN_STATE.step, msg: e.message }; }
   finally { BUSY = false; }
 }
@@ -539,10 +661,40 @@ async function autoLoginFlow() { return doAccedi(); }
 (async () => {
   try {
     await ensurePage();
-    if (await loggedIn()) { setState('loggato', 'Sessione attiva'); log('sessione persistente attiva ✅'); }
+    let dentro = await loggedIn();
+    /* Il browser si è appena acceso e non risulta nessuna sessione: è il caso
+       normale dopo un riavvio, perché i cookie di sessione non sopravvivono
+       allo spegnimento. PRIMA di dichiararsi fuori — e di far chiedere un altro
+       codice Guardian — si rimette quella salvata e si ricontrolla. */
+    if (!dentro && await ripristinaSessione()) {
+      logCache.t = 0;                  // la risposta di un attimo fa non vale più
+      dentro = await loggedIn();
+      if (dentro) log('rientrato con la sessione salvata: nessun codice da chiedere ✅');
+      else log('la sessione salvata non è più valida: serve un accesso con il codice');
+    }
+    if (dentro) { setState('loggato', 'Sessione attiva'); log('sessione persistente attiva ✅'); }
     else { setState('pronto', 'Pronto: avvia il login da Fonti e inserisci il codice AXA Guardian'); log('PRONTO al login — attendo Accedi dall\'utente'); }
   } catch (e) { log('check iniziale err:', e.message); }
 })();
+
+/* SPEGNIMENTO PULITO — il pezzo che fa la differenza sui rilasci. Ogni rilascio
+   che tocca questa cartella fa riavviare il servizio, e systemd manda SIGTERM.
+   Senza questo blocco si muore lì, con i cookie di sessione ancora solo in
+   memoria: persi, e il giorno dopo si ricomincia dal codice Guardian. Al
+   massimo 5 secondi: un servizio che non muore è peggio di una sessione persa. */
+let chiudendo = false;
+for (const segnale of ['SIGTERM', 'SIGINT']) {
+  process.on(segnale, async () => {
+    if (chiudendo) return;
+    chiudendo = true;
+    /* Si salva SOLO se risulta una sessione viva: sovrascrivere la copia buona
+       con una da sloggati sarebbe buttare via l'unica cosa che ci fa rientrare. */
+    const viva = LOGIN_STATE.step === 'loggato' || logCache.v === true;
+    log(segnale + (viva ? ': salvo la sessione prima di chiudere' : ': nessuna sessione viva, tengo la copia su disco'));
+    if (viva) await Promise.race([salvaSessione('spegnimento'), new Promise(r => setTimeout(r, 5000))]);
+    process.exit(0);
+  });
+}
 // Keep-alive ATTIVO + SELF-HEAL. PERCHÉ il vecchio keep-alive non teneva viva la sessione:
 //  1) navigava SOLO se NON eravamo già su /portal/ → dopo un preventivo l'URL è già .../portal/,
 //     quindi nella pratica NON navigava mai e non rinnovava nulla;
@@ -554,6 +706,8 @@ async function autoLoginFlow() { return doAccedi(); }
 // sessione è ancora buona); (b) se la home autenticata compare, marco loggato; (c) se compare la
 // PASSWORD la sessione è scaduta → mi RI-LOGGO DA SOLO con Auth0 + codice Guardian generato in-house
 // (TOTP), senza disturbare Francesco. Se manca il segreto TOTP non posso: lo dico nel log.
+let kaTick = 0;          // conta i giri del keep-alive: serve a salvare la sessione ogni tanto, non ogni volta
+let avvisatoSeme = false; // «manca il seme» si dice una volta, non trenta al giorno (era una riga ogni 5 minuti)
 setInterval(async () => {
   if (LOGIN_STATE.running || inAttesaCodice() || BUSY || QUOTING) return;
   try {
@@ -569,16 +723,38 @@ setInterval(async () => {
       if (i >= 3 && (await hasPasswordField())) { state = 'expired'; break; } // ci ha rimbalzati al login
     }
     if (QUOTING || BUSY || inAttesaCodice() || LOGIN_STATE.running) return;
-    if (state === 'ready') { setLogged(true); return; }              // sessione viva e rinnovata
+    if (state === 'ready') {
+      if (logCache.v === false) avvisatoSeme = false;  // è rientrata: al prossimo distacco si riavvisa
+      setLogged(true);
+      /* COPIA FRESCA DELLA SESSIONE, circa ogni 20 minuti finché siamo dentro.
+         Salvarla solo al login non basta: il portale rinnova i suoi cookie
+         mentre si lavora, e una copia di stamattina può essere già scaduta
+         stasera — al riavvio si rientrerebbe con qualcosa di morto. Misurato il
+         12/09/2026: il file di AXA era fermo a dieci giorni prima.
+         Si salva solo qui, cioè solo quando la home autenticata è comparsa
+         davvero: una copia presa da sloggati cancellerebbe quella buona. */
+      if (kaTick++ % 4 === 0) await salvaSessione('');
+      return;
+    }
     if (state === 'expired') {
+      /* Quando cade lo si scrive UNA volta, non a ogni giro: serve a sapere
+         quanto è durata la sessione, che è l'unico modo per capire se il
+         portale ha un tetto di tempo o ci butta fuori per inattività. */
+      if (logCache.v !== false) log('keep-alive: la sessione AXA è caduta adesso (era attiva fino a un attimo fa)');
       setLogged(false);
       const c = creds();
-      if (c.totpSecret) {
+      const semeKo = motivoSemeNonValido(c.totpSecret);
+      if (c.totpSecret && !semeKo) {
         log('keep-alive: sessione AXA scaduta → auto-relogin (Auth0 + codice Guardian TOTP)…');
         const st = await doAccedi();                                  // doAccedi genera e inserisce il codice da solo
         log('keep-alive: auto-relogin esito →', st.step);
-      } else {
-        log('keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta');
+      } else if (semeKo) {
+        /* Una volta sola: ripeterlo ogni cinque minuti riempirebbe il giornale
+           di una riga che dice sempre la stessa cosa. */
+        if (!avvisatoSeme) { avvisatoSeme = true; log('keep-alive: sessione AXA scaduta e il segreto TOTP non è utilizzabile — ' + semeKo); }
+      } else if (!avvisatoSeme) {
+        avvisatoSeme = true;
+        log('keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve un login manuale. Con il seme salvato, da lì in poi il rientro è automatico.');
       }
     }
   } catch (e) { log('keep-alive err:', e.message); }

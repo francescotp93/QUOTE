@@ -861,7 +861,20 @@ setInterval(async () => {
       await page.waitForTimeout(1500);
     }
     // se ISA/portale ha buttato fuori (compare la password) segnalo subito lo stato scaduto
-    if (isaPwd || await hasPasswordField()) { LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Sessione scaduta: rifai il login da Fonti → Groupama' }; }
+    if (isaPwd || await hasPasswordField()) {
+      /* QUANDO E' CADUTA, E DOPO QUANTO. Fino al 12/09/2026 questo passaggio
+         era muto: lo stato cambiava e basta. Al mattino si trovava «rifai il
+         login» senza sapere se fosse successo dopo cinque minuti o dopo otto
+         ore — e senza quel numero non si distingue una sessione che scade per
+         inattività (che un keep-alive può tenere viva) da una con un tetto di
+         durata fisso (che nessun keep-alive può salvare, e per cui serve il
+         rientro automatico). Si scrive una volta sola, al passaggio. */
+      if (LOGIN_STATE.step === 'loggato') {
+        const durata = Math.round((Date.now() - (LOGIN_STATE.since || Date.now())) / 60000);
+        log('la sessione Groupama è caduta adesso: era attiva da ' + durata + ' minuti' + (isaPwd ? ' (è caduta ISA)' : ' (è caduto il portale)'));
+      }
+      LOGIN_STATE = { running: false, step: 'pronto', since: Date.now(), msg: 'Sessione scaduta: rifai il login da Fonti → Groupama' };
+    }
     /* Copia fresca della sessione, circa ogni 20 minuti finché siamo dentro.
        Salvarla solo al login non bastava: il portale rinnova i suoi cookie
        mentre si lavora, e una copia di stamattina puo' essere gia' scaduta
