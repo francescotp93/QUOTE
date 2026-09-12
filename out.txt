@@ -1,9 +1,28 @@
-id: stato-1789209470  exit: 0  2026-09-12 10:38:15
+id: verifica-1789213888  exit: 0  2026-09-12 11:51:42
 ----
-ora: 2026-09-12 10:38:15 UTC
-axa        FUORI | Codice non accettato — genera un nuovo codice e riprova.
-groupama   FUORI | Sessione scaduta: rifai il login da Fonti → Groupama
-allianz    dentro | Matrix Motor raggiungibile ✅
-italiana   dentro | 
-hdi        FUORI | Accesso eseguito ✅
-preventivi passati dal backend oggi: 0
+ora: 2026-09-12 11:51:35 UTC
+=== SESSIONI ADESSO
+axa        fuori | Login completato ✅
+groupama   non so | Login completato ✅
+hdi        DENTRO | Accesso eseguito ✅
+allianz    DENTRO | Matrix Motor raggiungibile ✅
+italiana   DENTRO | 
+
+=== COSA E' SUCCESSO NEI LOGIN (ultima ora)
+--- axa
+Sep 12 11:20:49 vps-d6443a46 start-service.sh[1497962]: 11:20:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Sep 12 11:25:49 vps-d6443a46 start-service.sh[1497962]: 11:25:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Sep 12 11:30:49 vps-d6443a46 start-service.sh[1497962]: 11:30:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Sep 12 11:35:49 vps-d6443a46 start-service.sh[1497962]: 11:35:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Sep 12 11:40:49 vps-d6443a46 start-service.sh[1497962]: 11:40:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Sep 12 11:45:49 vps-d6443a46 start-service.sh[1497962]: 11:45:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Sep 12 11:49:58 vps-d6443a46 start-service.sh[1497962]: 11:49:58 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
+Sep 12 11:50:09 vps-d6443a46 start-service.sh[1497962]: 11:50:09 [axa] 2FA inserito → valore nel campo: "832133" OK
+--- groupama
+Sep 12 11:49:45 vps-d6443a46 start-service.sh[1978140]: 11:49:45 [groupama] sessione salvata su disco (login riuscito)
+--- hdi
+Sep 12 11:49:35 vps-d6443a46 start-service.sh[1898251]: 11:49:35 [hdi] login → avvio · Controllo la sessione sul portale HDI…
+Sep 12 11:49:41 vps-d6443a46 start-service.sh[1898251]: 11:49:41 [hdi] login → credenziali · Sessione scaduta: rientro con utente e password…
+Sep 12 11:49:44 vps-d6443a46 start-service.sh[1898251]: 11:49:44 [hdi] autoLogin: campi compilati = {"ok":true}
+Sep 12 11:49:46 vps-d6443a46 start-service.sh[1898251]: 11:49:46 [hdi] autoLogin: loggato
+Sep 12 11:49:46 vps-d6443a46 start-service.sh[1898251]: 11:49:46 [hdi] login → loggato · Accesso eseguito ✅
