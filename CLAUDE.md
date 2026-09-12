@@ -97,15 +97,16 @@ workflow GitHub Actions.** Una PR non ha CI. I numeri che scrivi in una PR
 vengono da quello che hai girato tu.
 
 ```bash
-# 1. il browser vero — 326 prove (5 rosse senza il repo gemello, vedi sotto)
+# 1. il browser vero — 343 prove (5 rosse senza il repo gemello, vedi sotto)
 node static-server.js &          # il collaudo si aspetta la porta 8077
 node ui-test.mjs
 
 # 2. i motori e il server — un file per argomento
-node server/verifica/pensione-motore.test.mjs   # 53
-node server/verifica/irpef.test.mjs             # 32
+node server/verifica/pensione-motore.test.mjs   # 61
+node server/verifica/irpef.test.mjs             # 37
 node server/verifica/tracciabilita.test.mjs     # 22
-node server/verifica/pensione-pdf.test.mjs      # 10
+node server/verifica/pensione-pdf.test.mjs      # 11
+node server/verifica/progetto-previdenziale.test.mjs   # 19
 
 # 3. la scocca a moduli
 node withus-one/verifica/controlla.mjs
@@ -218,6 +219,8 @@ IAM chiede `?page=previdenza`. Rinominare un id rompe il modulo dentro IAM
 | `#page-previdenza` in `index.html` | quattro campi e la risposta sotto, un passo solo |
 | `server/parametriPrevidenziali.js` | serve i numeri di legge dalla tabella; il motore ne tiene una copia di riserva |
 | `server/analisiPrevidenziali.js` | ogni foglio stampato lascia la sua riga a registro |
+| `server/progettoPrevidenziale.js` | il link che il cliente compila da sé — **l'unica porta di QUOTO che si apre senza login** |
+| `progetto.html` | la pagina che apre il cliente, con gli stessi due motori |
 
 Le due cose da non rompere:
 

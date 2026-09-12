@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Il tuo progetto pensione — With Us Assicurazioni</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<!-- Gli stessi due motori della schermata del consulente. Il conto che vede il
+     cliente e quello che vede il consulente DEVONO essere lo stesso: due
+     calcoli diversi sugli stessi dati sono il modo piu' veloce di perdere una
+     persona al primo appuntamento. -->
+<script src="tariffe/motore/irpef.js?v=20260912"></script>
+<script src="tariffe/motore/pensione.js?v=20260912"></script>
+<style>
+  :root{ --vd:#02984e; --vd2:#017a3f; --ink:#141a2e; --muted:#6b7488; --line:#e6e9f2; --amb:#b06a00; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);
+       background:linear-gradient(160deg,#04331d,#046034 55%,#02984e);min-height:100vh;
+       display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;}
+  .card{background:#fff;border-radius:20px;width:100%;max-width:480px;box-shadow:0 24px 70px rgba(0,0,0,.35);overflow:hidden}
+  .hd{background:linear-gradient(135deg,#04331d,#046034);color:#fff;padding:22px 24px}
+  .hd .br{font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:.85}
+  .hd h1{margin:6px 0 0;font-size:21px;font-weight:900}
+  .hd p{margin:7px 0 0;font-size:13px;opacity:.9;line-height:1.5}
+  .bd{padding:22px 24px}
+  .campo{margin-bottom:14px}
+  .campo label{display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:#3a4254}
+  .campo input,.campo select{width:100%;padding:13px;border:1.5px solid var(--line);border-radius:12px;
+       font-size:16px;font-family:inherit;color:var(--ink);background:#fff}
+  .campo .aiuto{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.45}
+  .btn{width:100%;padding:15px;border:none;border-radius:13px;background:linear-gradient(135deg,var(--vd),var(--vd2));
+       color:#fff;font-weight:800;font-size:16px;cursor:pointer;font-family:inherit;margin-top:8px}
+  .btn:disabled{opacity:.55;cursor:default}
+  .msg{border-radius:11px;padding:11px 13px;font-size:13.5px;margin:12px 0;display:none;line-height:1.5}
+  .msg.err{background:#fdecec;color:#c0392b;display:block}
+  .msg.ok{background:#e8f7ee;color:#1e7d46;display:block}
+  .msg.avv{background:#fff8ec;color:var(--amb);display:block}
+  .center{text-align:center} .muted{color:var(--muted);font-size:13px;line-height:1.5}
+  .flag{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#3a4254;margin:4px 0 14px;cursor:pointer;line-height:1.45}
+  .flag input{margin-top:2px;width:18px;height:18px;flex:0 0 auto}
+  .num{background:#f5f9f6;border:1px solid #d9e8e0;border-radius:13px;padding:14px 16px;margin:10px 0}
+  .num .et{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700}
+  .num .v{font-size:27px;font-weight:900;margin-top:3px}
+  .num .sub{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+  .num.gap{background:#fdf1f0;border-color:#f0c0bb} .num.gap .v{color:#c0392b}
+  .done i{font-size:54px;color:#1e7d46}
+  .foot{padding:14px 24px;background:#f8f9fc;color:#9aa1b3;font-size:11.5px;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hd">
+    <div class="br">With Us Assicurazioni</div>
+    <h1>Il tuo progetto pensione</h1>
+    <p id="hd-p">Quattro domande. Quanto ti manderà l'INPS, e quanto ti mancherà.</p>
+  </div>
+  <div class="bd" id="bd"><div class="center muted">Caricamento…</div></div>
+  <div class="foot" id="foot">
+    Stima indicativa a scopo illustrativo. Non è un preventivo né una promessa di rendimento.
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ══ IL PROGETTO CHE COMPILA IL CLIENTE ═══════════════════════════════════
+   Questa pagina la apre una persona che NON è collegata a niente, spesso dal
+   telefono, spesso con la rete che ha. Tre cose la governano:
+
+   1. NON E' UN PREVENTIVO, E LO DICE. Finché i valori di tariffa sono
+      segnaposto, «un foglio non si consegna a un cliente vero» (CODEX §4.1).
+      Qui non c'è un PDF da scaricare e non c'è niente da firmare: c'è una
+      stima, con scritto che è una stima, e un consulente che richiama.
+   2. IL CONTO E' LO STESSO DEL CONSULENTE. Stessi due motori, stesse regole.
+      Due calcoli diversi sugli stessi dati sono il modo più veloce di
+      perdere una persona al primo appuntamento.
+   3. LA DATA DI NASCITA SI RICHIEDE A OGNI SCRITTURA. Questa pagina non
+      tiene nessuna sessione: se il salvataggio non la richiedesse, il solo
+      link basterebbe a scrivere sulla scheda del cliente. */
+var API = 'https://api.withusassicurazioni.it';
+var TOKEN = new URLSearchParams(location.search).get('t') || '';
+var CLIENTE = null, DATA_NASCITA = '', ESITO = null;
+
+var bd = document.getElementById('bd');
+var esc = function (s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c];
+  });
+};
+var euro = function (n) { return (Math.round(Number(n) || 0)).toLocaleString('it-IT') + ' €'; };
+
+function schermo(html) { bd.innerHTML = html; }
+function chiuso(testo) {
+  schermo('<div class="msg err">' + esc(testo) + '</div>' +
+    '<div class="muted center" style="margin-top:14px">Se ti serve un link nuovo, scrivi al tuo consulente.</div>');
+}
+
+async function chiama(percorso, opzioni) {
+  var r = await fetch(API + '/progetti-previdenziali' + percorso, opzioni);
+  var j = await r.json().catch(function () { return {}; });
+  if (!r.ok) throw new Error(j.error || ('Errore ' + r.status));
+  return j;
+}
+
+/* ── 1. il link è vivo? ───────────────────────────────────────────────── */
+async function avvia() {
+  if (!TOKEN) return chiuso('Questo indirizzo non è completo: apri il link che ti è stato mandato.');
+  try {
+    await chiama('/pubblico/' + encodeURIComponent(TOKEN));
+    chiediData();
+  } catch (e) { chiuso(e.message); }
+}
+
+/* ── 2. la data di nascita ────────────────────────────────────────────── */
+function chiediData() {
+  schermo(
+    '<div class="muted" style="margin-bottom:16px">Prima di aprire il tuo progetto, confermaci la tua data di nascita: ' +
+      'serve perché questo link apre dati che riguardano te.</div>' +
+    '<div class="campo"><label>La tua data di nascita</label>' +
+      '<input id="dn" type="date" autocomplete="bday"></div>' +
+    '<div id="m" class="msg"></div>' +
+    '<button class="btn" id="go">Apri il mio progetto</button>');
+  var vai = function () { apri(); };
+  document.getElementById('go').onclick = vai;
+  document.getElementById('dn').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') vai(); });
+}
+
+async function apri() {
+  var dn = (document.getElementById('dn') || {}).value || '';
+  var m = document.getElementById('m'), b = document.getElementById('go');
+  if (!dn) { m.className = 'msg err'; m.textContent = 'Scrivi la tua data di nascita.'; return; }
+  b.disabled = true; b.textContent = 'Controllo…';
+  try {
+    var j = await chiama('/pubblico/' + encodeURIComponent(TOKEN) + '/apri', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dataNascita: dn }),
+    });
+    CLIENTE = j.cliente || {}; DATA_NASCITA = dn;
+    modulo(j.dati || null, j.giaCompletato);
+  } catch (e) {
+    m.className = 'msg err'; m.textContent = e.message;
+    b.disabled = false; b.textContent = 'Apri il mio progetto';
+  }
+}
+
+/* ── 3. le quattro domande ────────────────────────────────────────────── */
+function modulo(precedenti, giaFatto) {
+  var p = precedenti || {};
+  document.getElementById('hd-p').textContent =
+    (CLIENTE.nome ? 'Ciao ' + CLIENTE.nome + '. ' : '') + 'Quattro domande, un minuto.';
+  schermo(
+    (giaFatto ? '<div class="msg ok">Questo progetto l\'avevi già compilato. Puoi rivederlo o cambiarlo.</div>' : '') +
+    '<div class="campo"><label>Quanti anni hai</label>' +
+      '<input id="eta" type="number" inputmode="numeric" min="18" max="75" value="' + esc(p.eta || '') + '"></div>' +
+    '<div class="campo"><label>Che lavoro fai</label><select id="lavoro">' +
+      '<option value="dipendente">Lavoratore dipendente</option>' +
+      '<option value="autonomo">Lavoratore autonomo</option>' +
+      '<option value="professionista">Libero professionista</option>' +
+      '</select></div>' +
+    '<div class="campo"><label>Quanto prendi al mese, netto</label>' +
+      '<input id="reddito" type="number" inputmode="decimal" min="1" value="' + esc(p.redditoMensile || '') + '">' +
+      '<div class="aiuto">Quello che ti arriva sul conto, non il lordo della busta paga.</div></div>' +
+    '<div class="campo"><label>Quanto metti già da parte ogni mese</label>' +
+      '<input id="versamento" type="number" inputmode="decimal" min="0" value="' + esc(p.versamentoMensile == null ? 0 : p.versamentoMensile) + '">' +
+      '<div class="aiuto">In un fondo pensione o in un piano previdenziale. Se non hai niente, lascia 0.</div></div>' +
+    '<div class="campo"><label>A che età hai cominciato a lavorare</label>' +
+      '<input id="inizio" type="number" inputmode="numeric" min="14" max="75" value="' + esc(p.etaInizioLavoro || '') + '"></div>' +
+    '<label class="flag"><input type="checkbox" id="ignoto"' + (p.etaInizioLavoro ? '' : '') + '>' +
+      '<span>Non me lo ricordo — usate una stima prudente</span></label>' +
+    '<div id="m" class="msg"></div>' +
+    '<button class="btn" id="go">Vedi quanto ti mancherà</button>');
+  if (p.lavoro) document.getElementById('lavoro').value = p.lavoro;
+  document.getElementById('ignoto').onchange = function () {
+    document.getElementById('inizio').disabled = this.checked;
+  };
+  document.getElementById('go').onclick = calcola;
+}
+
+/* ── 4. il conto, con gli stessi motori del consulente ────────────────── */
+function calcola() {
+  var v = function (id) { return (document.getElementById(id) || {}).value; };
+  var m = document.getElementById('m');
+  if (typeof Pensione === 'undefined' || !Pensione.calcola) {
+    m.className = 'msg err';
+    m.textContent = 'Non riesco a caricare il calcolo. Riprova fra poco, o chiedi al tuo consulente.';
+    return;
+  }
+  var dati = {
+    eta: Number(v('eta')),
+    lavoro: v('lavoro'),
+    redditoMensile: Number(v('reddito')),
+    versamentoMensile: Number(v('versamento') || 0),
+    etaInizioLavoro: document.getElementById('ignoto').checked ? null : Number(v('inizio')) || null,
+    baseReddito: 'netto',
+  };
+  if (!(dati.eta >= 18 && dati.eta <= 75)) { m.className = 'msg err'; m.textContent = 'Controlla l\'età.'; return; }
+  if (!(dati.redditoMensile > 0)) { m.className = 'msg err'; m.textContent = 'Scrivi quanto prendi al mese.'; return; }
+  ESITO = Pensione.calcola(dati);
+  risultato(dati, ESITO);
+}
+
+function risultato(dati, e) {
+  document.getElementById('hd-p').textContent = 'Ecco cosa dicono i numeri.';
+  var h = '';
+  /* LO SCENARIO PRUDENZIALE SI DICHIARA, anche qui. Chi non ricorda quando
+     ha cominciato riceve un numero peggiorativo per costruzione: spacciarlo
+     per una stima e' dire un numero falso. */
+  if (e.prudenziale) {
+    h += '<div class="msg avv"><b>Stima prudenziale.</b> Non sapendo quando hai cominciato a lavorare, ' +
+      'abbiamo usato l\'ipotesi peggiore: pensione più bassa, divario più ampio. Col dato vero il risultato migliora.</div>';
+  }
+  h += '<div class="num"><div class="et">Oggi porti a casa</div><div class="v">' + euro(e.redditoNettoMensile) + '</div>' +
+       '<div class="sub">al mese, netti</div></div>' +
+       '<div class="num"><div class="et">Pensione pubblica stimata</div><div class="v">' + euro(e.pensioneNettaMensile) + '</div>' +
+       '<div class="sub">circa il ' + Math.round((e.tassoSostituzioneNetto || 0) * 100) + '% di quello che prendi oggi</div></div>';
+  if (e.gapMensile > 0) {
+    h += '<div class="num gap"><div class="et">Ti mancheranno</div><div class="v">' + euro(e.gapMensile) + '</div>' +
+         '<div class="sub">al mese, per come stanno le cose adesso</div></div>';
+    var prop = (e.proposte || []).filter(function (p) { return p.eQuelloCheAzzera && !p.fuoriPortata; })[0] ||
+               (e.proposte || [])[1];
+    if (prop) {
+      h += '<div class="msg ok">Con <b>' + euro(prop.versamentoMensile) + ' al mese</b> ' +
+        (prop.eQuelloCheAzzera ? 'il divario si chiude del tutto.' :
+          'ne recuperi ' + euro(prop.renditaMensileNetta) + ' al mese.') + '</div>';
+    }
+  } else {
+    h += '<div class="msg ok">Con quello che stai già mettendo da parte, il divario è coperto.</div>';
+  }
+  h += '<div class="muted" style="margin:14px 0">Questa è una stima, non un preventivo: i numeri veri dipendono da ' +
+    'parametri che cambiano e da cose che un modulo non può sapere. Il tuo consulente ti richiama e la completa con te.</div>' +
+    '<div id="m" class="msg"></div>' +
+    '<button class="btn" id="go">Mandala al mio consulente</button>' +
+    '<div class="center"><button class="btn" id="back" style="background:#fff;color:var(--vd);' +
+      'border:1.5px solid var(--line);margin-top:8px">Cambia i dati</button></div>';
+  schermo(h);
+  document.getElementById('go').onclick = function () { salva(dati); };
+  document.getElementById('back').onclick = function () { modulo(dati, false); };
+}
+
+/* ── 5. si attacca alla sua scheda ────────────────────────────────────── */
+async function salva(dati) {
+  var m = document.getElementById('m'), b = document.getElementById('go');
+  b.disabled = true; b.textContent = 'Invio…';
+  try {
+    await chiama('/pubblico/' + encodeURIComponent(TOKEN) + '/salva', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        /* La data di nascita di nuovo: questa pagina non tiene sessioni, e
+           senza ricontrollarla basterebbe il solo link per scrivere. */
+        dataNascita: DATA_NASCITA,
+        dati: dati,
+        /* Quello che il cliente HA VISTO: serve al consulente per sapere di
+           cosa gli sta parlando quando richiama. */
+        esito: ESITO ? {
+          redditoNettoMensile: ESITO.redditoNettoMensile,
+          pensioneNettaMensile: ESITO.pensioneNettaMensile,
+          gapMensile: ESITO.gapMensile,
+          tassoSostituzioneNetto: ESITO.tassoSostituzioneNetto,
+          prudenziale: ESITO.prudenziale,
+        } : null,
+        versione_motore: (typeof Pensione !== 'undefined' && Pensione.VERSIONE) || '',
+      }),
+    });
+    schermo('<div class="center done"><i class="ti ti-circle-check"></i>' +
+      '<h2 style="margin:10px 0 6px;font-size:19px">Fatto</h2>' +
+      '<div class="muted">Il tuo progetto è arrivato al consulente' +
+      '. Ti richiamerà per completarlo con te.</div></div>');
+  } catch (e) {
+    m.className = 'msg err'; m.textContent = e.message;
+    b.disabled = false; b.textContent = 'Mandala al mio consulente';
+  }
+}
+
+avvia();
+</script>
+</body>
+</html>

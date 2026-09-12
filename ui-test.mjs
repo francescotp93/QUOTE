@@ -5568,6 +5568,227 @@ const avvio = async () => {
 
     await context.close();
   }
+
+  /* ══ LA PAGINA PUBBLICA DEL CLIENTE ══════════════════════════════════════
+     progetto.html la apre una persona che NON e' collegata a niente, dal suo
+     telefono. E' l'unica pagina di QUOTO con quella proprieta', e quindi
+     l'unica dove un errore lo trova un estraneo prima di noi.
+
+     Qui il server e' FINTO: si collauda la pagina, non il backend — quello ha
+     le sue prove, senza browser, in server/verifica/progetto-previdenziale.
+     Quello che si controlla e': che i due motori si carichino davvero, che il
+     conto sia LO STESSO del consulente, che la data di nascita venga chiesta
+     due volte (all'apertura e al salvataggio), e che la pagina non prometta
+     mai di essere un preventivo. */
+  {
+    const context = await browser.newContext();
+    /* Il finto backend. `stato` lo pilotano le singole prove. */
+    const stato = { apri: 'ok', salvato: null, chiamate: [] };
+    await context.route('**/*', (route) => {
+      const url = route.request().url();
+      if (url.startsWith(BASE)) return route.continue();
+      if (/\.css(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '/* collaudo */' });
+      if (/progetti-previdenziali/.test(url)) {
+        const corpo = (() => { try { return JSON.parse(route.request().postData() || '{}'); } catch (_) { return {}; } })();
+        stato.chiamate.push({ url, metodo: route.request().method(), corpo });
+        const rispondi = (s, o) => route.fulfill({ status: s, contentType: 'application/json', body: JSON.stringify(o) });
+        if (/\/salva$/.test(url)) {
+          if (corpo.dataNascita !== '1980-03-05') return rispondi(401, { error: 'Data di nascita non corrispondente.' });
+          stato.salvato = corpo;
+          return rispondi(200, { ok: true });
+        }
+        if (/\/apri$/.test(url)) {
+          if (stato.apri === 'bloccato') return rispondi(423, { error: 'Questo link è stato bloccato dopo troppi tentativi. Chiedi al tuo consulente di rimandartelo.' });
+          if (corpo.dataNascita !== '1980-03-05') return rispondi(401, { error: 'Data di nascita non corrispondente. Controlla e riprova.', restano: 4 });
+          return rispondi(200, { ok: true, cliente: { nome: 'Mario', nominativo: 'Mario Rossi', professione: 'Impiegato' }, giaCompletato: false, dati: null });
+        }
+        if (stato.apri === 'scaduto') return rispondi(410, { error: 'Questo link è scaduto. Chiedi al tuo consulente di rimandartelo.' });
+        return rispondi(200, { ok: true, richiede: 'data_nascita', giaCompletato: false });
+      }
+      if (/parametri-previdenziali\/numeri/.test(url)) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+      }
+      if (/\.m?js(\?|$)|jsdelivr|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* collaudo */' });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+    const page = await context.newPage();
+    const erroriPub = [];
+    sorvegliaErrori(page, erroriPub);
+    const apriPagina = async (t) => {
+      await page.goto(BASE + '/progetto.html' + (t === null ? '' : '?t=' + t), { waitUntil: 'load' });
+      await page.waitForTimeout(300);
+    };
+    const compila = async (dn) => {
+      await page.fill('#dn', dn);
+      await page.click('#go');
+      await page.waitForTimeout(250);
+    };
+
+    await prova('cliente: senza token la pagina non chiede niente e lo spiega', async () => {
+      await apriPagina(null);
+      const t = await page.textContent('#bd');
+      deve(/non . completo|apri il link/i.test(t), 'non spiega che il link è incompleto: ' + t.slice(0, 80));
+      deve(!(await page.locator('#dn').count()), 'chiede la data di nascita senza nemmeno un token');
+      return 'si ferma prima di chiedere dati';
+    });
+
+    await prova('cliente: il link chiede la data di nascita PRIMA di dire qualunque cosa', async () => {
+      stato.apri = 'ok';
+      await apriPagina('tok-collaudo-1234567890');
+      deve(await page.locator('#dn').count(), 'non chiede la data di nascita');
+      const t = await page.evaluate(() => document.body.innerText);
+      /* IL NOME NON DEVE COMPARIRE. Chi ha intercettato il link non deve
+         poter leggere nemmeno a chi appartiene. */
+      deve(!/Mario|Rossi/.test(t), 'il nome del cliente compare prima della data di nascita: ' + t.slice(0, 120));
+      return 'chiede la seconda chiave, e non anticipa niente';
+    });
+
+    await prova('cliente: la data sbagliata non apre, e dice quanti tentativi restano', async () => {
+      await compila('1980-03-06');
+      const t = await page.textContent('#bd');
+      deve(/non corrispondente/i.test(t), 'non dice che la data non corrisponde: ' + t.slice(0, 80));
+      deve(!(await page.locator('#eta').count()), 'con la data sbagliata si apre lo stesso il modulo');
+      return 'porta chiusa, messaggio chiaro';
+    });
+
+    await prova('cliente: un link bloccato dice cosa fare, non «non autorizzato»', async () => {
+      stato.apri = 'bloccato';
+      await apriPagina('tok-collaudo-1234567890');
+      await compila('1980-03-05');
+      const t = await page.textContent('#bd');
+      deve(/bloccat/i.test(t), 'non dice che è bloccato: ' + t.slice(0, 90));
+      deve(/consulente/i.test(t), 'non dice a chi rivolgersi: ' + t.slice(0, 90));
+      stato.apri = 'ok';
+      return 'dice perché, e a chi chiedere';
+    });
+
+    await prova('cliente: un link scaduto si ferma prima di chiedere la data', async () => {
+      stato.apri = 'scaduto';
+      await apriPagina('tok-collaudo-1234567890');
+      const t = await page.textContent('#bd');
+      deve(/scadut/i.test(t), 'non dice che è scaduto: ' + t.slice(0, 90));
+      deve(!(await page.locator('#dn').count()), 'chiede la data di nascita su un link scaduto');
+      stato.apri = 'ok';
+      return 'si ferma subito';
+    });
+
+    await prova('cliente: con la data giusta si aprono le quattro domande', async () => {
+      await apriPagina('tok-collaudo-1234567890');
+      await compila('1980-03-05');
+      for (const id of ['#eta', '#lavoro', '#reddito', '#versamento', '#inizio', '#ignoto']) {
+        deve(await page.locator(id).count(), 'manca il campo ' + id);
+      }
+      const t = await page.evaluate(() => document.body.innerText);
+      deve(/Mario/.test(t), 'non saluta il cliente per nome dopo che si è riconosciuto');
+      return 'sei campi, e il cliente riconosciuto';
+    });
+
+    await prova('cliente: il conto è LO STESSO del consulente, non un secondo calcolo', async () => {
+      /* Due calcoli diversi sugli stessi dati sono il modo più veloce di
+         perdere una persona al primo appuntamento: il cliente arriva con un
+         numero, il consulente gliene mostra un altro. */
+      await page.fill('#eta', '38');
+      await page.selectOption('#lavoro', 'dipendente');
+      await page.fill('#reddito', '1800');
+      await page.fill('#versamento', '100');
+      await page.fill('#inizio', '25');
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      /* Gli importi attesi si formattano NEL BROWSER, con lo stesso
+         `toLocaleString('it-IT')` che usa la pagina: Node, senza i dati di
+         localizzazione completi, scrive «1294 €» dove il browser scrive
+         «1.294 €» — e la prova sarebbe rossa per la strada, non per il
+         contenuto. */
+      const r = await page.evaluate(() => {
+        const eur = (n) => Math.round(n).toLocaleString('it-IT') + ' €';
+        const a = window.Pensione ? window.Pensione.calcola({
+          eta: 38, lavoro: 'dipendente', redditoMensile: 1800, versamentoMensile: 100,
+          etaInizioLavoro: 25, baseReddito: 'netto',
+        }) : null;
+        return {
+          motore: typeof window.Pensione, fisco: typeof window.Irpef,
+          attesi: a ? { pensione: eur(a.pensioneNettaMensile), reddito: eur(a.redditoNettoMensile), gap: eur(a.gapMensile) } : null,
+          visto: document.getElementById('bd').innerText,
+        };
+      });
+      deve(r.motore === 'object' && r.fisco === 'object',
+        'la pagina del cliente non carica i due motori (Pensione: ' + r.motore + ', Irpef: ' + r.fisco + ')');
+      deve(r.visto.includes(r.attesi.pensione),
+        'la pensione mostrata non è quella del motore (' + r.attesi.pensione + '): ' + r.visto.slice(0, 140));
+      deve(r.visto.includes(r.attesi.reddito),
+        'il reddito mostrato non è quello del motore (' + r.attesi.reddito + ')');
+      deve(r.visto.includes(r.attesi.gap),
+        'il divario mostrato non è quello del motore (' + r.attesi.gap + ')');
+      return 'pensione ' + r.attesi.pensione + ', divario ' + r.attesi.gap + ': gli stessi numeri';
+    });
+
+    await prova('cliente: la pagina non promette di essere un preventivo, e non dà PDF', async () => {
+      /* Finché i valori di tariffa sono segnaposto, «un foglio non si
+         consegna a un cliente vero» — e men che meno senza nessuno accanto
+         che lo spieghi. */
+      /* `innerText`, non `textContent`: il secondo comprende anche il testo
+         dei tag <script>, e questa pagina il suo codice ce l'ha dentro —
+         la prova finiva per leggere i propri commenti. */
+      const t = await page.evaluate(() => document.body.innerText);
+      deve(/stima/i.test(t), 'non dice mai che è una stima');
+      deve(/non . un preventivo|non . una promessa/i.test(t), 'non dice che non è un preventivo né una promessa');
+      deve(!/scarica|PDF|firma/i.test(t), 'offre un PDF o una firma al cliente lasciato solo: ' + t.slice(0, 120));
+      return 'stima dichiarata, nessun foglio da firmare';
+    });
+
+    await prova('cliente: il salvataggio richiede DI NUOVO la data di nascita', async () => {
+      /* La pagina non tiene nessuna sessione: se il salvataggio non la
+         richiedesse, il solo link basterebbe a scrivere sulla scheda. */
+      stato.salvato = null;
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      deve(stato.salvato, 'il salvataggio non è arrivato al server');
+      deve(stato.salvato.dataNascita === '1980-03-05',
+        'il salvataggio non porta la data di nascita: ' + JSON.stringify(stato.salvato.dataNascita));
+      deve(stato.salvato.dati && stato.salvato.dati.eta === 38, 'i dati compilati non arrivano');
+      deve(stato.salvato.versione_motore, 'non dice con quale versione del motore è stato calcolato');
+      const t = await page.textContent('#bd');
+      deve(/Fatto|consulente/i.test(t), 'non conferma al cliente che è arrivato: ' + t.slice(0, 80));
+      return 'data richiesta due volte, dati e versione a destinazione';
+    });
+
+    await prova('cliente: «non me lo ricordo» arriva al server come dato mancante, non come zero', async () => {
+      /* Un\'età di inizio a 0 produrrebbe una carriera di 67 anni e una
+         pensione da sogno. Il motore, senza il dato, applica lo scenario
+         prudenziale e LO DICHIARA: è tutta un\'altra cosa. */
+      await apriPagina('tok-collaudo-1234567890');
+      await compila('1980-03-05');
+      await page.fill('#eta', '38');
+      await page.fill('#reddito', '1800');
+      await page.fill('#versamento', '0');
+      await page.check('#ignoto');
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      const t = await page.textContent('#bd');
+      deve(/prudenziale/i.test(t), 'non dichiara al cliente che la stima è prudenziale: ' + t.slice(0, 120));
+      stato.salvato = null;
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      deve(stato.salvato, 'il salvataggio non è arrivato');
+      deve(stato.salvato.dati.etaInizioLavoro === null,
+        'l\'età di inizio sconosciuta arriva come ' + JSON.stringify(stato.salvato.dati.etaInizioLavoro) + ' invece che nulla');
+      deve(stato.salvato.esito && stato.salvato.esito.prudenziale === true,
+        'la stima salvata non risulta prudenziale: il consulente non saprebbe che lo era');
+      return 'mancante resta mancante, e viaggia marcato';
+    });
+
+    await prova('cliente: la pagina non finisce sui motori di ricerca', async () => {
+      const robots = await page.getAttribute('meta[name="robots"]', 'content');
+      deve(/noindex/i.test(robots || ''), 'progetto.html è indicizzabile: content="' + robots + '"');
+      return robots;
+    });
+
+    await prova('cliente: nessun errore JavaScript in tutta la pagina pubblica', async () => {
+      deve(erroriPub.length === 0, erroriPub.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
   await browser.close();
 };
 

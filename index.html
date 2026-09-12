@@ -4597,7 +4597,11 @@ async function caricaPrevidenzaCliente(anagraficaId) {
     var d = await r.json().catch(function () { return {}; });
     if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
     PENS_ELENCO = d.items || [];
-    box.innerHTML = pensElencoHtml(PENS_ELENCO, anagraficaId);
+    /* GLI INVITI si leggono insieme ai progetti, ma con una fetch che NON
+       puo' far fallire l'altra: se la porta degli inviti e' chiusa, i
+       progetti gia' fatti si devono vedere lo stesso. */
+    PENS_INVITI = await pensLeggiInviti(anagraficaId);
+    box.innerHTML = pensElencoHtml(PENS_ELENCO, anagraficaId) + pensInvitiHtml(PENS_INVITI, anagraficaId);
   } catch (e) {
     /* NON si finge che non ce ne siano: «nessun progetto» e «non sono
        riuscito a leggerli» sono due cose diverse, e confonderle fa rifare al
@@ -4643,6 +4647,182 @@ function pensElencoHtml(righe, anagraficaId) {
    rimettere nel modulo i dati che erano stati inseriti e RIFARE il conto con
    i parametri di oggi. I numeri di allora restano in archivio, ed e' li' che
    si guardano quando il cliente torna col foglio in mano. */
+/* ══ IL LINK CHE COMPILA IL CLIENTE ═══════════════════════════════════════
+   Il consulente non ha sempre il cliente davanti. Con il link, il cliente
+   scrive i suoi quattro dati da solo, dal telefono, e il progetto arriva
+   attaccato alla SUA scheda — non a un foglio volante che poi va ricollegato
+   a mano.
+
+   IL LINK SI VEDE UNA VOLTA SOLA. Il server ne salva solo l'impronta: se il
+   consulente chiude questo riquadro senza copiarlo, non lo si recupera e se
+   ne fa un altro. E' scritto nel riquadro, perche' scoprirlo dopo sarebbe
+   una cattiva sorpresa. */
+var PENS_INVITI = [];
+
+async function pensLeggiInviti(anagraficaId) {
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/progetti-previdenziali?anagrafica_id=' + encodeURIComponent(anagraficaId),
+      { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) return { errore: d.error || ('errore ' + r.status) };
+    return { items: d.items || [] };
+  } catch (e) { return { errore: (e && e.message) || String(e) }; }
+}
+
+/* Lo stato di un invito, in una parola sola e con un colore. Non e' un
+   dettaglio estetico: «mandato» e «compilato» sono due telefonate diverse. */
+function pensStatoInvito(x) {
+  if (x.completato_il) return { t: 'Compilato', c: '#1e7d46' };
+  if (x.revocato_il) return { t: 'Annullato', c: 'var(--muted)' };
+  if (x.bloccato) return { t: 'Bloccato', c: '#c0392b' };
+  if (new Date(x.scade_il).getTime() < Date.now()) return { t: 'Scaduto', c: 'var(--muted)' };
+  if (x.aperto_il) return { t: 'Aperto, non compilato', c: '#b06a00' };
+  return { t: 'In attesa', c: '#b06a00' };
+}
+
+function pensInvitiHtml(risp, anagraficaId) {
+  var testa = '<div style="margin:16px 0 9px;font-weight:700;font-size:13px">Link mandati al cliente</div>' +
+    '<div style="margin-bottom:10px"><button class="btn-emetti" style="padding:5px 12px" ' +
+    'onclick="pensLinkCrea(\'' + anagraficaId + '\')"><i class="ti ti-link"></i> Manda il link al cliente</button></div>' +
+    '<div id="pens-link-nuovo"></div>';
+  if (risp && risp.errore) {
+    return testa + '<div class="cl-empty" style="color:#c0392b">Non sono riuscito a leggere i link mandati: ' +
+      esc(risp.errore) + '</div>';
+  }
+  var righe = (risp && risp.items) || [];
+  if (!righe.length) {
+    return testa + '<div class="cl-empty">Nessun link mandato. Il cliente compila da solo, dal telefono, ' +
+      'e il progetto arriva qui sotto.</div>';
+  }
+  return testa + '<div style="display:flex;flex-direction:column;gap:8px">' + righe.map(function (x, i) {
+    var st = pensStatoInvito(x), d = x.dati || {}, o = x.esito || {};
+    var quando = x.creato_il ? new Date(x.creato_il).toLocaleDateString('it-IT') : '';
+    var h = '<div style="border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">' +
+        '<div style="font-weight:700;color:' + st.c + '">' + esc(st.t) + '</div>' +
+        '<div style="font-size:12px;color:var(--muted)">mandato il ' + esc(quando) + '</div></div>';
+    if (x.completato_il) {
+      h += '<div style="font-size:12.5px;margin-top:5px">' +
+        esc((window.Pensione && Pensione.LAVORI[d.lavoro] && Pensione.LAVORI[d.lavoro].etichetta) || 'Compilato') +
+        (d.eta ? ' · ' + d.eta + ' anni' : '') +
+        (d.redditoMensile ? ' · ' + pensEuro(d.redditoMensile) + '/mese' : '') +
+        (d.versamentoMensile ? ' · versa ' + pensEuro(d.versamentoMensile) : '') +
+        (d.etaInizioLavoro == null ? ' · <b style="color:#b06a00">non ricordava l\'inizio</b>' : '') +
+        '</div>';
+      if (o.gapMensile != null) {
+        h += '<div style="font-size:12px;color:var(--muted);margin-top:3px">Gli è comparso un divario di <b>' +
+          pensEuro(o.gapMensile) + '</b> al mese' + (o.prudenziale ? ' (stima prudenziale)' : '') + '.</div>';
+      }
+      h += '<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">' +
+        '<button class="sc-edit" onclick="pensApriCompilato(' + i + ')"><i class="ti ti-rotate"></i> Apri e ricalcola</button>' +
+        '</div>';
+    } else if (!x.revocato_il && !x.bloccato && new Date(x.scade_il).getTime() >= Date.now()) {
+      h += '<div style="font-size:12px;color:var(--muted);margin-top:4px">Scade il ' +
+        esc(new Date(x.scade_il).toLocaleDateString('it-IT')) +
+        (x.tentativi ? ' · ' + x.tentativi + ' tentativi sbagliati sulla data di nascita' : '') + '</div>' +
+        '<div style="margin-top:8px"><button class="sc-edit" onclick="pensLinkRevoca(\'' + x.id + '\',\'' + anagraficaId + '\')">' +
+        '<i class="ti ti-ban"></i> Annulla il link</button></div>';
+    }
+    return h + '</div>';
+  }).join('') + '</div>';
+}
+
+async function pensLinkCrea(anagraficaId) {
+  var box = document.getElementById('pens-link-nuovo');
+  if (box) box.innerHTML = '<div class="cl-empty">Preparo il link…</div>';
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/progetti-previdenziali', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (tok || '') },
+      body: JSON.stringify({ anagrafica_id: anagraficaId }),
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    var testo = 'Ciao' + (d.cliente && d.cliente.nominativo ? ' ' + String(d.cliente.nominativo).split(' ')[0] : '') +
+      ', qui puoi vedere in un minuto quanto ti manderà l\'INPS e quanto ti mancherà: ' + d.link +
+      '\n\nTi chiede la tua data di nascita: serve perché il link apre dati che riguardano te.';
+    var wa = 'https://wa.me/' + pensNumeroWhatsApp((d.cliente && d.cliente.telefono) || '') +
+      '?text=' + encodeURIComponent(testo);
+    if (box) {
+      box.innerHTML = '<div style="border:1.5px solid var(--pv-verde,#02984e);border-radius:11px;padding:11px 13px;background:#f5f9f6">' +
+        '<div style="font-weight:700;font-size:12.5px;margin-bottom:6px">Link pronto — vale ' + d.giorni + ' giorni</div>' +
+        '<input id="pens-link-val" readonly value="' + esc(d.link) + '" ' +
+          'style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:12px;background:#fff">' +
+        '<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">' +
+          '<button class="btn-emetti" style="padding:5px 12px" onclick="pensLinkCopia(this)"><i class="ti ti-copy"></i> Copia</button>' +
+          '<a class="sc-edit" href="' + esc(wa) + '" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Manda su WhatsApp</a>' +
+        '</div>' +
+        /* SI VEDE UNA VOLTA SOLA, e va detto adesso: il server ne tiene solo
+           l'impronta, e scoprirlo dopo averlo chiuso sarebbe una sorpresa. */
+        '<div style="font-size:11.5px;color:var(--muted);margin-top:8px">Questo indirizzo si vede <b>una volta sola</b>: ' +
+          'di qui in avanti resta solo la sua impronta. Se lo perdi, fanne un altro.</div>' +
+        '</div>';
+    }
+    PENS_INVITI = await pensLeggiInviti(anagraficaId);
+  } catch (e) {
+    if (box) box.innerHTML = '<div class="cl-empty" style="color:#c0392b">Non sono riuscito a preparare il link: ' +
+      esc((e && e.message) || e) + '</div>';
+  }
+}
+
+/* La copia passa da `copiaTesto`, che sta in un posto solo. Dentro il
+   riquadro di IAM il browser NEGA `navigator.clipboard`: una copia scritta
+   qui a mano fallirebbe in silenzio proprio dove il modulo vive. */
+async function pensLinkCopia(bottone) {
+  var i = document.getElementById('pens-link-val');
+  if (!i) return;
+  var fatto = await copiaTesto(i.value);
+  if (!bottone) return;
+  var prima = bottone.innerHTML;
+  bottone.innerHTML = fatto ? '<i class="ti ti-check"></i> Copiato'
+                            : '<i class="ti ti-alert-triangle"></i> Copialo a mano';
+  setTimeout(function () { bottone.innerHTML = prima; }, 1800);
+}
+
+async function pensLinkRevoca(id, anagraficaId) {
+  if (!confirm('Annullo questo link? Il cliente non potrà più aprirlo.')) return;
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/progetti-previdenziali/' + encodeURIComponent(id),
+      { method: 'DELETE', headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    caricaPrevidenzaCliente(anagraficaId);
+  } catch (e) { alert('Non sono riuscito ad annullare il link: ' + ((e && e.message) || e)); }
+}
+
+/* Il progetto compilato dal cliente si apre nel calcolo del consulente. I
+   DATI sono i suoi, IL CONTO si rifa' adesso: e' l'unico modo perche' il
+   consulente veda gli stessi numeri con i parametri di oggi. */
+function pensApriCompilato(i) {
+  var x = ((PENS_INVITI && PENS_INVITI.items) || [])[i];
+  if (!x || !x.dati) { alert('Questo progetto non porta dati da riaprire.'); return; }
+  var d = x.dati;
+  var ov = document.getElementById('anag-overlay'); if (ov) ov.remove();
+  pensPulisci();
+  var a = (typeof ANAG_CACHE !== 'undefined' && ANAG_CACHE || []).filter(function (y) { return y.id === x.anagrafica_id; })[0];
+  PENS.cliente = { id: x.anagrafica_id, nome: (a && a.nominativo) || '', telefono: (a && (a.cellulare || a.telefono)) || '' };
+  var set = function (campo, valore) { var e = document.getElementById(campo); if (e && valore != null && valore !== '') e.value = valore; };
+  set('pens-eta', d.eta); set('pens-lavoro', d.lavoro);
+  set('pens-reddito', d.redditoMensile); set('pens-versamento', d.versamentoMensile);
+  if (d.mensilita) { PENS.mensilitaAMano = true; set('pens-mensilita', d.mensilita); }
+  else pensMensilitaProposta();
+  pensBase(d.baseReddito === 'lordo' ? 'lordo' : 'netto');
+  if (d.etaInizioLavoro == null) { var c = document.getElementById('pens-inizio-ignoto'); if (c) { c.checked = true; pensIgnoto(); } }
+  else set('pens-inizio', d.etaInizioLavoro);
+  var nota = document.getElementById('pens-da-cliente');
+  if (nota) {
+    nota.innerHTML = '<div class="pv-nota" style="margin-top:0"><b>Compilato dal cliente</b> il ' +
+      esc(x.completato_il ? new Date(x.completato_il).toLocaleDateString('it-IT') : '') +
+      '. I dati sono quelli che ha scritto lui: <b>controllali con lui</b> — il reddito dichiarato a memoria ' +
+      'e l\'età di inizio sono le due cose che spostano di più il risultato. Il conto lo rifaccio adesso.</div>';
+  }
+  showPage('previdenza');
+  if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+}
+
 async function pensRiapri(id) {
   try {
     var tok = await payToken();
