@@ -1,8 +1,16 @@
-id: risalva2-1789221518  exit: 0  2026-09-12 13:59:01
+id: risalva3-1789221560  exit: 0  2026-09-12 14:02:36
 ----
-== ora
-2026-09-12 13:59:01
-axa       2026-09-12 13:39:01  26449 byte
-groupama  2026-09-12 13:53:52  5936 byte
-axa        {"running":false,"step":"loggato","since":1789220293734,"msg":"Login completato ✅"}
-groupama   {"running":false,"step":"loggato","since":1789220038252,"msg":"Sessione attiva"}
+sorveglio auth.json di AXA per 3 minuti, una lettura ogni 15 secondi
+13:59:35  axa=13:59:03  groupama=13:53:52
+13:59:50  axa=13:59:03  groupama=13:53:52
+14:00:05  axa=13:59:03  groupama=13:53:52
+14:00:20  axa=13:59:03  groupama=13:53:52
+14:00:35  axa=13:59:03  groupama=13:53:52
+14:00:50  axa=13:59:03  groupama=13:53:52
+14:01:05  axa=13:59:03  groupama=13:53:52
+14:01:20  axa=13:59:03  groupama=13:53:52
+14:01:35  axa=13:59:03  groupama=13:53:52
+14:01:50  axa=13:59:03  groupama=13:53:52
+14:02:05  axa=13:59:03  groupama=13:53:52
+14:02:20  axa=13:59:03  groupama=13:53:52
+== ultimi log axa
