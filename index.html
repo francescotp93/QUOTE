@@ -4099,7 +4099,9 @@ function pensRendi(e) {
       '<span class="b-gap" style="width:' + qG.toFixed(1) + '%">' + etichetta(qG, pensPerc(qG / 100)) + '</span>' +
     '</div>' +
     '<div class="pv-piccolo">Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi +
-      ' anni di contributi (inizio a ' + e.etaInizioUsata + '). Gli importi sono in euro di oggi.</div>' +
+      ' anni di contributi (inizio a ' + e.etaInizioUsata + '). Gli importi sono in euro di oggi.<br>' +
+      'Tariffa di riferimento: <b>' + esc(Pensione.FONDO.prodotto.etichetta) + '</b> · alternativa: ' +
+      esc(Pensione.FONDO.prodotto.alternativa) + '.</div>' +
     '</div>';
 
   /* LE PROPOSTE, cliccabili. */

@@ -138,6 +138,16 @@ var LEGGE = {
    letti sul preventivatore, sulla Nota informativa e sul Documento sul
    Regime Fiscale, e da quel momento il report si può consegnare. */
 var FONDO = {
+  /* QUALE PRODOTTO SONO QUESTI NUMERI. Senza il nome attaccato, «confermare
+     la tariffa con HDI» non vuol dire niente: i due prodotti hanno costi
+     diversi, e un ISC diverso sposta il montante di parecchio su trent'anni.
+     Il riferimento e' il fondo APERTO; il PIP e' l'alternativa, e quando si
+     quota quello i tre numeri qui sotto vanno rifatti, non riusati. */
+  prodotto: {
+    etichetta: 'Azione di Previdenza — fondo pensione aperto HDI',
+    alternativa: 'Previdenza HDI — PIP, albo COVIP n. 5007',
+    fonte: 'Preventivatore online HDI. I costi del PIP sono diversi da quelli del fondo aperto: cambiando prodotto i parametri qui sotto vanno rifatti.',
+  },
   rendimentoLordo: { v: 0.045, etichetta: 'Rendimento lordo annuo della gestione', unita: '%',
     fonte: 'Segnaposto — da leggere sul preventivatore HDI e sulla Nota informativa', daConfermare: true },
   costi: { v: 0.015, etichetta: 'Costi del fondo (ISC a 35 anni)', unita: '%',
@@ -578,6 +588,11 @@ function daConfermare() {
     }
   };
   guarda(FONDO, 'Tariffa HDI');
+  /* Il prodotto di riferimento si dice sempre, anche quando i numeri saranno
+     confermati: chi legge il foglio fra un anno deve sapere di quale tariffa
+     parlava, non solo che era «HDI». */
+  out.push({ gruppo: 'Tariffa HDI', etichetta: 'Prodotto di riferimento: ' + FONDO.prodotto.etichetta,
+    fonte: FONDO.prodotto.fonte + ' Alternativa: ' + FONDO.prodotto.alternativa });
   guarda(LEGGE, 'Numeri di legge');
   if (TASSI_LORDI.daConfermare) {
     out.push({ gruppo: 'Stima', etichetta: 'Tabella dei tassi di sostituzione', fonte: TASSI_LORDI.fonte });
@@ -928,6 +943,7 @@ fasciaPrudenziale +
       ' anni che mancano, il fondo aggiungerebbe ' + euro(e.fondo.renditaMensileNetta) + ' al mese (montante stimato ' + euro(e.fondo.montante) + ').'
     : '. Oggi non stai versando in nessun fondo: il divario qui sopra è tutto scoperto.') +
   '</p>' +
+'<p class="nota">Tariffa di riferimento: <b>' + esc(FONDO.prodotto.etichetta) + '</b>. Alternativa: ' + esc(FONDO.prodotto.alternativa) + '.</p>' +
 
 '<h2>Con quanto al mese lo copri</h2>' +
 /* LA STESSA NOTA CHE STA A SCHERMO, e qui serve anche di più. Le proposte

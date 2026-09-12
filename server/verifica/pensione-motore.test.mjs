@@ -662,6 +662,22 @@ prova('gli importi sul foglio hanno il punto delle migliaia, sempre', () => {
   return 'migliaia raggruppate anche sotto le cinque cifre';
 });
 
+prova('si dice SEMPRE di quale prodotto HDI sono i numeri', () => {
+  /* «Confermare la tariffa con HDI» non vuol dire niente se non si dice quale
+     tariffa: il fondo aperto e il PIP hanno costi diversi, e un ISC diverso
+     sposta il montante di parecchio su trent'anni. Il nome viaggia col
+     risultato e finisce sul foglio, anche il giorno in cui i numeri saranno
+     confermati — chi lo rilegge fra un anno deve sapere di cosa parlava. */
+  deve(/Azione di Previdenza/i.test(P.FONDO.prodotto.etichetta), 'il prodotto di riferimento non e il fondo aperto HDI');
+  deve(/5007/.test(P.FONDO.prodotto.alternativa), 'l\'alternativa non cita il numero di albo COVIP del PIP');
+  const nelleMarcature = P.daConfermare().some(x => /Prodotto di riferimento/.test(x.etichetta));
+  deve(nelleMarcature, 'il prodotto di riferimento non arriva nella lista che finisce sul foglio');
+  const f = P.foglioHtml({ esito: P.calcola(BASE), cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } });
+  deve(/Tariffa di riferimento/.test(f.html), 'il foglio non dice di quale tariffa sono i numeri');
+  deve(/COVIP n\. 5007/.test(f.html), 'il foglio non nomina il PIP come alternativa');
+  return P.FONDO.prodotto.etichetta;
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {
