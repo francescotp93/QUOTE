@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 
 const require = createRequire(import.meta.url);
 const QUI = path.dirname(fileURLToPath(import.meta.url));
-const P = require(path.join(QUI, '../../../tariffe/motore/previdenza.js'));
+const P = require(path.join(QUI, '../../../tariffe/motore/irpef.js'));
 
 const VERSAMENTO = 2400;          // 200 € al mese
 const e = (n) => Math.round(n).toLocaleString('it-IT', { useGrouping: 'always' });
