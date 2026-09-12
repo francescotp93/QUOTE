@@ -84,10 +84,39 @@ prova('prima di spegnersi salva la sessione', () => {
   deve(/viva/.test(blocco), 'si salva anche da sloggati, cancellando la copia buona');
 });
 
+prova('«sono dentro» lo dice la home, non l\'indirizzo', () => {
+  /* Il 12/09/2026, due volte, il portale si è fermato sulla pagina di rimbalzo
+     dell'autenticazione — mobility.axa-italia.it/portal/?code=…&state=… — e il
+     pannello ha detto «Login completato ✅» con la sessione inesistente.
+     Francesco ha creduto due volte di essere entrato. */
+  const i = src.indexOf('const filled = await fillOtpCode(codice)');
+  const blocco = src.slice(i, src.indexOf('finally { BUSY = false; }', i));
+  deve(blocco, 'non trovo più la conferma del codice: prova da riscrivere');
+  deve(!/if \(\(await isLogged\(\)\) \|\| \/\\\/portal\\\/\/i\.test/.test(blocco),
+    'si torna a dichiarare l\'accesso riuscito solo perché l\'indirizzo contiene «/portal/»: quell\'indirizzo ce l\'ha anche la pagina di rimbalzo');
+  deve(/soloRimbalzo/.test(blocco), 'non si riconosce più la pagina di rimbalzo (code=/state= nell\'indirizzo)');
+  /* Il successo deve dipendere da isLogged(), che guarda la home autenticata. */
+  const successo = blocco.slice(blocco.indexOf('if (dentro)'), blocco.indexOf('if (dentro)') + 200);
+  deve(/if \(dentro\)/.test(successo) && /salvaSessione/.test(successo), 'il ramo di successo non è più legato alla home vera');
+  /* E quando resta lì, lo si dice per quello che è: non «codice sbagliato». */
+  deve(/non ha aperto la sessione/.test(blocco), 'un accesso fermo sul rimbalzo viene ancora raccontato come codice rifiutato');
+  return 'successo solo con la home autenticata';
+});
+
+prova('se il portale resta appeso al rimbalzo, si prova ad aprirgli la home', () => {
+  const i = src.indexOf('const soloRimbalzo');
+  const blocco = src.slice(i, i + 1200);
+  deve(/page\.goto\(PORTAL_URL/.test(blocco), 'non si tenta di far concludere il giro aprendo la home');
+  deve(/i === \d+/.test(blocco), 'il tentativo non è limitato a una volta sola: rischia di disturbare un login che sta riuscendo');
+});
+
 prova('un codice rifiutato lascia scritto perché', () => {
   const i = src.indexOf('codice NON accettato');
   deve(i > -1, 'il ramo «codice non accettato» è di nuovo muto: dal giornale non si capisce cosa sia successo');
-  const blocco = src.slice(i - 600, i + 400);
+  /* Si guarda dalla raccolta degli indizi fino al messaggio: contare i
+     caratteri all'indietro rende la prova fragile a ogni riga aggiunta in
+     mezzo — è già successo quando è entrato il caso del rimbalzo. */
+  const blocco = src.slice(src.indexOf('const dove = (page.url()'), i + 400);
   deve(/page\.url\(\)/.test(blocco), 'non si scrive su quale pagina siamo finiti');
   deve(/role=alert|\.error|alert/i.test(blocco), 'non si legge il messaggio del portale');
   /* Il contenuto dei campi non esce MAI nel giornale: lì dentro c'è il codice

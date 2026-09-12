@@ -590,8 +590,32 @@ async function doCodice(codice) {
     // dopo la conferma c'è il redirect OIDC verso il portale: può durare 15-25s → attendo con pazienza.
     // Nei primi secondi ri-provo a spuntare "ricorda 30 giorni": alcune versioni di Guardian mostrano la
     // casella su una schermata SUCCESSIVA al codice ("Vuoi ricordare questo dispositivo?").
-    for (let i = 0; i < 30; i++) { await page.waitForTimeout(1000); if (i < 5) await trustDevice().catch(() => {}); if (await isLogged()) break; if (/\/portal\//i.test(page.url() || '')) break; }
-    if ((await isLogged()) || /\/portal\//i.test(page.url() || '')) { HOLD = false; await salvaSessione('login riuscito'); setState('loggato', 'Login completato ✅'); log('login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
+    /* «SONO DENTRO» LO DICE LA HOME, NON L'INDIRIZZO.
+       Fino al 12/09/2026 bastava che l'indirizzo contenesse «/portal/» per
+       cantare vittoria. Ma quell'indirizzo ce l'ha anche la pagina di RIMBALZO
+       dell'autenticazione — `mobility.axa-italia.it/portal/?code=…&state=…` —
+       cioè il passaggio intermedio subito dopo il codice. Due volte quel
+       giorno, alle 07:55 e alle 13:50, il portale si è fermato proprio lì: il
+       pannello diceva «Login completato ✅» e la sessione non c'era. Francesco
+       ha creduto due volte di essere entrato, e il primo preventivo del
+       pomeriggio sarebbe fallito lo stesso.
+       Un indirizzo che porta ancora `code=` o `state=` è il rimbalzo, non la
+       home: la si aspetta, e se non arriva si dice che non è arrivata. */
+    const soloRimbalzo = (u) => /[?&](code|state)=/.test(String(u || ''));
+    let dentro = false;
+    for (let i = 0; i < 30 && !dentro; i++) {
+      await page.waitForTimeout(1000);
+      if (i < 5) await trustDevice().catch(() => {});
+      dentro = await isLogged();
+      /* Il giro OIDC può restare appeso sul rimbalzo: una navigazione pulita
+         sulla home, senza i parametri, lo fa concludere. Si tenta una volta
+         sola, a metà attesa, per non disturbare un login che sta riuscendo. */
+      if (!dentro && i === 12 && soloRimbalzo(page.url())) {
+        log('il portale è fermo sulla pagina di rimbalzo: apro la home per far concludere l\'accesso');
+        await page.goto(PORTAL_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+      }
+    }
+    if (dentro) { HOLD = false; await salvaSessione('login riuscito'); setState('loggato', 'Login completato ✅'); log('login completato ✅'); return { ok: true, loggato: true, step: 'loggato', msg: 'Accesso eseguito ✅' }; }
     /* PERCHE' NON E' ANDATA: fino al 12/09/2026 qui il giornale taceva. Nel
        giornale si leggeva «2FA inserito OK», poi piu' niente: impossibile
        sapere se il codice era scaduto, se il pulsante di conferma non era stato
@@ -604,6 +628,17 @@ async function doCodice(codice) {
         .map(x => (x.innerText || '').trim()).filter(Boolean)[0] || '';
       return e.slice(0, 200);
     }).catch(() => '');
+    /* DUE FALLIMENTI DIVERSI, DUE MESSAGGI DIVERSI. Se siamo ancora sulla
+       pagina di rimbalzo, il codice è stato accettato ma il portale non ha
+       aperto la sessione: mandare l'agente a cercare un nuovo codice lo
+       manderebbe dalla parte sbagliata — è già capitato con «rigenera il
+       segreto TOTP» su Allianz, e ha fatto perdere mezza giornata. */
+    const rimasto = soloRimbalzo(page.url());
+    if (rimasto) {
+      log('il codice è passato ma il portale non ha aperto la sessione: fermo sulla pagina di rimbalzo —', dove, avviso ? ('· il portale dice: ' + avviso) : '');
+      setState('attesa_otp', 'Il portale non ha completato l\'accesso: riprova con Accedi.');
+      return { ok: false, loggato: false, step: 'attesa_otp', msg: 'Il codice è stato accettato, ma il portale AXA non ha aperto la sessione: è rimasto sulla pagina di passaggio. Premi di nuovo Accedi e inserisci un codice nuovo. Se si ripete, il portale sta rifiutando l\'accesso a monte e va guardato con una cattura.' };
+    }
     log('codice NON accettato — pagina:', dove, avviso ? ('· il portale dice: ' + avviso) : '· il portale non dà un messaggio');
     setState('attesa_otp', 'Codice non accettato — genera un nuovo codice e riprova.');
     /* Il codice di AXA Guardian vive 30 secondi. Fra il momento in cui si legge
