@@ -1,59 +1,32 @@
-id: sessioni-1789203639  exit: 0  2026-09-12 09:00:52
+id: grp2-1789203718  exit: 0  2026-09-12 09:02:21
 ----
-=== ORA: 2026-09-12 09:00:45 UTC
-=== DA QUANTO GIRANO GLI SCRAPER (un riavvio = browser nuovo)
-axa        active  dal Wed 2026-09-09 06:35:22 UTC  riavvii:0
-groupama   active  dal Fri 2026-09-11 16:57:17 UTC  riavvii:0
-allianz    active  dal Fri 2026-09-11 07:47:56 UTC  riavvii:0
-italiana   active  dal Wed 2026-09-09 06:35:07 UTC  riavvii:0
-hdi        active  dal Fri 2026-09-11 07:42:03 UTC  riavvii:0
-moto       active  dal Wed 2026-09-09 06:36:36 UTC  riavvii:0
-=== STATO SESSIONE ADESSO (dal telecomando interno di ogni scraper)
-axa        {"url":"https://volm.axa-italia.it/siteminderagent/forms/usernameoremailfed.fcc?ENCODED=LVNNLWh0dHBzOi8vdm9sbS5heGEtLWl0YWxpYS5pdC9hZmZ3ZWJzZXJ2aWNlcy9yZWRpcmVjdGpzcC9yZWRpcmVjdC5qc3A/U01QT1JUQUxVUkw9aHR0cHM6Ly92b2xtLmF4YS0taXRhbGlhLml0L2FmZndlYnNlcnZpY2VzL3B1YmxpYy9zYW1sMnNzbw==&TYPE=33554432&REALMOID=06-a5545203-e1e5
-groupama   {"url":"https://accedi.groupama.it/pda/PortaleGA/index.xhtml","loggato":false,"login_step":"pronto","login_running":false,"ha_credenziali":true,"login_msg":"Sessione scaduta: rifai il login da Fonti → Groupama","codice_in_attesa":false}
-allianz    {"url":"https://portaleagenzie.allianz.it/matrix/sales/","loggato":true,"sessione":"Matrix Motor raggiungibile ✅","ha_credenziali":true,"ha_totp":false,"totp_non_e_un_seme":false,"login_step":"idle","login_running":false,"login_msg":"","codice_in_attesa":false,"freno":{"bloccato":false,"tentativi_falliti":0,"prossimo
-italiana   {"url":"https://portale.plurima.net/","loggato":true,"ha_credenziali":true,"freno":{"bloccato":false,"tentativi_falliti":0,"prossimo_tentativo":0,"motivo":null}}
-hdi        {"url":"https://idm.hdia.it/realms/mia/protocol/openid-connect/auth?client_id=uefa&redirect_uri=https%3A%2F%2Faccess.hdia.it%2Fuefa%2Fcallback&response_type=code&scope=openid+profile+email+api+giada-user&state=931b1ec2b95645989fe91545040dc9ca&code_challenge=wqi1OY0ZYN4WyQcxWnXPNBm6gtZDxXIwDqHPZvTfWQQ&code_challenge_met
-=== QUANTE VOLTE SONO CADUTE NELLE ULTIME 48 ORE (righe di login/sessione nel giornale)
---- axa
-Sep 12 06:55:49 vps-d6443a46 start-service.sh[1497962]: 06:55:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:00:49 vps-d6443a46 start-service.sh[1497962]: 07:00:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:05:49 vps-d6443a46 start-service.sh[1497962]: 07:05:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:10:49 vps-d6443a46 start-service.sh[1497962]: 07:10:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:15:49 vps-d6443a46 start-service.sh[1497962]: 07:15:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:20:49 vps-d6443a46 start-service.sh[1497962]: 07:20:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:25:49 vps-d6443a46 start-service.sh[1497962]: 07:25:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:30:49 vps-d6443a46 start-service.sh[1497962]: 07:30:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 07:35:49 vps-d6443a46 start-service.sh[1497962]: 07:35:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+=== GROUPAMA: tutto il giornale di stamattina (il login ha retto meno di un'ora)
+Sep 12 07:49:34 vps-d6443a46 start-service.sh[1978140]: 07:49:34 [groupama] fill user/pass: {"ok":true}
+Sep 12 07:49:38 vps-d6443a46 start-service.sh[1978140]: 07:49:38 [groupama] schermata OTP raggiunta: attendo il codice dall'utente (resto fermo qui)
+Sep 12 07:51:45 vps-d6443a46 start-service.sh[1978140]: 07:51:45 [groupama] OTP inserito → valore nel campo: "356221" OK
+Sep 12 07:51:47 vps-d6443a46 start-service.sh[1978140]: 07:51:47 [groupama] sessione salvata su disco (login riuscito)
+
+=== AXA: il tentativo di login di stamattina, per esteso
 Sep 12 07:40:49 vps-d6443a46 start-service.sh[1497962]: 07:40:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
 Sep 12 07:45:49 vps-d6443a46 start-service.sh[1497962]: 07:45:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
+Sep 12 07:49:45 vps-d6443a46 start-service.sh[1497962]: 07:49:45 [axa] AXA: User ID inserito
+Sep 12 07:49:45 vps-d6443a46 start-service.sh[1497962]: 07:49:45 [axa] AXA: password inserita (form unico)
+Sep 12 07:49:45 vps-d6443a46 start-service.sh[1497962]: 07:49:45 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+Sep 12 07:49:47 vps-d6443a46 start-service.sh[1497962]: 07:49:47 [axa] AXA: submit 1
+Sep 12 07:49:50 vps-d6443a46 start-service.sh[1497962]: 07:49:50 [axa] AXA: password inserita (passo 2)
+Sep 12 07:49:50 vps-d6443a46 start-service.sh[1497962]: 07:49:50 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
+Sep 12 07:49:52 vps-d6443a46 start-service.sh[1497962]: 07:49:52 [axa] AXA: submit 2
+Sep 12 07:49:54 vps-d6443a46 start-service.sh[1497962]: 07:49:54 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+Sep 12 07:49:57 vps-d6443a46 start-service.sh[1497962]: 07:49:57 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+Sep 12 07:49:57 vps-d6443a46 start-service.sh[1497962]: 07:49:57 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
+Sep 12 07:49:57 vps-d6443a46 start-service.sh[1497962]: 07:49:57 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
+Sep 12 07:55:22 vps-d6443a46 start-service.sh[1497962]: 07:55:22 [axa] 2FA inserito → valore nel campo: "310401" OK
+Sep 12 07:55:22 vps-d6443a46 start-service.sh[1497962]: 07:55:22 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+Sep 12 07:55:24 vps-d6443a46 start-service.sh[1497962]: 07:55:24 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+Sep 12 07:55:25 vps-d6443a46 start-service.sh[1497962]: 07:55:25 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+Sep 12 07:55:26 vps-d6443a46 start-service.sh[1497962]: 07:55:26 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+Sep 12 07:55:27 vps-d6443a46 start-service.sh[1497962]: 07:55:27 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
+Sep 12 07:55:28 vps-d6443a46 start-service.sh[1497962]: 07:55:28 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
 Sep 12 08:00:40 vps-d6443a46 start-service.sh[1497962]: 08:00:40 [axa] attesa del codice scaduta (10 min): il keep-alive riprende
 Sep 12 08:00:49 vps-d6443a46 start-service.sh[1497962]: 08:00:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
 Sep 12 08:05:49 vps-d6443a46 start-service.sh[1497962]: 08:05:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:10:49 vps-d6443a46 start-service.sh[1497962]: 08:10:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:15:49 vps-d6443a46 start-service.sh[1497962]: 08:15:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:20:49 vps-d6443a46 start-service.sh[1497962]: 08:20:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:25:49 vps-d6443a46 start-service.sh[1497962]: 08:25:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:30:49 vps-d6443a46 start-service.sh[1497962]: 08:30:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:35:49 vps-d6443a46 start-service.sh[1497962]: 08:35:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:40:49 vps-d6443a46 start-service.sh[1497962]: 08:40:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:45:49 vps-d6443a46 start-service.sh[1497962]: 08:45:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:50:49 vps-d6443a46 start-service.sh[1497962]: 08:50:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 08:55:49 vps-d6443a46 start-service.sh[1497962]: 08:55:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
-Sep 12 09:00:49 vps-d6443a46 start-service.sh[1497962]: 09:00:49 [axa] keep-alive: sessione AXA scaduta e NESSUN segreto TOTP salvato in Fonti → serve login manuale una volta
---- groupama
-Sep 11 07:14:21 vps-d6443a46 start-service.sh[1894120]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Sep 11 07:14:23 vps-d6443a46 start-service.sh[1894190]: 07:14:23 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-Sep 11 15:20:46 vps-d6443a46 start-service.sh[1894190]: 15:20:46 [groupama] sessione ISA scaduta → re-login automatico (utente+password)…
-Sep 11 15:33:12 vps-d6443a46 start-service.sh[1894190]: 15:33:12 [groupama] attesa del codice scaduta (10 min): il keep-alive riprende
-Sep 11 16:48:10 vps-d6443a46 start-service.sh[1975926]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Sep 11 16:48:13 vps-d6443a46 start-service.sh[1976000]: 16:48:13 [groupama] PRONTO al login — attendo /login dall'utente (nessun OTP inviato finché non lo avvii)
-Sep 11 16:57:22 vps-d6443a46 start-service.sh[1978056]: 🔑 VNC Groupama su 127.0.0.1:5904 (password: groupama2026) — tunnel SSH dal Mac per il primo login se serve
-Sep 11 16:57:32 vps-d6443a46 start-service.sh[1978140]: 16:57:32 [groupama] sessione persistente attiva ✅
-Sep 12 07:51:47 vps-d6443a46 start-service.sh[1978140]: 07:51:47 [groupama] sessione salvata su disco (login riuscito)
-=== CARTELLE DI SESSIONE SU DISCO (data ultima modifica = ultimo salvataggio)
-axa        Sep 2 11:02 /opt/withus-backend/scraper/axa/auth.json Sep 12 01:23 /opt/withus-backend/scraper/axa/userdata 
-groupama   Sep 12 08:13 /opt/withus-backend/scraper/groupama/auth.json Sep 12 05:27 /opt/withus-backend/scraper/groupama/userdata 
-allianz    Sep 11 22:12 /opt/withus-backend/scraper/allianz/userdata 
-italiana   Sep 11 23:17 /opt/withus-backend/scraper/italiana/userdata 
-hdi        Sep 12 05:18 /opt/withus-backend/scraper/hdi/userdata 
