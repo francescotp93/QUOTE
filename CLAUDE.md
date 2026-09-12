@@ -97,14 +97,15 @@ workflow GitHub Actions.** Una PR non ha CI. I numeri che scrivi in una PR
 vengono da quello che hai girato tu.
 
 ```bash
-# 1. il browser vero — 316 prove
+# 1. il browser vero — 326 prove (5 rosse senza il repo gemello, vedi sotto)
 node static-server.js &          # il collaudo si aspetta la porta 8077
 node ui-test.mjs
 
 # 2. i motori e il server — un file per argomento
-node server/verifica/pensione-motore.test.mjs
-node server/verifica/irpef.test.mjs
-node server/verifica/tracciabilita.test.mjs
+node server/verifica/pensione-motore.test.mjs   # 53
+node server/verifica/irpef.test.mjs             # 32
+node server/verifica/tracciabilita.test.mjs     # 22
+node server/verifica/pensione-pdf.test.mjs      # 10
 
 # 3. la scocca a moduli
 node withus-one/verifica/controlla.mjs
@@ -120,10 +121,32 @@ Costano mezz'ora a chi non le conosce, perché somigliano a rossi veri.
 | `PARITÀ TARIFFE: 0 superate, 5 fallite` — «nessun commit contiene più…» | il clone è *shallow*: quelle prove cercano nella storia | `git fetch --depth=1000` o ignorale in sessione web |
 | `PathError: Unexpected ( at index 18` sulle prove `vigilanza-*` | hai installato **express 5**; il repo vuole **express 4** | `npm i --no-save express@4` |
 | `Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-…` | versione di Playwright ≠ build di Chromium installata | `npm i --no-save playwright@1.55`; il fallback del repo punta a `/opt/pw-browsers/chromium`, che **è** il binario |
+| «window.jspdf.jsPDF non esiste», o le prove del PDF che si dichiarano saltate | manca `jspdf`: il collaudo lo serve da `node_modules` all'indirizzo del CDN, perché dalla sandbox jsDelivr non si raggiunge | `npm i --no-save jspdf@2.5.2` |
 
 `npm i --no-save X` **pota** i pacchetti installati prima allo stesso modo:
-installali insieme (`npm i --no-save playwright@1.55 express@4`) o te ne sparisce
+installali insieme (`npm i --no-save playwright@1.55 express@4 jspdf@2.5.2`) o te ne sparisce
 uno mentre non guardi.
+
+### Una prova che non può diventare rossa non è una prova
+
+Il 12/09/2026 le prove di impaginazione del PDF erano **verdi col guasto
+rimesso dentro**. Non erano scritte male: guardavano la cosa giusta. Ma un
+guasto di impaginazione si vede solo quando un blocco capita *a cavallo* del
+salto pagina — una finestra di pochi millimetri — e con una geometria sola
+quella finestra non veniva mai attraversata. La prova era verde per fortuna.
+
+Si è risolto spazzando la larghezza del carattere (`pensione-pdf.test.mjs`,
+`SCALE`): cinquantun geometrie, così ogni titolo prima o poi passa sotto il
+salto. La regola provata non è più «con questo font viene bene»: è «viene
+bene con qualunque font».
+
+> Se una prova nuova non l'hai vista rossa, non sai cosa sorveglia.
+
+Nello stesso giro, la prima versione della sorveglianza («quanti titoli sono
+finiti in fondo alla pagina») non poteva **per costruzione** essere
+soddisfatta dal codice giusto: col codice giusto sono zero. Una spia va
+misurata su qualcosa che accade quando tutto funziona — qui, quante volte un
+titolo è stato *spostato* a pagina nuova.
 
 ### La controprova è obbligatoria (CODEX §3), e va fatta sul bug
 
@@ -190,7 +213,7 @@ IAM chiede `?page=previdenza`. Rinominare un id rompe il modulo dentro IAM
 
 | file | cosa fa |
 |---|---|
-| `tariffe/motore/pensione.js` | il calcolo, il foglio per il cliente, la riga d'archivio, il messaggio WhatsApp |
+| `tariffe/motore/pensione.js` | il calcolo, il contenuto del foglio, le sue due rese (HTML e PDF), la riga d'archivio, il messaggio WhatsApp |
 | `tariffe/motore/irpef.js` | il conto delle imposte — **spostato** da `previdenza.js` senza cambiare un'operazione (439 righe identiche) |
 | `#page-previdenza` in `index.html` | quattro campi e la risposta sotto, un passo solo |
 | `server/parametriPrevidenziali.js` | serve i numeri di legge dalla tabella; il motore ne tiene una copia di riserva |

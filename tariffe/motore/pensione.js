@@ -1179,6 +1179,286 @@ doc.sezioni.map(sezione).join('') +
   return { ok: true, html: html };
 }
 
+/* ── LA RESA IN PDF ───────────────────────────────────────────────────────
+   Disegna lo STESSO contenuto di `foglioHtml`. Non decide niente: se una
+   frase va cambiata si cambia in `contenutoFoglio`, e cambia in tutte e due
+   le forme insieme.
+
+   PERCHE' UN PDF DISEGNATO E NON UNA FOTO DELLA PAGINA. La strada facile
+   sarebbe html2canvas: si fotografa la pagina e si incolla l'immagine dentro
+   un PDF. Viene un file da qualche mega, con il testo che non si puo'
+   selezionare ne' cercare, sgranato sugli schermi piccoli — e va mandato su
+   WhatsApp, cioe' quasi sempre da un telefono con la rete del cliente. Qui il
+   testo e' testo: il file sta sotto i 100 KB e si legge nitido a qualunque
+   ingrandimento.
+
+   `jsPDF` arriva da fuori, come il motore fiscale: questo file non importa
+   niente e resta caricabile anche da Node per le prove. */
+function foglioPdf(d, jsPDF) {
+  if (typeof jsPDF !== 'function') {
+    return { ok: false, problemi: ['Il generatore di PDF non è caricato: il foglio si può stampare, non allegare.'] };
+  }
+  var c = contenutoFoglio(d);
+  if (!c.ok) return { ok: false, problemi: c.problemi };
+  var doc = c.doc;
+
+  var VERDE = [2, 152, 78], INK = [31, 42, 55], GRIGIO = [91, 107, 124];
+  var ROSSO = [192, 57, 43], AMBRA = [217, 139, 0];
+  var M = 16, LARG = 210 - M * 2, FONDO = 297 - 16;
+
+  var p = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  var y = M;
+
+  var font = function (dim, grassetto, colore) {
+    p.setFont('helvetica', grassetto ? 'bold' : 'normal');
+    p.setFontSize(dim);
+    p.setTextColor.apply(p, colore || INK);
+  };
+  /* Il titolo di sezione non si disegna quando lo si incontra: si mette in
+     attesa e lo scrive `spazio`, subito prima del primo blocco e sulla
+     pagina dove quel blocco finisce davvero. Un titolo in fondo alla pagina
+     col suo contenuto in quella dopo e' un foglio che sembra rotto. */
+  var titoloAttesa = null, ALTO_TITOLO = 8.8;
+  var scriviTitolo = function () {
+    if (!titoloAttesa) return;
+    var t = titoloAttesa; titoloAttesa = null;
+    font(9.4, true, VERDE);
+    p.text(String(t).toUpperCase(), M, y + 2);
+    y += 3.6;
+    p.setDrawColor(216, 227, 220); p.setLineWidth(0.25);
+    p.line(M, y, 210 - M, y); y += 5.2;
+  };
+  /* Prima di disegnare un blocco si guarda se ci sta: spezzarlo a meta' di
+     una riga e' il modo in cui un PDF diventa illeggibile proprio nel punto
+     che conta. Nel conto entra anche il titolo ancora da scrivere. */
+  var spazio = function (h) {
+    var nuova = false;
+    if (y + h + (titoloAttesa ? ALTO_TITOLO : 0) > FONDO) { p.addPage(); y = M; nuova = true; }
+    scriviTitolo();
+    return nuova;
+  };
+  var righeDi = function (testo, larghezza) { return p.splitTextToSize(String(testo == null ? '' : testo), larghezza); };
+
+  /* Un testo a segmenti si disegna parola per parola, cambiando grassetto e
+     colore dove serve e andando a capo da solo. E' l'unico modo per avere il
+     grassetto a meta' frase senza spezzare la frase. */
+  var scriviParti = function (parti, x0, larghezza, dim, colorePieno) {
+    var x = x0, altezzaRiga = dim * 0.45 + 0.9;
+    (parti || []).forEach(function (seg) {
+      if (!seg || seg.t == null || seg.t === '') return;
+      var colore = seg.tono === 'nota' ? GRIGIO : (colorePieno || INK);
+      font(dim, !!seg.forte, colore);
+      /* Si spezza sugli spazi tenendoli: senza, le parole si attaccherebbero
+         al cambio di segmento. */
+      var pezzi = String(seg.t).split(/(\s+)/);
+      pezzi.forEach(function (w) {
+        if (w === '') return;
+        var l = p.getTextWidth(w);
+        if (x + l > x0 + larghezza && /\S/.test(w)) { x = x0; y += altezzaRiga; }
+        if (x === x0 && /^\s+$/.test(w)) return;   // niente spazi a inizio riga
+        p.text(w, x, y);
+        x += l;
+      });
+    });
+    y += altezzaRiga;
+    return y;
+  };
+
+  var paragrafo = function (par, larghezza, x0) {
+    x0 = x0 || M; larghezza = larghezza || LARG;
+    var dim = par.tono === 'nota' ? 7.6 : 8.6;
+    if (par.tono === 'allarme') {
+      var testoA = (par.forte ? par.forte + ' ' : '') + par.testo;
+      var rr = righeDi(testoA, larghezza - 8);
+      var h = rr.length * 4 + 6;
+      spazio(h + 3);
+      p.setFillColor(253, 236, 236); p.rect(x0, y - 3.4, larghezza, h, 'F');
+      p.setFillColor.apply(p, ROSSO); p.rect(x0, y - 3.4, 1.2, h, 'F');
+      font(8.2, true, ROSSO);
+      p.text(rr, x0 + 4, y + 0.6);
+      y += h + 2.6;
+      return;
+    }
+    var parti = par.parti || [{ t: (par.forte ? par.forte + ' ' : '') + par.testo, forte: !!par.forte }];
+    if (par.forte && !par.parti) parti = [{ t: par.forte, forte: true }, { t: ' ' + par.testo }];
+    spazio(6);
+    scriviParti(parti, x0, larghezza, dim, par.tono === 'nota' ? GRIGIO : INK);
+    y += 1.4;
+  };
+
+  // ── intestazione
+  font(16, true);
+  p.text(doc.titolo, M, y + 4); y += 7;
+  font(8.4, false, GRIGIO);
+  p.text(righeDi(doc.intestazione, LARG), M, y + 1.6); y += 4.4;
+  p.setDrawColor.apply(p, VERDE); p.setLineWidth(0.7);
+  p.line(M, y, 210 - M, y); y += 6;
+
+  // ── le fasce di avviso, in cima
+  doc.avvisi.forEach(function (a) {
+    var rr = righeDi(a.forte + ' ' + a.testo, LARG - 8);
+    var h = rr.length * 4 + 6;
+    spazio(h + 3);
+    p.setFillColor(255, 248, 236); p.rect(M, y - 3.4, LARG, h, 'F');
+    p.setFillColor.apply(p, AMBRA); p.rect(M, y - 3.4, 1.2, h, 'F');
+    font(8.2, true, [122, 82, 0]);
+    p.text(rr, M + 4, y + 0.6);
+    y += h + 3;
+  });
+
+  // ── le sezioni
+  doc.sezioni.forEach(function (s) {
+    titoloAttesa = s.titolo;
+
+    if (s.numeri) {
+      var n = s.numeri.length, gap = 3.5, w = (LARG - gap * (n - 1)) / n, h = 20;
+      spazio(h + 3);
+      s.numeri.forEach(function (num, i) {
+        var x = M + i * (w + gap);
+        if (num.tono === 'gap') { p.setFillColor(253, 236, 236); p.setDrawColor(240, 192, 187); }
+        else if (num.tono === 'ok') { p.setFillColor(234, 247, 240); p.setDrawColor(185, 227, 205); }
+        else { p.setFillColor(255, 255, 255); p.setDrawColor(216, 227, 220); }
+        p.setLineWidth(0.3);
+        p.roundedRect(x, y, w, h, 1.6, 1.6, 'FD');
+        font(6.4, true, GRIGIO);
+        p.text(righeDi(String(num.etichetta).toUpperCase(), w - 5).slice(0, 1), x + 2.6, y + 4.4);
+        font(14, true, num.tono === 'gap' ? ROSSO : num.tono === 'ok' ? VERDE : INK);
+        p.text(String(num.valore), x + 2.6, y + 11.4);
+        font(6.6, false, GRIGIO);
+        p.text(righeDi(num.nota, w - 5).slice(0, 2), x + 2.6, y + 15.4);
+      });
+      y += h + 4;
+    }
+
+    (s.paragrafi || []).forEach(function (par) { paragrafo(par); });
+
+    if (s.tabella) {
+      var cols = s.tabella.intestazioni.length;
+      var wc = LARG / cols;
+      spazio(12);
+      font(6.6, true, GRIGIO);
+      s.tabella.intestazioni.forEach(function (t, i) { p.text(String(t).toUpperCase(), M + i * wc + 1.6, y); });
+      y += 1.8;
+      p.setDrawColor(216, 227, 220); p.setLineWidth(0.25); p.line(M, y, 210 - M, y); y += 4;
+      s.tabella.righe.forEach(function (r) {
+        var alt = Math.max.apply(null, r.celle.map(function (cel) {
+          var t = typeof cel === 'string' ? cel : (cel || []).map(function (x) { return x.t; }).join('');
+          return righeDi(t, wc - 3.2).length;
+        })) * 3.8 + 2.4;
+        spazio(alt + 2);
+        if (r.evidenzia) { p.setFillColor(234, 247, 240); p.rect(M, y - 3.2, LARG, alt, 'F'); }
+        var yRiga = y;
+        r.celle.forEach(function (cel, i) {
+          y = yRiga;
+          var parti = typeof cel === 'string' ? [{ t: cel }] : cel;
+          scriviParti(parti, M + i * wc + 1.6, wc - 3.2, 7.8, INK);
+        });
+        y = yRiga + alt;
+        p.setDrawColor(232, 238, 235); p.setLineWidth(0.2); p.line(M, y - 3, 210 - M, y - 3);
+      });
+      y += 2;
+    }
+
+    if (s.confronto) {
+      var cf = s.confronto;
+      var conVoce = !!cf.righe;
+      var wVoce = conVoce ? 34 : 0;
+      var wCol = (LARG - wVoce) / cf.colonne.length;
+      /* Coi due elenchi affiancati si riserva tutto in un colpo: intestazioni
+         piu' la colonna piu' alta. Riservare solo le intestazioni le
+         lascerebbe da sole in fondo alla pagina. */
+      var alte = cf.elenchi ? cf.elenchi.map(function (el) {
+        return el.reduce(function (t, voce) { return t + righeDi(voce, wCol - 6).length * 3.6 + 1.6; }, 0);
+      }) : null;
+      spazio(14 + (alte ? Math.max.apply(null, alte) : 0));
+      font(6.6, true, GRIGIO);
+      cf.colonne.forEach(function (t, i) { p.text(String(t).toUpperCase(), M + wVoce + i * wCol + 1.6, y); });
+      y += 1.8;
+      p.setDrawColor(216, 227, 220); p.setLineWidth(0.25); p.line(M, y, 210 - M, y); y += 4;
+
+      if (conVoce) {
+        cf.righe.forEach(function (r) {
+          var alt = Math.max.apply(null, [righeDi(r.voce, wVoce - 3).length].concat(
+            r.celle.map(function (cel) { return righeDi(cel, wCol - 3.2).length; }))) * 3.6 + 2.6;
+          spazio(alt + 2);
+          font(7.8, true, INK);
+          p.text(righeDi(r.voce, wVoce - 3), M + 1, y);
+          font(7.6, false, INK);
+          r.celle.forEach(function (cel, i) { p.text(righeDi(cel, wCol - 3.2), M + wVoce + i * wCol + 1.6, y); });
+          y += alt;
+          p.setDrawColor(232, 238, 235); p.setLineWidth(0.2); p.line(M, y - 3, 210 - M, y - 3);
+        });
+      } else {
+        /* I due elenchi affiancati si disegnano colonna per colonna e poi si
+           riparte dalla piu' lunga. Il salto pagina va deciso PRIMA, sulla
+           colonna piu' alta: se lo decidesse la singola voce, la seconda
+           colonna ripartirebbe da `yInizio` sulla pagina nuova e finirebbe
+           sopra la prima. */
+        var yInizio = y, yMax = y;
+        cf.elenchi.forEach(function (el, i) {
+          y = yInizio;
+          var x = M + i * wCol;
+          el.forEach(function (voce) {
+            var rr = righeDi(voce, wCol - 6);
+            font(7.6, false, INK);
+            p.text('•', x + 1.4, y);
+            p.text(rr, x + 4.2, y);
+            y += rr.length * 3.6 + 1.6;
+          });
+          if (y > yMax) yMax = y;
+        });
+        y = yMax + 1.5;
+      }
+      y += 1.5;
+    }
+
+    (s.note || []).forEach(function (par) { paragrafo(par); });
+    if (titoloAttesa) spazio(0);   // sezione senza blocchi: il titolo esce comunque
+    y += 2.5;
+  });
+
+  // ── quello che non è confermato
+  if (doc.daConfermare.length) {
+    var righeM = doc.daConfermare.map(function (m) { return righeDi(m.gruppo + ' · ' + m.etichetta + ' — ' + m.fonte, LARG - 10); });
+    var hM = righeM.reduce(function (t, r) { return t + r.length * 3.4 + 1.2; }, 0) + 10;
+    spazio(hM + 4);
+    p.setFillColor(255, 248, 236); p.setDrawColor(240, 220, 184); p.setLineWidth(0.3);
+    p.roundedRect(M, y - 3, LARG, hM, 1.4, 1.4, 'FD');
+    font(8, true, [122, 82, 0]);
+    p.text('Valori ancora da confermare', M + 4, y + 1.6);
+    var yM = y + 6;
+    righeM.forEach(function (rr) {
+      font(7, false, [122, 82, 0]);
+      p.text(rr, M + 4, yM);
+      yM += rr.length * 3.4 + 1.2;
+    });
+    y += hM + 4;
+  }
+
+  // ── chi firma
+  spazio(16);
+  var f = doc.firma;
+  font(8.6, true, INK);
+  p.text(f.nome + (f.ruolo ? ' · ' + f.ruolo : '') + (f.rui ? ' · RUI ' + f.rui : ''), M, y);
+  y += 4;
+  if (f.email || f.telefono) {
+    font(7.6, false, GRIGIO);
+    p.text([f.email, f.telefono].filter(Boolean).join(' · '), M, y);
+    y += 4;
+  }
+
+  // ── il disclaimer, che non è una formalità
+  var rd = righeDi(doc.disclaimer, LARG);
+  spazio(rd.length * 3.2 + 8);
+  p.setDrawColor(216, 227, 220); p.setLineWidth(0.25);
+  p.line(M, y, 210 - M, y); y += 4;
+  font(6.8, false, GRIGIO);
+  p.text(rd, M, y);
+
+  var nome = 'Pensione - ' + (doc.cliente || 'cliente').replace(/[^\w\s-]/g, '').trim() + '.pdf';
+  return { ok: true, pdf: p, blob: p.output('blob'), nomeFile: nome, pagine: p.getNumberOfPages() };
+}
+
 /* ══ LA RIGA D'ARCHIVIO ══════════════════════════════════════════════════
    Ogni foglio che esce lascia la sua riga: chi, per chi, con quali numeri e
    con quale versione delle regole. Serve fra un anno, quando i parametri
@@ -1293,6 +1573,7 @@ var API = {
   disclaimer: disclaimer,
   contenutoFoglio: contenutoFoglio,
   foglioHtml: foglioHtml,
+  foglioPdf: foglioPdf,
   problemiDelFoglio: problemiDelFoglio,
   schedaArchivio: schedaArchivio,
   messaggioWhatsApp: messaggioWhatsApp,

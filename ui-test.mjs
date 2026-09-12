@@ -199,6 +199,17 @@ async function bloccaRete(context) {
     if (url.startsWith(BASE)) return route.continue();      // file locali: veri
     // tutto il resto (CDN, API, Supabase) riceve una risposta finta e innocua
     if (/\.css(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '/* collaudo */' });
+    /* jsPDF: la libreria VERA, presa da node_modules e servita all'indirizzo
+       del CDN. Rispondergli con lo stesso commento vuoto di tutti gli altri
+       script vorrebbe dire collaudare per sempre la strada SENZA PDF — quella
+       che il consulente non usa mai. Cosi' invece si prova anche che l'URL
+       scritto nella pagina e il nome globale (`window.jspdf`) sono quelli
+       giusti. Se il pacchetto non c'e', si ripiega sul finto e le prove del
+       PDF si saltano da sole dicendolo. */
+    if (/jspdf/i.test(url)) {
+      const f = 'node_modules/jspdf/dist/jspdf.umd.min.js';
+      if (fs.existsSync(f)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(f) });
+    }
     if (/\.m?js(\?|$)|jsdelivr|unpkg|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* collaudo */' });
     if (/\.(png|jpe?g|gif|svg|ico|woff2?)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.alloc(0) });
     /* I NUMERI DI LEGGE, come li servirebbe il server vero. Dal 05/09/2026 il
@@ -3115,33 +3126,194 @@ const avvio = async () => {
       return r.length + ' professioni, nessuna attribuita male';
     });
 
-    await prova('pensione: il messaggio WhatsApp e\' precompilato e non promette niente', async () => {
-      const r = await page.evaluate(() => {
-        apriPensione();
-        PENS.parametri = 'ok'; PENS.avvisi = [];
-        PENS.cliente = { id: null, nome: 'Mario Rossi', telefono: '3331234567' };
-        document.getElementById('pens-eta').value = 38;
-        document.getElementById('pens-reddito').value = 1800;
-        document.getElementById('pens-versamento').value = 100;
-        document.getElementById('pens-inizio').value = 25;
-        pensCalcola();
-        document.getElementById('pens-cli').value = 'Mario Rossi';
-        document.getElementById('pens-cons').value = 'Francesco Oddo';
-        document.getElementById('pens-tel').value = '3331234567';
+    /* ── IL PDF CHE PARTE ALLEGATO ────────────────────────────────────────
+       Il consulente chiude il colloquio mandando il foglio su WhatsApp. Un
+       collegamento `wa.me` NON puo' allegare un file: e' un limite di
+       WhatsApp. L'unica strada vera e' la condivisione nativa del telefono
+       (`navigator.share` coi file). Qui si prova che:
+         · dove la condivisione c'e', parte un PDF VERO (e non si apre wa.me);
+         · dove non c'e', si ripiega E SI DICE, invece di lasciar credere che
+           l'allegato sia partito;
+         · annullare non e' un guasto;
+         · senza la libreria si legge una frase, non uno stack.
+       La bugia da evitare e' una sola, ed e' sempre la stessa: far credere
+       che il cliente abbia ricevuto un foglio che non ha ricevuto. */
+
+    const senzaCondivisione = () => page.evaluate(() => {
+      Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
+      Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    });
+    /* La finta condivisione del telefono: accetta i file e registra cosa ha
+       ricevuto davvero, byte compresi. */
+    const conCondivisione = (esito) => page.evaluate((e) => {
+      window.__COND = null;
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: (d) => !!(d && d.files && d.files.length) });
+      Object.defineProperty(navigator, 'share', { configurable: true, value: async (d) => {
+        const f = d.files[0];
+        const testa = new Uint8Array(await f.slice(0, 5).arrayBuffer());
+        window.__COND = { nome: f.name, tipo: f.type, peso: f.size, testo: d.testo || d.text || '',
+                          magia: String.fromCharCode.apply(null, testa) };
+        if (e === 'annulla') { const err = new Error('annullato'); err.name = 'AbortError'; throw err; }
+        if (e === 'errore') throw new Error('condivisione fallita');
+      } });
+    }, esito);
+
+    const preparaPensione = () => page.evaluate(() => {
+      apriPensione();
+      PENS.parametri = 'ok'; PENS.avvisi = [];
+      PENS.cliente = { id: null, nome: 'Mario Rossi', telefono: '3331234567' };
+      document.getElementById('pens-eta').value = 38;
+      document.getElementById('pens-reddito').value = 1800;
+      document.getElementById('pens-versamento').value = 100;
+      document.getElementById('pens-inizio').value = 25;
+      pensCalcola();
+      document.getElementById('pens-cli').value = 'Mario Rossi';
+      document.getElementById('pens-cons').value = 'Francesco Oddo';
+      document.getElementById('pens-tel').value = '3331234567';
+    });
+
+    await prova('pensione: la libreria del PDF e\' quella vera, all\'indirizzo scritto nella pagina', async () => {
+      const r = await page.evaluate(() => ({
+        globale: typeof (window.jspdf && window.jspdf.jsPDF),
+        tag: [...document.querySelectorAll('script[src]')].filter(s => /jspdf/i.test(s.src)).length,
+      }));
+      deve(r.tag === 1, 'la pagina non carica jsPDF una volta sola (tag trovati: ' + r.tag + ')');
+      deve(r.globale === 'function',
+        'window.jspdf.jsPDF non esiste: o l\'indirizzo nella pagina e\' sbagliato, o manca il pacchetto (npm i --no-save jspdf@2.5.2)');
+      return 'un solo tag, globale window.jspdf.jsPDF viva';
+    });
+
+    await prova('pensione: dove il telefono sa condividere, parte un PDF vero e wa.me non si apre', async () => {
+      await preparaPensione();
+      await conCondivisione('ok');
+      const r = await page.evaluate(async () => {
         const apri = window.open; let url = null;
         window.open = (u) => { url = u; return null; };
-        try { pensWhatsApp(); } finally { window.open = apri; }
-        return { url, testo: decodeURIComponent(String(url).split('text=')[1] || ''),
-                 nota: document.getElementById('pens-esito').textContent };
+        const dice = window.alert; let avviso = null;
+        window.alert = (t) => { avviso = t; };
+        try { await pensWhatsApp(); } finally { window.open = apri; window.alert = dice; }
+        return { url, avviso, cond: window.__COND, nota: document.getElementById('pens-invio').textContent };
       });
-      deve(/^https:\/\/wa\.me\/393331234567\?text=/.test(r.url), 'il numero non e\' stato normalizzato col prefisso: ' + String(r.url).slice(0, 60));
+      deve(!r.avviso, 'ha avvisato di un problema: ' + r.avviso);
+      deve(r.cond, 'la condivisione nativa non e\' stata usata: il PDF non e\' partito allegato');
+      deve(r.cond.magia === '%PDF-', 'il file condiviso non e\' un PDF (inizia per «' + r.cond.magia + '»)');
+      deve(r.cond.tipo === 'application/pdf', 'tipo sbagliato: ' + r.cond.tipo);
+      deve(/^Pensione - Mario Rossi\.pdf$/.test(r.cond.nome), 'nome file sbagliato: ' + r.cond.nome);
+      deve(r.cond.peso > 5000, 'PDF sospettosamente leggero: ' + r.cond.peso + ' byte');
+      deve(/Mario/.test(r.cond.testo) && /Francesco Oddo/.test(r.cond.testo),
+        'il messaggio che accompagna il file non saluta il cliente o non e\' firmato');
+      /* Se si aprisse ANCHE wa.me, il consulente si troverebbe due finestre e
+         manderebbe il messaggio due volte, una senza allegato. */
+      deve(r.url === null, 'si e\' aperto anche wa.me dopo aver condiviso: ' + r.url);
+      return 'PDF di ' + Math.round(r.cond.peso / 1024) + ' KB allegato, nessuna seconda finestra';
+    });
+
+    await prova('pensione: annullare la condivisione non e\' un guasto e non apre niente', async () => {
+      await preparaPensione();
+      await conCondivisione('annulla');
+      const r = await page.evaluate(async () => {
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return null; };
+        const dice = window.alert; let avviso = null;
+        window.alert = (t) => { avviso = t; };
+        document.getElementById('pens-invio').innerHTML = '';
+        try { await pensWhatsApp(); } finally { window.open = apri; window.alert = dice; }
+        return { url, avviso, nota: document.getElementById('pens-invio').textContent };
+      });
+      deve(r.url === null, 'dopo un annullamento si e\' aperto wa.me: ' + r.url);
+      deve(!r.avviso, 'un annullamento ha prodotto un avviso di errore: ' + r.avviso);
+      deve(!/errore|non . stato possibile/i.test(r.nota), 'la schermata tratta l\'annullamento come un guasto: ' + r.nota);
+      return 'chi annulla non vede niente';
+    });
+
+    await prova('pensione: dove la condivisione non c\'e\', si ripiega E SI DICE', async () => {
+      await preparaPensione();
+      await senzaCondivisione();
+      const r = await page.evaluate(async () => {
+        /* La finestra finta torna un oggetto, non `null`: `null` vuol dire
+           «bloccata dal browser», ed e' un altro ramo con un'altra frase. */
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return {}; };
+        /* Lo scarico non deve partire davvero dentro il collaudo. */
+        const clic = HTMLAnchorElement.prototype.click; let scaricato = null;
+        HTMLAnchorElement.prototype.click = function () { if (this.download) scaricato = this.download; };
+        try { await pensWhatsApp(); }
+        finally { window.open = apri; HTMLAnchorElement.prototype.click = clic; }
+        /* Si aspetta che ANCHE l'archivio abbia finito di scrivere la sua
+           riga: l'avviso dell'allegato deve sopravvivere a quello. */
+        await new Promise(r => setTimeout(r, 400));
+        return { url, scaricato, testo: decodeURIComponent(String(url).split('text=')[1] || ''),
+                 nota: document.getElementById('pens-invio').textContent,
+                 archivio: document.getElementById('pens-archivio').textContent };
+      });
+      deve(/^https:\/\/wa\.me\/393331234567\?text=/.test(r.url),
+        'il numero non e\' stato normalizzato col prefisso: ' + String(r.url).slice(0, 60));
       deve(/Mario/.test(r.testo), 'il messaggio non saluta il cliente per nome');
       deve(/illustrativo|non . una promessa/i.test(r.testo), 'il messaggio non dice che non e\' una promessa di rendimento');
       deve(/Francesco Oddo/.test(r.testo), 'il messaggio non e\' firmato');
-      /* WhatsApp non allega file da un collegamento: dirlo evita che il
-         consulente creda di aver mandato il PDF e non l'abbia mandato. */
-      deve(/non permette di allegare/i.test(r.nota), 'la schermata non avverte che il PDF va allegato a mano');
-      return 'messaggio firmato, numero col prefisso, nessuna promessa';
+      deve(/^Pensione - Mario Rossi\.pdf$/.test(String(r.scaricato)),
+        'il PDF non e\' stato scaricato come ripiego: ' + r.scaricato);
+      /* La frase deve dire che l'allegato NON e' partito. Senza, il consulente
+         crede di aver mandato il foglio e il cliente non ha ricevuto niente.
+         E deve essere ancora LI' dopo che l'archivio ha scritto la sua: con
+         un riquadro solo, «Salvo l'analisi in archivio...» la cancellava —
+         e il messaggio che restava diceva che era andato tutto bene. */
+      deve(/allega/i.test(r.nota), 'la schermata non dice che l\'allegato va aggiunto a mano: ' + r.nota);
+      deve(r.archivio.trim().length > 0, 'l\'archivio non ha scritto niente: la prova non dimostra la convivenza');
+      deve(!/allega/i.test(r.archivio), 'i due messaggi finiscono nello stesso riquadro');
+      return 'wa.me col messaggio, PDF scaricato, avviso che sopravvive all\'archivio';
+    });
+
+    await prova('pensione: se il browser blocca la finestra, non si dice che WhatsApp si e\' aperto', async () => {
+      await preparaPensione();
+      await senzaCondivisione();
+      const r = await page.evaluate(async () => {
+        const apri = window.open;
+        window.open = () => null;                      // bloccata, come fa un browser
+        const clic = HTMLAnchorElement.prototype.click; let scaricato = null;
+        HTMLAnchorElement.prototype.click = function () { if (this.download) scaricato = this.download; };
+        document.getElementById('pens-invio').innerHTML = '';
+        try { await pensWhatsApp(); }
+        finally { window.open = apri; HTMLAnchorElement.prototype.click = clic; }
+        return { scaricato, nota: document.getElementById('pens-invio').textContent };
+      });
+      deve(r.scaricato, 'col popup bloccato il PDF non e\' stato nemmeno scaricato');
+      deve(/bloccat/i.test(r.nota), 'non dice che la finestra e\' stata bloccata: ' + r.nota);
+      deve(!/si . aperto col messaggio/i.test(r.nota),
+        'dice che WhatsApp si e\' aperto quando non si e\' aperto: ' + r.nota);
+      return 'il PDF resta scaricato, e la frase non mente';
+    });
+
+    await prova('pensione: la nota sotto i bottoni dice la verita\' DI QUESTO apparecchio', async () => {
+      await conCondivisione('ok');
+      const conNativa = await page.evaluate(() => pensNotaInvio());
+      await senzaCondivisione();
+      const senzaNativa = await page.evaluate(() => pensNotaInvio());
+      deve(conNativa !== senzaNativa, 'la nota e\' la stessa nei due casi: in uno dei due sta mentendo');
+      deve(/allegato/i.test(conNativa), 'dove si puo\' allegare, la nota non lo dice');
+      deve(/a mano|aggiungi tu/i.test(senzaNativa), 'dove NON si puo\' allegare, la nota non avverte');
+      return 'due frasi diverse per due situazioni diverse';
+    });
+
+    await prova('pensione: senza la libreria del PDF si legge una frase, non uno stack', async () => {
+      await preparaPensione();
+      const r = await page.evaluate(async () => {
+        const vera = window.jspdf; window.jspdf = undefined;
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return null; };
+        const dice = window.alert; let avviso = null;
+        window.alert = (t) => { avviso = t; };
+        let esploso = null;
+        try { await pensWhatsApp(); } catch (e) { esploso = e && e.message || String(e); }
+        finally { window.jspdf = vera; window.open = apri; window.alert = dice; }
+        return { url, avviso, esploso };
+      });
+      deve(!r.esploso, 'senza libreria il codice e\' esploso: ' + r.esploso);
+      deve(r.avviso && /PDF/i.test(r.avviso), 'non spiega che manca il PDF: ' + r.avviso);
+      /* Non si apre WhatsApp a meta': meglio niente che un messaggio che
+         promette un allegato che non c'e'. */
+      deve(r.url === null, 'ha aperto WhatsApp lo stesso, senza PDF: ' + r.url);
+      return r.avviso.slice(0, 60);
     });
 
     await prova('pensione: il cliente si cerca in portafoglio, e il legame si vede', async () => {

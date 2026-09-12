@@ -53,6 +53,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- jsPDF serve per ALLEGARE il foglio su WhatsApp: un link wa.me non puo'
+     allegare file, l'unica strada e' la condivisione nativa del telefono, e
+     quella vuole un file vero. Versione fissata: una libreria che si aggiorna
+     da sola sotto un documento che va ai clienti e' un guasto che aspetta. -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <!-- Il calcolo delle tariffe che il backend condivide con questa pagina. Va
      caricato PRIMA del corpo del preventivatore, perche' quello lo chiama.
      Stesso file per browser e server: un premio calcolato qui e uno calcolato
@@ -4269,8 +4274,13 @@ function pensRendi(e) {
       '<button class="btn-ghost" onclick="pensSalva()"><i class="ti ti-device-floppy"></i> Salva sul cliente</button>' +
       '<button class="btn-ghost" onclick="pensWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Messaggio WhatsApp</button>' +
     '</div>' +
-    '<div class="pv-piccolo" style="margin-top:9px">WhatsApp non permette di allegare un file da un collegamento: ' +
-      'stampa prima il foglio in PDF, poi allegalo al messaggio che si apre già scritto.</div>' +
+    '<div class="pv-piccolo" style="margin-top:9px" id="pens-nota-invio">' + pensNotaInvio() + '</div>' +
+    /* DUE RIQUADRI, NON UNO. Rispondono a due domande diverse — «il foglio e'
+       uscito?» e «l'ho salvato?» — e l'archivio parte SUBITO DOPO l'invio: con
+       un riquadro solo, «Salvo l'analisi in archivio...» cancellava l'avviso
+       che diceva che l'allegato NON era partito. Il consulente leggeva che
+       era tutto a posto e il cliente non aveva ricevuto niente. */
+    '<div id="pens-invio"></div>' +
     '<div id="pens-archivio"></div></div>';
 
   box.innerHTML = h;
@@ -4317,21 +4327,86 @@ function pensFoglio() {
   pensArchivia(d);
 }
 
-function pensWhatsApp() {
+/* ── MANDARE IL FOGLIO AL CLIENTE ────────────────────────────────────────
+   UN LINK wa.me NON PUO' ALLEGARE UN FILE. Mai: e' un limite di WhatsApp, non
+   del nostro codice. L'unica strada per far partire il PDF davvero allegato
+   e' la condivisione nativa del telefono — `navigator.share` con il file —
+   che apre il foglio di condivisione del sistema e lascia scegliere WhatsApp.
+
+   Sul telefono, che e' dove sei quando hai il cliente davanti, funziona. Su
+   un computer quella condivisione non esiste: li' si ripiega su «scarica il
+   PDF, poi si apre WhatsApp col messaggio gia' scritto», e si DICE, invece di
+   far credere che l'allegato sia partito. */
+/* La nota sotto i pulsanti dice la verita' DI QUESTO apparecchio, non una
+   verita' generica: su un telefono l'allegato parte da solo, su un computer
+   no, e scrivere la stessa frase in tutti e due i casi vuol dire che in uno
+   dei due e' falsa. */
+function pensNotaInvio() {
+  var nativa = !!(navigator.canShare && navigator.share);
+  return nativa
+    ? 'Da questo apparecchio il PDF parte <b>allegato</b>: si apre la condivisione, scegli WhatsApp e il foglio va col messaggio.'
+    : 'Da questo apparecchio la condivisione diretta non c\'è: il PDF si scarica e WhatsApp si apre col messaggio già scritto, l\'allegato lo aggiungi tu. <b>Dal telefono parte da solo.</b>';
+}
+
+function pensNumeroWhatsApp(telefono) {
+  var n = String(telefono || '').replace(/\D/g, '');
+  /* Nove-undici cifre senza prefisso e' un numero italiano scritto come lo
+     scrive un italiano: si mette il 39. Non solo i cellulari — un fisso senza
+     prefisso apre WhatsApp su un numero che non esiste. */
+  if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
+  return n;
+}
+
+function pensPdf() {
+  var lib = window.jspdf && window.jspdf.jsPDF;
+  return Pensione.foglioPdf(pensDatiFoglio(), lib);
+}
+
+async function pensWhatsApp() {
   if (!PENS.esito) { alert('Prima calcola: il messaggio si costruisce sul risultato.'); return; }
   var d = pensDatiFoglio();
   var testo = Pensione.messaggioWhatsApp(d);
-  /* Il numero si normalizza qui: WhatsApp vuole il prefisso internazionale
-     senza il piu' e senza spazi. Senza numero si apre lo stesso, e il
-     consulente sceglie il destinatario dalla rubrica. */
-  var n = String(d.cliente.telefono || '').replace(/\D/g, '');
-  /* Nove-undici cifre senza prefisso e' un numero italiano scritto come lo
-     scrive un italiano: si mette il 39. Non solo i cellulari — un fisso
-     senza prefisso apre WhatsApp su un numero che non esiste, e il consulente
-     se ne accorge solo dopo aver scritto il messaggio. */
-  if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
-  var url = 'https://wa.me/' + n + '?text=' + encodeURIComponent(testo);
-  window.open(url, '_blank');
+  var url = 'https://wa.me/' + pensNumeroWhatsApp(d.cliente.telefono) + '?text=' + encodeURIComponent(testo);
+  var dillo = function (t, colore) {
+    var box = document.getElementById('pens-invio');
+    if (box) box.innerHTML = '<div style="margin-top:10px;font-size:12.5px;color:' + colore + '">' + esc(t) + '</div>';
+  };
+
+  var r = pensPdf();
+  if (!r.ok) { alert('Non posso preparare il PDF:\n\n· ' + r.problemi.join('\n· ')); return; }
+  var file = new File([r.blob], r.nomeFile, { type: 'application/pdf' });
+
+  /* `canShare` con i file va chiesto PRIMA: su diversi browser `share` esiste
+     ma i file non li accetta, e chiamarlo lo stesso fallisce dopo che
+     l'utente ha gia' scelto WhatsApp — cioe' nel momento peggiore. */
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+    try {
+      await navigator.share({ files: [file], text: testo });
+      dillo('Foglio condiviso. Se hai scelto WhatsApp, il PDF è partito allegato al messaggio.', 'var(--pv-ink2)');
+      /* Condiviso vuol dire uscito di casa: va a registro come una stampa. */
+      pensArchivia(d);
+      return;
+    } catch (e) {
+      /* L'utente che annulla la condivisione non e' un errore: non si apre
+         niente al posto suo e non si scrive niente di allarmante. */
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+
+  /* Ripiego: il PDF si scarica e WhatsApp si apre col messaggio scritto. */
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(r.blob); a.download = r.nomeFile;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 30000);
+  /* Se la finestra la blocca il browser, WhatsApp NON si e' aperto: dirlo
+     lo stesso vorrebbe dire mandare il consulente a cercare una finestra che
+     non c'e'. Stessa cura del foglio da stampare, che ha gia' questo caso. */
+  var w = window.open(url, '_blank');
+  dillo(w
+    ? 'Da qui la condivisione diretta non è disponibile: il PDF è stato scaricato e WhatsApp si è aperto col messaggio già scritto — allega il file a mano. Dal telefono parte allegato da solo.'
+    : 'Il PDF è stato scaricato, ma il browser ha bloccato l\'apertura di WhatsApp: consenti le finestre per questo sito, oppure apri WhatsApp e allega il file a mano. Dal telefono parte allegato da solo.',
+    '#b06a00');
+  pensArchivia(d);
 }
 
 /* ── CERCARE IL CLIENTE IN PORTAFOGLIO ───────────────────────────────────
