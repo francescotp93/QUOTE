@@ -1,26 +1,10 @@
-id: axa2-1789213941  exit: 0  2026-09-12 11:52:42
+id: axa3-1789214244  exit: 0  2026-09-12 11:57:54
 ----
-ora: 2026-09-12 11:52:38 UTC
-=== AXA: stato completo (dove si trova il browser adesso)
-{"url":"https://mobility.axa-italia.it/portal/?code=jb64dbJDDyIcakD-C-APn_bGgmGN_DLZWueSi8OsfoF&state=1216f937-911b-4adf-9e40-4571fc001aab&iss=https%3A%2F%2Fidp.axa-italia.it%2Fcis%2Foidc&xCorrelationId=7a811331-ec67-4b69-9e53-7a8360fd92ba#!/","loggato":false,"login_step":"loggato","login_running":false,"ha_credenziali":true,"ha_totp":false,"totp_illeggibile":false,"login_msg":"Login completato ✅","codice_in_attesa":true}
-
-=== AXA: giornale dal codice inserito in poi
-Sep 12 11:49:46 vps-d6443a46 start-service.sh[1497962]: 11:49:46 [axa] AXA: User ID inserito
-Sep 12 11:49:46 vps-d6443a46 start-service.sh[1497962]: 11:49:46 [axa] AXA: password inserita (form unico)
-Sep 12 11:49:46 vps-d6443a46 start-service.sh[1497962]: 11:49:46 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 11:49:48 vps-d6443a46 start-service.sh[1497962]: 11:49:48 [axa] AXA: submit 1
-Sep 12 11:49:51 vps-d6443a46 start-service.sh[1497962]: 11:49:51 [axa] AXA: password inserita (passo 2)
-Sep 12 11:49:51 vps-d6443a46 start-service.sh[1497962]: 11:49:51 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 11:49:53 vps-d6443a46 start-service.sh[1497962]: 11:49:53 [axa] AXA: submit 2
-Sep 12 11:49:55 vps-d6443a46 start-service.sh[1497962]: 11:49:55 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 11:49:58 vps-d6443a46 start-service.sh[1497962]: 11:49:58 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 11:49:58 vps-d6443a46 start-service.sh[1497962]: 11:49:58 [axa] AXA Guardian → inserimento manuale attivato (clicked=true)
-Sep 12 11:49:58 vps-d6443a46 start-service.sh[1497962]: 11:49:58 [axa] schermata 2FA Guardian raggiunta: attendo il codice dall'utente
-Sep 12 11:50:09 vps-d6443a46 start-service.sh[1497962]: 11:50:09 [axa] 2FA inserito → valore nel campo: "832133" OK
-Sep 12 11:50:09 vps-d6443a46 start-service.sh[1497962]: 11:50:09 [axa] trustDevice: spuntato "ricorda 30 giorni" (2)
-Sep 12 11:50:11 vps-d6443a46 start-service.sh[1497962]: 11:50:11 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 11:50:12 vps-d6443a46 start-service.sh[1497962]: 11:50:12 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 11:50:13 vps-d6443a46 start-service.sh[1497962]: 11:50:13 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-
-=== GROUPAMA: seconda lettura (la prima era andata in timeout)
-{"url":"https://accedi.groupama.it/pda/PR_ISA/#/home","loggato":null,"login_step":"loggato","login_running":false,"ha_credenziali":true,"login_msg":"Login completato ✅","codice_in_attesa":false}
+ora: 2026-09-12 11:57:50 UTC
+=== AXA adesso
+loggato: False | passo: loggato | msg: Login completato ✅
+url: https://mobility.axa-italia.it/portal/?code=KAFGoBy8YH1xN9wqTMngLu-d5XV6sCFNeCY7x3TuJr8&state=5d46b7f5-1ae9-48
+=== giornale AXA ultimi 6 minuti
+-- No entries --
+=== GROUPAMA adesso
+loggato: None | passo: loggato | Login completato ✅
