@@ -4208,6 +4208,71 @@ function pensRendi(e) {
   }
   h += '</div>';
 
+  /* ── LE TASSE NEI TRE MOMENTI, ANCHE A SCHERMO ───────────────────
+     Il consulente deve leggere sullo schermo QUELLO CHE C'E' SUL FOGLIO del
+     cliente. Se le due cose divergono, se ne accorge il cliente — davanti a
+     lui — e a quel punto non conta piu' quale delle due era giusta.
+     I numeri vengono tutti dal motore: qui non si calcola niente. */
+  var t = e.tasse;
+  if (t) {
+    h += '<div class="pv-card"><div class="pv-sec">Le tasse, nei tre momenti</div>' +
+      '<div class="pv-piccolo" style="margin-bottom:9px">Il fisco entra tre volte. Ci sono tutte e tre, ' +
+      'compresa quella in cui il fondo non vince.</div>';
+
+    h += '<div class="pv-nota"><b>1. Quando versi.</b> Si deduce fino a ' +
+      pensEuro(Pensione.LEGGE.tettoDeducibilita.v, 2) + ' l\'anno' +
+      (e.fiscale.disponibile && !e.fiscale.inPerdita && e.fiscale.risparmioAnnuo > 0
+        ? ': per lui sono ' + pensEuro(e.fiscale.risparmioAnnuo) + ' di minori imposte ogni anno.'
+        : (e.fiscale.disponibile && e.fiscale.inPerdita
+            ? ' — ma a questo reddito la deduzione non conviene: il vantaggio sta negli altri due momenti.'
+            : '.')) + '</div>';
+
+    if (t.haTfr) {
+      /* LA RIGA CHE GIOCA CONTRO LA VENDITA. Sta a schermo come sta sul
+         foglio: il consulente la deve aver letta PRIMA che gliela legga il
+         cliente. */
+      h += '<div class="pv-nota"><b>2. Mentre cresce.</b> I rendimenti del fondo pagano il ' +
+        pensPerc(t.impostaRendimentiFondo, 0) + ', la rivalutazione del TFR in azienda il ' +
+        pensPerc(t.impostaRivalutazioneTfr, 0) + ': <b>su questo pezzo il TFR in azienda è avvantaggiato</b>.</div>';
+    } else {
+      h += '<div class="pv-nota"><b>2. Mentre cresce.</b> I rendimenti del fondo pagano il ' +
+        pensPerc(t.impostaRendimentiFondo, 0) + ', contro il 26% della gran parte delle rendite finanziarie.</div>';
+    }
+
+    h += '<div class="pv-nota"><b>3. Quando prendi.</b> La prestazione si tassa al 15%, che scende dello 0,30% ' +
+      'per ogni anno di partecipazione oltre il quindicesimo, fino al 9%. Aderendo adesso partecipa ' +
+      t.anniPartecipazione + ' anni: <b>' + pensPerc(t.aliquotaFondo, 2) + '</b>' +
+      (t.anniPartecipazione < 15 ? ' — lo sconto comincia dal sedicesimo anno.' : '.') + '</div>';
+    h += '</div>';
+  }
+
+  /* ── LO STESSO TFR, TASSATO NEI DUE MODI ───────────────────────
+     L'aliquota in azienda è QUELLA DI QUESTO CLIENTE (tassazione separata sul
+     suo reddito di riferimento), non una media da brochure. */
+  if (t && t.disponibile) {
+    h += '<div class="pv-card"><div class="pv-sec">Lo stesso TFR, tassato nei due modi</div>' +
+      '<div class="pv-piccolo" style="margin-bottom:9px">Da qui alla pensione matura circa <b>' +
+      pensEuro(t.tfrFuturo) + '</b> di TFR (' + pensEuro(t.quotaTfrAnnua) + ' l\'anno). Sulla stessa somma, ' +
+      'senza contare né rivalutazione né rendimenti — così il confronto è solo fra le due tasse:</div>' +
+      '<table class="pv-conf"><thead><tr><th></th><th>Aliquota</th><th>Tasse su ' + pensEuro(t.tfrFuturo) + '</th></tr></thead><tbody>' +
+      '<tr><th class="voce">Se resta in azienda</th>' +
+        '<td data-col="Aliquota">' + pensPerc(t.aliquotaTfrAzienda, 2) + '</td>' +
+        '<td data-col="Tasse">' + pensEuro(t.impostaTfrAzienda) + '</td></tr>' +
+      '<tr><th class="voce">Se va nel fondo</th>' +
+        '<td data-col="Aliquota">' + pensPerc(t.aliquotaFondo, 2) + '</td>' +
+        '<td data-col="Tasse">' + pensEuro(t.impostaTfrFondo) + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="pv-ok" style="margin-top:9px">' +
+        (t.aChiConviene === 'fondo'
+          ? 'Differenza a favore del fondo: <b>' + pensEuro(t.differenza) + '</b> di tasse in meno.'
+          : (t.aChiConviene === 'azienda'
+              ? 'Differenza a favore dell\'azienda: <b>' + pensEuro(Math.abs(t.differenza)) + '</b> di tasse in meno.'
+              : 'Nessuna differenza fra le due tassazioni.')) + '</div>' +
+      '<div class="pv-piccolo" style="margin-top:8px">L\'aliquota in azienda è la sua: tassazione separata sul ' +
+      'reddito di riferimento di ' + pensEuro(t.redditoRiferimento) + ' (art. 19 c. 1 TUIR), non una percentuale media. ' +
+      'Non comprende ' + esc(t.nonCompreso) + '. Il TFR già maturato resta in azienda: la scelta vale da oggi in avanti.</div></div>';
+  }
+
   /* IL CONFRONTO TFR, solo a chi ce l'ha. */
   if (e.mostraTfr) {
     h += '<div class="pv-card"><div class="pv-sec">TFR: in azienda o nel fondo?</div>' +

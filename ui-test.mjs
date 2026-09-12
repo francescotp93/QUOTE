@@ -2697,6 +2697,13 @@ const avvio = async () => {
           proposte: [...box.querySelectorAll('.pv-prop')].length,
           barra: [...box.querySelectorAll('.pv-barra span')].map(x => x.style.width),
           gap: PENS.esito.gapMensile,
+          /* I COMANDI, non le parole. Cercare «avanti» nel testo pescava
+             anche «la scelta vale da oggi in avanti»: un falso rosso su una
+             frase italiana qualunque. Un flusso a passi si riconosce dai
+             BOTTONI che lo fanno avanzare. */
+          passi: [...document.querySelectorAll('#page-previdenza button, #page-previdenza a, #page-previdenza [data-passo]')]
+                   .map(x => (x.textContent || '').trim())
+                   .filter(t => /^(avanti|indietro|passo\s*\d|continua)\b/i.test(t)),
         };
       });
       deve(r.numeri.length >= 4, 'i numeri grandi non sono quattro: ' + r.numeri.length);
@@ -2706,7 +2713,8 @@ const avvio = async () => {
       deve(r.gap > 0, 'su questo profilo il divario dovrebbe esserci');
       /* NIENTE PASSI. La risposta sta sotto i campi, sulla stessa schermata:
          se per vederla bisogna cambiare pagina, il cliente smette di guardare. */
-      deve(!/passo 1|passo 2|Avanti/i.test(r.testo), 'e\' tornato un flusso a passi');
+      deve(r.passi.length === 0, 'e\' tornato un flusso a passi, comandi trovati: ' + r.passi.join(', '));
+      deve(!/passo 1|passo 2/i.test(r.testo), 'la schermata numera dei passi: e\' tornato un flusso a passi');
       return r.numeri.join(' · ');
     });
 
@@ -3314,6 +3322,103 @@ const avvio = async () => {
          promette un allegato che non c'e'. */
       deve(r.url === null, 'ha aperto WhatsApp lo stesso, senza PDF: ' + r.url);
       return r.avviso.slice(0, 60);
+    });
+
+    /* ── LE TASSE, LATO CLIENTE ───────────────────────────────
+       Il confronto fra la tassazione separata del TFR e quella della
+       prestazione del fondo è il numero che vende il modulo — e quindi
+       quello che va sorvegliato di piu'. */
+
+    await prova('pensione: lo schermo e il foglio dicono le STESSE aliquote', async () => {
+      /* La schermata e il foglio sono due HTML diversi scritti in due punti
+         diversi. Se divergono se ne accorge il cliente, davanti al
+         consulente, e a quel punto non conta chi dei due aveva ragione. */
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-lavoro').value = 'dipendente';
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        document.getElementById('pens-cli').value = 'Mario Rossi';
+        document.getElementById('pens-cons').value = 'Francesco Oddo';
+        const foglio = Pensione.foglioHtml(pensDatiFoglio());
+        return { schermo: document.getElementById('pens-esito').textContent,
+                 foglio: foglio.ok ? foglio.html.replace(/<[^>]+>/g, ' ') : '',
+                 t: PENS.esito.tasse };
+      });
+      const perc = (n) => (n * 100).toFixed(2).replace('.', ',') + '%';
+      const aliquote = [perc(r.t.aliquotaFondo), perc(r.t.aliquotaTfrAzienda)];
+      for (const a of aliquote) {
+        deve(r.schermo.includes(a), 'l\'aliquota ' + a + ' non c\'è sullo schermo');
+        deve(r.foglio.includes(a), 'l\'aliquota ' + a + ' non c\'è sul foglio del cliente');
+      }
+      return 'fondo ' + aliquote[0] + ', TFR in azienda ' + aliquote[1] + ': uguali di qua e di là';
+    });
+
+    await prova('pensione: l\'aliquota del TFR è quella del cliente, e cambia col reddito', async () => {
+      /* Era «tipicamente sopra il 20%»: vera in media, falsa per il singolo.
+         E il foglio lo firma un singolo. */
+      const r = await page.evaluate(() => {
+        const leggi = (reddito) => {
+          apriPensione();
+          PENS.parametri = 'ok'; PENS.avvisi = [];
+          document.getElementById('pens-eta').value = 38;
+          document.getElementById('pens-lavoro').value = 'dipendente';
+          document.getElementById('pens-reddito').value = reddito;
+          document.getElementById('pens-versamento').value = 100;
+          document.getElementById('pens-inizio').value = 25;
+          pensCalcola();
+          return PENS.esito.tasse.aliquotaTfrAzienda;
+        };
+        return { basso: leggi(1000), alto: leggi(4500),
+                 testo: document.getElementById('pens-esito').textContent };
+      });
+      deve(r.alto > r.basso + 0.005,
+        'due redditi molto diversi danno la stessa aliquota: sta usando una media');
+      deve(/art\. 19/.test(r.testo), 'la schermata non dice da quale norma viene l\'aliquota');
+      deve(/reddito di riferimento/i.test(r.testo), 'non spiega su cosa è calcolata');
+      return (r.basso * 100).toFixed(1) + '% a 1.000 €, ' + (r.alto * 100).toFixed(1) + '% a 4.500 €';
+    });
+
+    await prova('pensione: a schermo si dice anche il momento in cui il fondo NON vince', async () => {
+      /* Se questa riga sparisce, la schermata è diventata una brochure — e
+         il consulente perde l'unica frase che rende credibili le altre due. */
+      const testo = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-lavoro').value = 'dipendente';
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        return document.getElementById('pens-esito').textContent;
+      });
+      deve(/17%/.test(testo) && /20%/.test(testo), 'non mette a confronto il 17% e il 20%');
+      deve(/avvantaggiato/i.test(testo), 'non dice che su quel pezzo il TFR in azienda è avvantaggiato');
+      deve(/senza contare/i.test(testo), 'non dichiara che il confronto è senza rivalutazione né rendimenti');
+      return 'il 17% contro il 20%, scritto anche a schermo';
+    });
+
+    await prova('pensione: chi non ha TFR non vede un confronto sul TFR', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-lavoro').value = 'autonomo';
+        document.getElementById('pens-reddito').value = 2000;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        return document.getElementById('pens-esito').textContent;
+      });
+      deve(!/Lo stesso TFR/i.test(r), 'all\'autonomo esce un confronto TFR che non lo riguarda');
+      /* L'aliquota del fondo però lo riguarda eccome: quella resta. */
+      deve(/tre momenti/i.test(r), 'all\'autonomo sparisce anche la sezione sulle tasse, che lo riguarda');
+      return 'niente TFR, ma le tasse del fondo restano';
     });
 
     await prova('pensione: il cliente si cerca in portafoglio, e il legame si vede', async () => {

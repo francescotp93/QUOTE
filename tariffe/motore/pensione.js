@@ -116,6 +116,23 @@ var LEGGE = {
   impostaRendimenti: { v: 0.20, etichetta: 'Imposta sui rendimenti del fondo', unita: '%',
     fonte: 'Art. 17 c. 1 D.Lgs. 252/2005', daConfermare: false },
 
+  /* ── QUANTO TFR MATURA IN UN ANNO ───────────────────────────────
+     Art. 2120 c.c.: la retribuzione annua divisa per 13,5. Da quella quota si
+     toglie lo 0,50% della retribuzione, che va al Fondo di Garanzia INPS
+     (art. 3 c. 15 L. 297/1982) e in tasca al lavoratore non arriva. Il netto
+     e' circa il 6,91% della retribuzione lorda. */
+  tfrDivisore: { v: 13.5, etichetta: 'Divisore della quota annua di TFR', unita: '',
+    fonte: 'Art. 2120 c.c.', daConfermare: false },
+  tfrContributoGaranzia: { v: 0.005, etichetta: 'Quota che va al Fondo di Garanzia INPS', unita: '%',
+    fonte: 'Art. 3 c. 15 L. 297/1982', daConfermare: false },
+
+  /* La rivalutazione del TFR lasciato in azienda paga un'imposta sostitutiva
+     del 17% (art. 11 c. 3 D.L. 66/2014, che l'ha portata dall'11% al 17%).
+     E' PIU' BASSA del 20% che paga il fondo sui rendimenti: su questo pezzo
+     il TFR in azienda e' avvantaggiato, e va detto invece di nasconderlo. */
+  impostaRivalutazioneTfr: { v: 0.17, etichetta: 'Imposta sostitutiva sulla rivalutazione del TFR', unita: '%',
+    fonte: 'Art. 11 c. 3 D.L. 66/2014', daConfermare: false },
+
   /* L'età della pensione di vecchiaia. 67 anni è il requisito in vigore.
      NON SI PROIETTA QUI, e va detto: il requisito si adegua alla speranza di
      vita, quindi chi oggi ha trent'anni ci arriverà più tardi. Proiettarlo a
@@ -454,6 +471,81 @@ function proposte(gapSenzaFondo, anniAllaPensione, redditoNettoMensile, par) {
   return out.sort(function (a, b) { return a.versamentoMensile - b.versamentoMensile; });
 }
 
+/* ══ LE TASSE, NEI TRE MOMENTI ══════════════════════════════════
+   La domanda del cliente non e' «quanto rende»: e' «quanto me ne resta in
+   mano». Su un fondo pensione il fisco entra tre volte, e in due delle tre
+   il fondo vince — ma non in tutte e tre, e dirlo è l'unico modo perche' il
+   resto del foglio sia credibile:
+
+     1. QUANDO VERSI. Quello che versi si deduce, fino a 5.164,57 € l'anno.
+        Il risparmio vero lo calcola `risparmioFiscale` con l'IRPEF vera — e
+        può essere NEGATIVO (vedi la nota qui sotto).
+     2. MENTRE CRESCE. I rendimenti del fondo pagano il 20%. La rivalutazione
+        del TFR lasciato in azienda ne paga 17. QUI IL TFR IN AZIENDA E'
+        AVVANTAGGIATO: è l'unico dei tre momenti in cui lo è, e un foglio che
+        lo nasconde è un foglio che il cliente scopre da solo.
+     3. QUANDO PRENDI. Ed è qui che si decide tutto. Il fondo tassa la
+        prestazione al 15%, che scende dello 0,30% l'anno oltre il
+        quindicesimo di partecipazione fino al 9%. Il TFR in azienda paga la
+        tassazione separata: l'aliquota media IRPEF sul suo reddito di
+        riferimento — per un dipendente tipico il 23% e passa.
+
+   PERCHE' IL CONFRONTO SI FA A RIVALUTAZIONE ZERO. Per confrontare le due
+   TASSE bisogna confrontarle sulla STESSA somma. Se al fondo si sommasse un
+   rendimento e al TFR la sua rivalutazione, il confronto direbbe quale dei
+   due RENDE di piu' — e il rendimento del fondo, oggi, è un segnaposto da
+   confermare. Qui si isola quello che si sa con certezza: a parità di
+   somma, quanto ne prende il fisco. Il numero che esce e' piccolo e vero,
+   invece che grande e da dimostrare. */
+function tasseNeiTreMomenti(lordoAnnuo, anniAllaPensione, anniContributi, haTfr) {
+  var out = {
+    disponibile: false,
+    impostaRendimentiFondo: LEGGE.impostaRendimenti.v,
+    impostaRivalutazioneTfr: LEGGE.impostaRivalutazioneTfr.v,
+    haTfr: !!haTfr,
+  };
+
+  /* L'aliquota del fondo dipende dagli anni di PARTECIPAZIONE, che per chi
+     aderisce oggi sono gli anni che mancano alla pensione. Chi aderisce a
+     cinquant'anni non arriva al 9%, e fargli vedere il 9% sarebbe la
+     promessa piu' facile e piu' falsa di tutto il foglio. */
+  var anni = Math.max(0, num(anniAllaPensione));
+  var sconto = Math.max(0, anni - 15) * LEGGE.prestazioneSconto.v;
+  out.anniPartecipazione = anni;
+  out.aliquotaFondo = Math.max(LEGGE.prestazioneMinima.v, LEGGE.prestazioneBase.v - sconto);
+  out.aliquotaFondoAlMinimo = out.aliquotaFondo <= LEGGE.prestazioneMinima.v + 1e-9;
+
+  if (!haTfr) return out;
+  if (!IRPEF || typeof IRPEF.tassazioneSeparataTfr !== 'function') {
+    out.perche = 'Il motore fiscale non è caricato: il confronto fra le due tassazioni non è stato calcolato.';
+    return out;
+  }
+
+  var ral = pos(lordoAnnuo);
+  var quotaAnnua = ral / LEGGE.tfrDivisore.v - ral * LEGGE.tfrContributoGaranzia.v;
+  /* Il TFR che maturera' DA QUI ALLA PENSIONE: è l'unico su cui la scelta di
+     oggi puo' ancora incidere. Quello gia' maturato in azienda resta dov'e'. */
+  var tfrFuturo = quotaAnnua * anni;
+  /* Gli anni di servizio del divisore di legge sono TUTTI quelli del
+     rapporto, non solo quelli che mancano: usare solo questi ultimi gonfierebbe
+     il reddito di riferimento e quindi l'aliquota — a favore del fondo. */
+  var anniServizio = Math.max(1, num(anniContributi) || anni);
+  var sep = IRPEF.tassazioneSeparataTfr(tfrFuturo, anniServizio);
+
+  out.disponibile = true;
+  out.quotaTfrAnnua = quotaAnnua;
+  out.tfrFuturo = tfrFuturo;
+  out.anniServizio = anniServizio;
+  out.redditoRiferimento = sep.redditoRiferimento;
+  out.aliquotaTfrAzienda = sep.aliquota;
+  out.impostaTfrAzienda = sep.imposta;
+  out.impostaTfrFondo = tfrFuturo * out.aliquotaFondo;
+  out.differenza = out.impostaTfrAzienda - out.impostaTfrFondo;
+  out.aChiConviene = out.differenza > 0 ? 'fondo' : (out.differenza < 0 ? 'azienda' : 'pari');
+  out.nonCompreso = sep.nonCompreso;
+  return out;
+}
+
 /* ══ IL RISPARMIO FISCALE ════════════════════════════════════════════════
    Passa dal motore fiscale vero, e non da una percentuale. Il motivo sta
    scritto in cima a irpef.js e vale la pena ripeterlo qui, perché è il punto
@@ -568,6 +660,7 @@ function calcola(dati) {
   var gapSenzaFondo = Math.max(0, nettoMensile - pensioneMensile);
 
   var fiscale = risparmioFiscale(lordoAnnuo, versamento, L.gestione);
+  var tasse = tasseNeiTreMomenti(lordoAnnuo, car.anniAllaPensione, car.anniContributi, L.haTfr);
 
   return {
     versione: VERSIONE,
@@ -620,6 +713,7 @@ function calcola(dati) {
 
     // ── il fisco
     fiscale: fiscale,
+    tasse: tasse,
 
     // ── il TFR: solo chi ce l'ha
     mostraTfr: L.haTfr,
@@ -749,7 +843,7 @@ var TFR = {
   righe: [
     {
       voce: 'Tassazione',
-      azienda: 'Tassazione separata, con l\'aliquota media IRPEF degli ultimi cinque anni: tipicamente sopra il 20%.',
+      azienda: 'Tassazione separata, con l\'aliquota media IRPEF calcolata sul reddito di riferimento (art. 19 c. 1 TUIR). Non è uguale per tutti: la tua è nel riquadro qui sopra.',
       fondo: 'Il 15%, che scende dello 0,30% per ogni anno di partecipazione oltre il quindicesimo, fino a un minimo del 9% (art. 11 c. 6 D.Lgs. 252/2005).',
       aChiConviene: 'fondo',
     },
@@ -1008,6 +1102,109 @@ function contenutoFoglio(d) {
     fiscali.push({ parti: parti });
   }
   sezioni.push({ titolo: 'Quanto ti fa risparmiare di tasse', paragrafi: fiscali });
+
+  /* ── LE TASSE NEI TRE MOMENTI ───────────────────────────────
+     La sezione che il cliente porta a casa e rilegge da solo. Il momento 2
+     dice che su quel pezzo il TFR in azienda paga MENO: e' l'unica riga del
+     foglio che gioca contro la vendita, ed e' la ragione per cui le altre
+     due si possono credere. */
+  var t = e.tasse;
+  if (t) {
+    var tasseP = [];
+    tasseP.push({ tono: 'nota', testo:
+      'Su un fondo pensione il fisco entra tre volte. Qui ci sono tutte e tre, compresa quella in cui il fondo non vince.' });
+
+    // 1. quando versi
+    if (e.fiscale.disponibile && !e.fiscale.inPerdita && e.fiscale.risparmioAnnuo > 0) {
+      tasseP.push({ parti: [
+        { t: '1. Quando versi. ', forte: true },
+        { t: 'Quello che versi si deduce dal reddito, fino a ' + euro(LEGGE.tettoDeducibilita.v, 2) +
+             ' l\'anno: nel tuo caso ' + euro(e.fiscale.risparmioAnnuo) + ' di minori imposte ogni anno.' },
+      ] });
+    } else if (e.fiscale.disponibile && e.fiscale.inPerdita) {
+      tasseP.push({ parti: [
+        { t: '1. Quando versi. ', forte: true },
+        { t: 'Al tuo reddito la deduzione NON conviene: ti farebbe perdere il trattamento integrativo. Il vantaggio del fondo, per te, sta negli altri due momenti.' },
+      ] });
+    } else {
+      tasseP.push({ parti: [
+        { t: '1. Quando versi. ', forte: true },
+        { t: 'Quello che versi si deduce dal reddito, fino a ' + euro(LEGGE.tettoDeducibilita.v, 2) + ' l\'anno.' },
+      ] });
+    }
+
+    // 2. mentre cresce — l'unica in cui il TFR in azienda e' avanti
+    if (t.haTfr) {
+      tasseP.push({ parti: [
+        { t: '2. Mentre cresce. ', forte: true },
+        { t: 'I rendimenti del fondo pagano il ' + perc(t.impostaRendimentiFondo, 0) +
+             '. La rivalutazione del TFR lasciato in azienda paga il ' + perc(t.impostaRivalutazioneTfr, 0) + ': ' },
+        { t: 'su questo pezzo il TFR in azienda è avvantaggiato', forte: true },
+        { t: ', ed è giusto saperlo.' },
+      ] });
+    } else {
+      tasseP.push({ parti: [
+        { t: '2. Mentre cresce. ', forte: true },
+        { t: 'I rendimenti del fondo pagano il ' + perc(t.impostaRendimentiFondo, 0) +
+             ', contro il 26% della gran parte delle rendite finanziarie.' },
+      ] });
+    }
+
+    // 3. quando prendi — il numero che decide
+    var terzo = [
+      { t: '3. Quando prendi. ', forte: true },
+      { t: 'La prestazione del fondo si tassa al 15%, che scende dello 0,30% per ogni anno di partecipazione oltre il quindicesimo, fino al 9%. ' },
+    ];
+    if (t.aliquotaFondoAlMinimo) {
+      terzo.push({ t: 'Aderendo adesso partecipi ' + t.anniPartecipazione +
+        ' anni: arrivi al minimo, ' + perc(t.aliquotaFondo, 2) + '.', forte: true });
+    } else {
+      terzo.push({ t: 'Aderendo adesso partecipi ' + t.anniPartecipazione + ' anni, quindi la tua aliquota sarebbe ' +
+        perc(t.aliquotaFondo, 2) + (t.anniPartecipazione < 15 ? ' — lo sconto comincia dal sedicesimo anno.' : '.'), forte: true });
+    }
+    tasseP.push({ parti: terzo });
+
+    sezioni.push({ titolo: 'Le tasse, nei tre momenti', paragrafi: tasseP });
+  }
+
+  /* ── LO STESSO TFR, TASSATO NEI DUE MODI ────────────────────────
+     Il confronto si fa sulla stessa somma e senza rivalutazioni ne'
+     rendimenti: cosi' il numero che esce e' SOLO la differenza di tassazione,
+     e non dipende da un rendimento che oggi è un segnaposto. */
+  if (t && t.disponibile) {
+    sezioni.push({
+      titolo: 'Lo stesso TFR, tassato nei due modi',
+      paragrafi: [{ tono: 'nota', testo:
+        'Da qui alla pensione maturerai circa ' + euro(t.tfrFuturo) + ' di TFR (' + euro(t.quotaTfrAnnua) +
+        ' l\'anno, cioè la retribuzione divisa per 13,5 meno lo 0,50% che va al Fondo di Garanzia INPS). ' +
+        'Sulla STESSA somma, senza contare né rivalutazione né rendimenti — così il confronto è solo fra le due tasse:' }],
+      tabella: {
+        intestazioni: ['', 'Aliquota', 'Tasse su ' + euro(t.tfrFuturo)],
+        righe: [
+          { celle: [
+              [{ t: 'Se resta in azienda', forte: true }],
+              [{ t: perc(t.aliquotaTfrAzienda, 2) }],
+              [{ t: euro(t.impostaTfrAzienda) }],
+          ] },
+          { celle: [
+              [{ t: 'Se va nel fondo', forte: true }],
+              [{ t: perc(t.aliquotaFondo, 2) }],
+              [{ t: euro(t.impostaTfrFondo) }],
+          ] },
+          { evidenzia: true, celle: [
+              [{ t: t.aChiConviene === 'fondo' ? 'Differenza a favore del fondo' : (t.aChiConviene === 'azienda' ? 'Differenza a favore dell\'azienda' : 'Nessuna differenza'), forte: true }],
+              [{ t: '' }],
+              [{ t: euro(Math.abs(t.differenza)), forte: true }],
+          ] },
+        ],
+      },
+      note: [{ tono: 'nota', testo:
+        'L\'aliquota del TFR in azienda è la TUA: tassazione separata sul reddito di riferimento di ' +
+        euro(t.redditoRiferimento) + ' (art. 19 c. 1 TUIR), non una percentuale media. ' +
+        'Non comprende ' + t.nonCompreso + ', che può correggerla in su o in giù. ' +
+        'Il TFR già maturato in azienda resta dov\'è: la scelta vale da oggi in avanti.' }],
+    });
+  }
 
   if (e.mostraTfr) {
     sezioni.push({
@@ -1281,7 +1478,14 @@ function foglioPdf(d, jsPDF) {
     }
     var parti = par.parti || [{ t: (par.forte ? par.forte + ' ' : '') + par.testo, forte: !!par.forte }];
     if (par.forte && !par.parti) parti = [{ t: par.forte, forte: true }, { t: ' ' + par.testo }];
-    spazio(6);
+    /* Si riserva l'altezza VERA del paragrafo, non una riga di cortesia: un
+       paragrafo lungo cresce mentre lo si scrive, e `scriviParti` non guarda
+       il fondo pagina — l'ultima riga finiva fuori dal foglio. La stima si
+       fa sul testo intero e con una riga di margine, perche' il grassetto
+       occupa piu' spazio del tondo su cui è misurata. */
+    var alto = dim * 0.45 + 0.9;
+    var stima = righeDi(parti.map(function (z) { return z.t; }).join(''), larghezza).length + 1;
+    spazio(stima * alto);
     scriviParti(parti, x0, larghezza, dim, par.tono === 'nota' ? GRIGIO : INK);
     y += 1.4;
   };
@@ -1435,8 +1639,13 @@ function foglioPdf(d, jsPDF) {
     y += hM + 4;
   }
 
-  // ── chi firma
-  spazio(16);
+  /* ── chi firma e il disclaimer: UN BLOCCO SOLO
+     Separarli vorrebbe dire poter mettere la firma in fondo a una pagina e
+     l'avvertenza che la qualifica in quella dopo. Si riserva l'altezza di
+     tutti e due insieme, e si spezzano solo se davvero non ci stanno. */
+  var rdMis = righeDi(doc.disclaimer, LARG);
+  var altFirma = 4 + (doc.firma.email || doc.firma.telefono ? 4 : 0);
+  spazio(altFirma + rdMis.length * 3.2 + 12);
   var f = doc.firma;
   font(8.6, true, INK);
   p.text(f.nome + (f.ruolo ? ' · ' + f.ruolo : '') + (f.rui ? ' · RUI ' + f.rui : ''), M, y);
@@ -1448,8 +1657,7 @@ function foglioPdf(d, jsPDF) {
   }
 
   // ── il disclaimer, che non è una formalità
-  var rd = righeDi(doc.disclaimer, LARG);
-  spazio(rd.length * 3.2 + 8);
+  var rd = rdMis;
   p.setDrawColor(216, 227, 220); p.setLineWidth(0.25);
   p.line(M, y, 210 - M, y); y += 4;
   font(6.8, false, GRIGIO);

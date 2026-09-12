@@ -212,6 +212,30 @@ prova('nessuna riga finisce sotto il margine basso', () => {
   return righe + ' righe, tutte dentro il foglio';
 });
 
+prova('la firma e il disclaimer non si separano mai', () => {
+  /* Una firma in fondo a una pagina e l'avvertenza che la qualifica in
+     quella dopo è un documento che dice due cose diverse a seconda di quale
+     foglio si guarda. */
+  let provati = 0;
+  for (const ing of PROFILI) {
+    for (const scala of SCALE) {
+      const { p, doc } = rendi(ing, scala);
+      const firma = doc.firma.nome + (doc.firma.ruolo ? ' · ' + doc.firma.ruolo : '') +
+                    (doc.firma.rui ? ' · RUI ' + doc.firma.rui : '');
+      const rf = p.scritte.find(x => x.testo === firma);
+      deve(rf, 'la firma non compare nel PDF');
+      const chiave = String(doc.disclaimer).split(/\s+/).slice(0, 4).join(' ');
+      const rd = p.scritte.find(x => x.testo.indexOf(chiave) === 0);
+      deve(rd, 'il disclaimer non compare nel PDF');
+      deve(rf.pagina === rd.pagina,
+        'firma a pagina ' + rf.pagina + ' e disclaimer a pagina ' + rd.pagina +
+        ' (profilo ' + ing.lavoro + ' ' + ing.redditoMensile + '€, geometria ' + scala + ')');
+      provati++;
+    }
+  }
+  return provati + ' rese, firma e disclaimer sempre insieme';
+});
+
 /* ── 4. quello che non è confermato arriva fino al PDF ─────────────────── */
 prova('ogni segnaposto da confermare è scritto anche nel PDF', () => {
   const { p, doc } = rendi(PROFILI[0]);
