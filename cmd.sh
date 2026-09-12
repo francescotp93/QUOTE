@@ -1,3 +1,17 @@
-echo "ora: $(date '+%F %T %Z')"
-for p in "axa 4700" "groupama 4500"; do set -- $p; printf '%-10s %s\n' "$1" "$(curl -s -m 8 http://127.0.0.1:$2/status | python3 -c 'import sys,json; d=json.load(sys.stdin); print("loggato:",d.get("loggato"),"| stato:",d.get("login_step"),"|",d.get("login_msg","")[:90])' 2>/dev/null || echo '(stato non leggibile)')"; done
-echo "--- ultimi eventi groupama:"; journalctl -u groupama-scraper --since '2026-09-12 09:00' --no-pager 2>/dev/null | grep -iE 'sessione|login|caduta|otp' | tail -6 | cut -c1-170
+echo "=== quante caselle di posta sono configurate (solo il conteggio e il dominio, nessun indirizzo intero)"
+python3 - <<'PY'
+import json,os,re
+p='/opt/withus-backend/server/fonti.store.json'
+try:
+    d=json.load(open(p))
+except Exception as e:
+    print('store non leggibile:', e); raise SystemExit
+mail=d.get('__caselle_mail') or d.get('caselle_mail') or {}
+print('caselle configurate nel pannello:', len(mail))
+for k in mail: print('  casella su dominio:', k.split('@')[-1])
+env=open('/opt/withus-backend/server/.env').read() if os.path.exists('/opt/withus-backend/server/.env') else ''
+print('MAIL_USER nell ambiente:', 'si' if re.search(r'^MAIL_USER=', env, re.M) else 'no')
+PY
+echo
+echo "=== a quale indirizzo Groupama manda il codice (lo dice il portale, mascherato, nel giornale?)"
+journalctl -u groupama-scraper --since '-7 days' --no-pager 2>/dev/null | grep -iE "inviato a|email|\*\*\*|destinatar" | tail -8 | cut -c1-180
