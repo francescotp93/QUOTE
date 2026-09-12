@@ -1,7 +1,9 @@
-id: posta-1789204578  exit: 0  2026-09-12 09:16:40
+id: stato-1789209470  exit: 0  2026-09-12 10:38:15
 ----
-=== quante caselle di posta sono configurate (solo il conteggio e il dominio, nessun indirizzo intero)
-caselle configurate nel pannello: 0
-MAIL_USER nell ambiente: si
-
-=== a quale indirizzo Groupama manda il codice (lo dice il portale, mascherato, nel giornale?)
+ora: 2026-09-12 10:38:15 UTC
+axa        FUORI | Codice non accettato — genera un nuovo codice e riprova.
+groupama   FUORI | Sessione scaduta: rifai il login da Fonti → Groupama
+allianz    dentro | Matrix Motor raggiungibile ✅
+italiana   dentro | 
+hdi        FUORI | Accesso eseguito ✅
+preventivi passati dal backend oggi: 0
