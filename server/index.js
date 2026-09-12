@@ -31,6 +31,7 @@ import { hdiApiRouter } from './hdiApiRoutes.js';
 import { preventiviRouter } from './preventivi.js';
 import { parametriPrevRouter } from './parametriPrevidenziali.js';
 import { analisiPrevRouter } from './analisiPrevidenziali.js';
+import { progettiPrevRouter, progettiPrevPubblico } from './progettoPrevidenziale.js';
 import { registroRichieste } from './registro.js';
 import { registraEsito, esitiRouter } from './esiti.js';
 
@@ -114,6 +115,13 @@ app.use('/hdi-api', requireAuth, hdiApiRouter);
 app.use('/preventivi', requireAuth, preventiviRouter);
 app.use('/parametri-previdenziali', requireAuth, parametriPrevRouter);
 app.use('/analisi-previdenziali', requireAuth, analisiPrevRouter);
+/* Il progetto pensione che compila il cliente. DUE MONTAGGI, e l'ordine conta:
+   la parte pubblica (/progetti-previdenziali/pubblico/...) va PRIMA, altrimenti
+   `requireAuth` la chiuderebbe e il link al cliente chiederebbe un login che il
+   cliente non ha. Chi entra da li' non e' collegato: le difese di quella porta
+   stanno scritte in cima a progettoPrevidenziale.js. */
+app.use('/progetti-previdenziali', progettiPrevPubblico);
+app.use('/progetti-previdenziali', requireAuth, progettiPrevRouter);
 /* Il registro degli esiti di quotazione (tabella quote_quotazioni_esiti): le
    righe le scrivono le rotte di quotazione da sole; qui c'e' solo la
    segnalazione dell'operatore — «il premio non torna» — dietro il login. */

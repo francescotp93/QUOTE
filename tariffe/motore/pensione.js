@@ -116,6 +116,23 @@ var LEGGE = {
   impostaRendimenti: { v: 0.20, etichetta: 'Imposta sui rendimenti del fondo', unita: '%',
     fonte: 'Art. 17 c. 1 D.Lgs. 252/2005', daConfermare: false },
 
+  /* ── QUANTO TFR MATURA IN UN ANNO ───────────────────────────────
+     Art. 2120 c.c.: la retribuzione annua divisa per 13,5. Da quella quota si
+     toglie lo 0,50% della retribuzione, che va al Fondo di Garanzia INPS
+     (art. 3 c. 15 L. 297/1982) e in tasca al lavoratore non arriva. Il netto
+     e' circa il 6,91% della retribuzione lorda. */
+  tfrDivisore: { v: 13.5, etichetta: 'Divisore della quota annua di TFR', unita: '',
+    fonte: 'Art. 2120 c.c.', daConfermare: false },
+  tfrContributoGaranzia: { v: 0.005, etichetta: 'Quota che va al Fondo di Garanzia INPS', unita: '%',
+    fonte: 'Art. 3 c. 15 L. 297/1982', daConfermare: false },
+
+  /* La rivalutazione del TFR lasciato in azienda paga un'imposta sostitutiva
+     del 17% (art. 11 c. 3 D.L. 66/2014, che l'ha portata dall'11% al 17%).
+     E' PIU' BASSA del 20% che paga il fondo sui rendimenti: su questo pezzo
+     il TFR in azienda e' avvantaggiato, e va detto invece di nasconderlo. */
+  impostaRivalutazioneTfr: { v: 0.17, etichetta: 'Imposta sostitutiva sulla rivalutazione del TFR', unita: '%',
+    fonte: 'Art. 11 c. 3 D.L. 66/2014', daConfermare: false },
+
   /* L'età della pensione di vecchiaia. 67 anni è il requisito in vigore.
      NON SI PROIETTA QUI, e va detto: il requisito si adegua alla speranza di
      vita, quindi chi oggi ha trent'anni ci arriverà più tardi. Proiettarlo a
@@ -454,6 +471,81 @@ function proposte(gapSenzaFondo, anniAllaPensione, redditoNettoMensile, par) {
   return out.sort(function (a, b) { return a.versamentoMensile - b.versamentoMensile; });
 }
 
+/* ══ LE TASSE, NEI TRE MOMENTI ══════════════════════════════════
+   La domanda del cliente non e' «quanto rende»: e' «quanto me ne resta in
+   mano». Su un fondo pensione il fisco entra tre volte, e in due delle tre
+   il fondo vince — ma non in tutte e tre, e dirlo è l'unico modo perche' il
+   resto del foglio sia credibile:
+
+     1. QUANDO VERSI. Quello che versi si deduce, fino a 5.164,57 € l'anno.
+        Il risparmio vero lo calcola `risparmioFiscale` con l'IRPEF vera — e
+        può essere NEGATIVO (vedi la nota qui sotto).
+     2. MENTRE CRESCE. I rendimenti del fondo pagano il 20%. La rivalutazione
+        del TFR lasciato in azienda ne paga 17. QUI IL TFR IN AZIENDA E'
+        AVVANTAGGIATO: è l'unico dei tre momenti in cui lo è, e un foglio che
+        lo nasconde è un foglio che il cliente scopre da solo.
+     3. QUANDO PRENDI. Ed è qui che si decide tutto. Il fondo tassa la
+        prestazione al 15%, che scende dello 0,30% l'anno oltre il
+        quindicesimo di partecipazione fino al 9%. Il TFR in azienda paga la
+        tassazione separata: l'aliquota media IRPEF sul suo reddito di
+        riferimento — per un dipendente tipico il 23% e passa.
+
+   PERCHE' IL CONFRONTO SI FA A RIVALUTAZIONE ZERO. Per confrontare le due
+   TASSE bisogna confrontarle sulla STESSA somma. Se al fondo si sommasse un
+   rendimento e al TFR la sua rivalutazione, il confronto direbbe quale dei
+   due RENDE di piu' — e il rendimento del fondo, oggi, è un segnaposto da
+   confermare. Qui si isola quello che si sa con certezza: a parità di
+   somma, quanto ne prende il fisco. Il numero che esce e' piccolo e vero,
+   invece che grande e da dimostrare. */
+function tasseNeiTreMomenti(lordoAnnuo, anniAllaPensione, anniContributi, haTfr) {
+  var out = {
+    disponibile: false,
+    impostaRendimentiFondo: LEGGE.impostaRendimenti.v,
+    impostaRivalutazioneTfr: LEGGE.impostaRivalutazioneTfr.v,
+    haTfr: !!haTfr,
+  };
+
+  /* L'aliquota del fondo dipende dagli anni di PARTECIPAZIONE, che per chi
+     aderisce oggi sono gli anni che mancano alla pensione. Chi aderisce a
+     cinquant'anni non arriva al 9%, e fargli vedere il 9% sarebbe la
+     promessa piu' facile e piu' falsa di tutto il foglio. */
+  var anni = Math.max(0, num(anniAllaPensione));
+  var sconto = Math.max(0, anni - 15) * LEGGE.prestazioneSconto.v;
+  out.anniPartecipazione = anni;
+  out.aliquotaFondo = Math.max(LEGGE.prestazioneMinima.v, LEGGE.prestazioneBase.v - sconto);
+  out.aliquotaFondoAlMinimo = out.aliquotaFondo <= LEGGE.prestazioneMinima.v + 1e-9;
+
+  if (!haTfr) return out;
+  if (!IRPEF || typeof IRPEF.tassazioneSeparataTfr !== 'function') {
+    out.perche = 'Il motore fiscale non è caricato: il confronto fra le due tassazioni non è stato calcolato.';
+    return out;
+  }
+
+  var ral = pos(lordoAnnuo);
+  var quotaAnnua = ral / LEGGE.tfrDivisore.v - ral * LEGGE.tfrContributoGaranzia.v;
+  /* Il TFR che maturera' DA QUI ALLA PENSIONE: è l'unico su cui la scelta di
+     oggi puo' ancora incidere. Quello gia' maturato in azienda resta dov'e'. */
+  var tfrFuturo = quotaAnnua * anni;
+  /* Gli anni di servizio del divisore di legge sono TUTTI quelli del
+     rapporto, non solo quelli che mancano: usare solo questi ultimi gonfierebbe
+     il reddito di riferimento e quindi l'aliquota — a favore del fondo. */
+  var anniServizio = Math.max(1, num(anniContributi) || anni);
+  var sep = IRPEF.tassazioneSeparataTfr(tfrFuturo, anniServizio);
+
+  out.disponibile = true;
+  out.quotaTfrAnnua = quotaAnnua;
+  out.tfrFuturo = tfrFuturo;
+  out.anniServizio = anniServizio;
+  out.redditoRiferimento = sep.redditoRiferimento;
+  out.aliquotaTfrAzienda = sep.aliquota;
+  out.impostaTfrAzienda = sep.imposta;
+  out.impostaTfrFondo = tfrFuturo * out.aliquotaFondo;
+  out.differenza = out.impostaTfrAzienda - out.impostaTfrFondo;
+  out.aChiConviene = out.differenza > 0 ? 'fondo' : (out.differenza < 0 ? 'azienda' : 'pari');
+  out.nonCompreso = sep.nonCompreso;
+  return out;
+}
+
 /* ══ IL RISPARMIO FISCALE ════════════════════════════════════════════════
    Passa dal motore fiscale vero, e non da una percentuale. Il motivo sta
    scritto in cima a irpef.js e vale la pena ripeterlo qui, perché è il punto
@@ -568,6 +660,7 @@ function calcola(dati) {
   var gapSenzaFondo = Math.max(0, nettoMensile - pensioneMensile);
 
   var fiscale = risparmioFiscale(lordoAnnuo, versamento, L.gestione);
+  var tasse = tasseNeiTreMomenti(lordoAnnuo, car.anniAllaPensione, car.anniContributi, L.haTfr);
 
   return {
     versione: VERSIONE,
@@ -620,6 +713,7 @@ function calcola(dati) {
 
     // ── il fisco
     fiscale: fiscale,
+    tasse: tasse,
 
     // ── il TFR: solo chi ce l'ha
     mostraTfr: L.haTfr,
@@ -749,7 +843,7 @@ var TFR = {
   righe: [
     {
       voce: 'Tassazione',
-      azienda: 'Tassazione separata, con l\'aliquota media IRPEF degli ultimi cinque anni: tipicamente sopra il 20%.',
+      azienda: 'Tassazione separata, con l\'aliquota media IRPEF calcolata sul reddito di riferimento (art. 19 c. 1 TUIR). Non è uguale per tutti: la tua è nel riquadro qui sopra.',
       fondo: 'Il 15%, che scende dello 0,30% per ogni anno di partecipazione oltre il quindicesimo, fino a un minimo del 9% (art. 11 c. 6 D.Lgs. 252/2005).',
       aChiConviene: 'fondo',
     },
@@ -877,7 +971,17 @@ function problemiDelFoglio(d) {
   return p;
 }
 
-function foglioHtml(d) {
+/* ══ IL FOGLIO, PRIMA COME CONTENUTO E POI COME DISEGNO ═══════════════════
+   Il foglio esiste in DUE forme: la pagina che si apre per stampare e il PDF
+   che si allega su WhatsApp. Scriverle due volte vorrebbe dire due posti che
+   si scostano — ed è già successo in questo modulo: la stessa frase stava
+   nella schermata e nel foglio, e i due si erano già disallineati.
+
+   Quindi il contenuto si costruisce UNA volta, qui, come dati puri: niente
+   markup, niente colori, niente millimetri. `foglioHtml` e `foglioPdf` lo
+   disegnano ciascuno a modo suo. Se domani serve una terza forma — una email,
+   un messaggio — si aggiunge un disegnatore, non si ricopia un testo. */
+function contenutoFoglio(d) {
   d = d || {};
   var problemi = problemiDelFoglio(d);
   if (problemi.length) return { ok: false, problemi: problemi };
@@ -885,72 +989,338 @@ function foglioHtml(d) {
   var e = d.esito;
   var cli = d.cliente || {}, con = d.consulente || {};
   var data = d.dataRiferimento || new Date().toLocaleDateString('it-IT');
-  var marchi = daConfermare();
 
-  /* LA FASCIA PRUDENZIALE, se serve, sta IN CIMA e non in fondo: un avviso
-     sotto la firma lo legge chi già sapeva. */
-  var fasciaPrudenziale = e.prudenziale
-    ? '<div class="prudenziale"><b>STIMA PRUDENZIALE</b> — l\'età di inizio dell\'attività lavorativa non è stata indicata' +
-      (e.datoIncoerente ? ' in modo utilizzabile' : '') + '. Il calcolo usa uno scenario peggiorativo (inizio a ' +
-      ETA_INIZIO_PRUDENZIALE + ' anni): pensione più bassa e divario più ampio di quelli probabili.</div>'
-    : '';
+  var avvisi = [];
+  /* LA FASCIA PRUDENZIALE STA IN CIMA e non in fondo: un avviso sotto la
+     firma lo legge chi già sapeva. */
+  if (e.prudenziale) {
+    avvisi.push({ tono: 'prudenziale', forte: 'STIMA PRUDENZIALE',
+      testo: '— l\'età di inizio dell\'attività lavorativa non è stata indicata' +
+        (e.datoIncoerente ? ' in modo utilizzabile' : '') + '. Il calcolo usa uno scenario peggiorativo (inizio a ' +
+        ETA_INIZIO_PRUDENZIALE + ' anni): pensione più bassa e divario più ampio di quelli probabili.' });
+  }
 
-  var righeProposte = e.proposte.map(function (p) {
-    return '<tr' + (p.eQuelloCheAzzera ? ' class="azzera"' : '') + '>' +
-      '<td><b>' + euro(p.versamentoMensile) + '</b> al mese</td>' +
-      '<td>' + euro(p.renditaMensileNetta) + ' al mese</td>' +
-      '<td>' + (p.azzera ? 'copre tutto il divario' : 'copre il ' + perc(p.coperturaGap) + ' del divario') +
-      (p.oltreIlTettoDeducibile ? ' <span class="nota">· oltre il tetto deducibile</span>' : '') +
-      (p.fuoriPortata ? ' <span class="nota">· oltre un quinto del reddito</span>' : '') + '</td></tr>';
-  }).join('');
+  var numeri = [
+    { etichetta: 'Oggi porti a casa', valore: euro(e.redditoNettoMensile), nota: 'al mese, netti', tono: 'neutro' },
+    { etichetta: 'Pensione pubblica', valore: euro(e.pensioneNettaMensile),
+      nota: perc(e.tassoSostituzioneNetto) + ' di quello che prendi oggi', tono: 'neutro' },
+    { etichetta: e.gapMensile > 0 ? 'Ti mancheranno' : 'Sei coperto', valore: euro(e.gapMensile),
+      nota: 'al mese' + (e.gapMensile > 0 ? ', il ' + perc(e.gapPercentuale) + ' del reddito di oggi' : ''),
+      tono: e.gapMensile > 0 ? 'gap' : 'ok' },
+  ];
 
-  var bloccoFiscale = e.fiscale.disponibile
-    ? (e.fiscale.inPerdita
-      ? '<div class="allarme"><b>Attenzione: a questo livello di reddito dedurre NON conviene.</b> ' +
-        'Il versamento farebbe perdere il trattamento integrativo, e il conto finale sarebbe in perdita di ' +
-        euro(Math.abs(e.fiscale.risparmioAnnuo)) + ' l\'anno. Il fondo resta utile per la pensione, ma il vantaggio fiscale qui non c\'è.</div>'
-      : '<p><b>' + euro(e.fiscale.risparmioAnnuo) + ' l\'anno</b> di minori imposte, versando ' +
-        euro(e.fiscale.versatoAnnuo) + '. Ogni euro dedotto vale ' + perc(e.fiscale.aliquotaEffettiva, 1) + '.' +
-        (e.fiscale.oltreIlTetto
-          ? ' <span class="nota">Il versamento supera il tetto di deducibilità di ' + euro(LEGGE.tettoDeducibilita.v, 2) +
-            ': ' + euro(e.fiscale.eccedenza) + ' l\'anno non danno diritto a deduzione.</span>' : '') +
-        (e.fiscale.impostaAzzerata ? ' <span class="nota">L\'imposta è già azzerata dalle detrazioni: la deduzione non produce risparmio.</span>' : '') +
-        '</p>')
-    : '<p class="nota">' + esc(e.fiscale.perche) + '</p>';
+  var sezioni = [];
 
-  var bloccoTfr = '';
+  sezioni.push({ titolo: 'Dove sei oggi, e dove arrivi', numeri: numeri, paragrafi: [
+    { tono: 'nota', testo: 'Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi + ' anni di contributi' +
+      (e.versamentoMensile > 0
+        ? '. Versando ' + euro(e.versamentoMensile) + ' al mese per i ' + e.anniAllaPensione +
+          ' anni che mancano, il fondo aggiungerebbe ' + euro(e.fondo.renditaMensileNetta) +
+          ' al mese (montante stimato ' + euro(e.fondo.montante) + ').'
+        : '. Oggi non stai versando in nessun fondo: il divario qui sopra è tutto scoperto.') },
+    /* LE MENSILITÀ SUL FOGLIO. Senza, un cliente che rifà il conto con la
+       calcolatrice non ritrova i numeri e smette di fidarsi di tutta la pagina. */
+    { tono: 'nota', parti: [
+      { t: 'Reddito calcolato su ' },
+      { t: e.mensilita + ' mensilità', forte: true },
+      { t: ' (' + euro(e.nettoAnnuo) + ' netti l\'anno). La pensione pubblica si riceve in ' + e.mensilitaPensione +
+           ' rate l\'anno, la rendita del fondo in ' + e.mensilitaRendita + '.' } ] },
+    { tono: 'nota', parti: [
+      { t: 'Tariffa di riferimento: ' },
+      { t: FONDO.prodotto.etichetta, forte: true },
+      { t: '. Alternativa: ' + FONDO.prodotto.alternativa + '.' } ] },
+  ] });
+
+  /* LE PROPOSTE. La nota su quale divario coprono serve: un cliente che legge
+     «ti mancheranno 350» e poi «20 € coprono il 6%» fa la divisione e non
+     torna, e un numero che non torna su un foglio firmato distrugge la
+     fiducia in tutto il resto. */
+  var proposte = {
+    titolo: 'Con quanto al mese lo copri',
+    paragrafi: (e.versamentoMensile > 0 && e.gapSenzaFondoMensile > e.gapMensile + 0.5)
+      ? [{ tono: 'nota', parti: [
+          { t: 'Sono ipotesi di versamento ' },
+          { t: 'al posto', forte: true },
+          { t: ' dei ' + euro(e.versamentoMensile) + ' di adesso, non in aggiunta: le percentuali si riferiscono al divario di ' },
+          { t: euro(e.gapSenzaFondoMensile), forte: true },
+          { t: ' al mese che resterebbe con la sola pensione pubblica.' } ] }]
+      : [],
+    tabella: {
+      intestazioni: ['Se versi', 'Ti tornano', 'Cosa copre'],
+      righe: e.proposte.map(function (p) {
+        return {
+          evidenzia: !!p.eQuelloCheAzzera,
+          celle: [
+            [{ t: euro(p.versamentoMensile), forte: true }, { t: ' al mese' }],
+            euro(p.renditaMensileNetta) + ' al mese',
+            (function () {
+              /* Ogni avvertenza e' un segmento suo, e lo spazio che le separa
+                 sta FUORI: dentro finirebbe nel grigio della nota, e in stampa
+                 si vede. */
+              var parti = [{ t: p.azzera ? 'copre tutto il divario' : 'copre il ' + perc(p.coperturaGap) + ' del divario' }];
+              if (p.oltreIlTettoDeducibile) { parti.push({ t: ' ' }); parti.push({ t: '· oltre il tetto deducibile', tono: 'nota' }); }
+              if (p.fuoriPortata) { parti.push({ t: ' ' }); parti.push({ t: '· oltre un quinto del reddito', tono: 'nota' }); }
+              return parti;
+            })(),
+          ],
+        };
+      }),
+    },
+  };
+  sezioni.push(proposte);
+
+  var fiscali = [];
+  if (!e.fiscale.disponibile) {
+    fiscali.push({ tono: 'nota', testo: e.fiscale.perche });
+  } else if (e.fiscale.inPerdita) {
+    fiscali.push({ tono: 'allarme', forte: 'Attenzione: a questo livello di reddito dedurre NON conviene.',
+      testo: 'Il versamento farebbe perdere il trattamento integrativo, e il conto finale sarebbe in perdita di ' +
+        euro(Math.abs(e.fiscale.risparmioAnnuo)) + ' l\'anno. Il fondo resta utile per la pensione, ma il vantaggio fiscale qui non c\'è.' });
+  } else {
+    /* Le due avvertenze stanno nella STESSA frase del risparmio, non in un
+       paragrafo a parte: sono precisazioni su quel numero, e staccarle le fa
+       leggere come due cose in piu' invece che come un limite di quella. */
+    var parti = [
+      { t: euro(e.fiscale.risparmioAnnuo) + ' l\'anno', forte: true },
+      { t: ' di minori imposte, versando ' + euro(e.fiscale.versatoAnnuo) +
+           '. Ogni euro dedotto vale ' + perc(e.fiscale.aliquotaEffettiva, 1) + '.' +
+           /* Lo spazio sta FUORI dalla nota, non dentro: dentro finirebbe nel
+              grigio e in stampa si vedrebbe. */
+           '' },
+    ];
+    /* Ogni avvertenza e' un segmento suo, separato da uno spazio che sta
+       FUORI: dentro finirebbe nel grigio della nota. */
+    if (e.fiscale.oltreIlTetto) {
+      parti.push({ t: ' ' });
+      parti.push({ t: 'Il versamento supera il tetto di deducibilità di ' + euro(LEGGE.tettoDeducibilita.v, 2) +
+        ': ' + euro(e.fiscale.eccedenza) + ' l\'anno non danno diritto a deduzione.', tono: 'nota' });
+    }
+    if (e.fiscale.impostaAzzerata) {
+      parti.push({ t: ' ' });
+      parti.push({ t: 'L\'imposta è già azzerata dalle detrazioni: la deduzione non produce risparmio.', tono: 'nota' });
+    }
+    fiscali.push({ parti: parti });
+  }
+  sezioni.push({ titolo: 'Quanto ti fa risparmiare di tasse', paragrafi: fiscali });
+
+  /* ── LE TASSE NEI TRE MOMENTI ───────────────────────────────
+     La sezione che il cliente porta a casa e rilegge da solo. Il momento 2
+     dice che su quel pezzo il TFR in azienda paga MENO: e' l'unica riga del
+     foglio che gioca contro la vendita, ed e' la ragione per cui le altre
+     due si possono credere. */
+  var t = e.tasse;
+  if (t) {
+    var tasseP = [];
+    tasseP.push({ tono: 'nota', testo:
+      'Su un fondo pensione il fisco entra tre volte. Qui ci sono tutte e tre, compresa quella in cui il fondo non vince.' });
+
+    // 1. quando versi
+    if (e.fiscale.disponibile && !e.fiscale.inPerdita && e.fiscale.risparmioAnnuo > 0) {
+      tasseP.push({ parti: [
+        { t: '1. Quando versi. ', forte: true },
+        { t: 'Quello che versi si deduce dal reddito, fino a ' + euro(LEGGE.tettoDeducibilita.v, 2) +
+             ' l\'anno: nel tuo caso ' + euro(e.fiscale.risparmioAnnuo) + ' di minori imposte ogni anno.' },
+      ] });
+    } else if (e.fiscale.disponibile && e.fiscale.inPerdita) {
+      tasseP.push({ parti: [
+        { t: '1. Quando versi. ', forte: true },
+        { t: 'Al tuo reddito la deduzione NON conviene: ti farebbe perdere il trattamento integrativo. Il vantaggio del fondo, per te, sta negli altri due momenti.' },
+      ] });
+    } else {
+      tasseP.push({ parti: [
+        { t: '1. Quando versi. ', forte: true },
+        { t: 'Quello che versi si deduce dal reddito, fino a ' + euro(LEGGE.tettoDeducibilita.v, 2) + ' l\'anno.' },
+      ] });
+    }
+
+    // 2. mentre cresce — l'unica in cui il TFR in azienda e' avanti
+    if (t.haTfr) {
+      tasseP.push({ parti: [
+        { t: '2. Mentre cresce. ', forte: true },
+        { t: 'I rendimenti del fondo pagano il ' + perc(t.impostaRendimentiFondo, 0) +
+             '. La rivalutazione del TFR lasciato in azienda paga il ' + perc(t.impostaRivalutazioneTfr, 0) + ': ' },
+        { t: 'su questo pezzo il TFR in azienda è avvantaggiato', forte: true },
+        { t: ', ed è giusto saperlo.' },
+      ] });
+    } else {
+      tasseP.push({ parti: [
+        { t: '2. Mentre cresce. ', forte: true },
+        { t: 'I rendimenti del fondo pagano il ' + perc(t.impostaRendimentiFondo, 0) +
+             ', contro il 26% della gran parte delle rendite finanziarie.' },
+      ] });
+    }
+
+    // 3. quando prendi — il numero che decide
+    var terzo = [
+      { t: '3. Quando prendi. ', forte: true },
+      { t: 'La prestazione del fondo si tassa al 15%, che scende dello 0,30% per ogni anno di partecipazione oltre il quindicesimo, fino al 9%. ' },
+    ];
+    if (t.aliquotaFondoAlMinimo) {
+      terzo.push({ t: 'Aderendo adesso partecipi ' + t.anniPartecipazione +
+        ' anni: arrivi al minimo, ' + perc(t.aliquotaFondo, 2) + '.', forte: true });
+    } else {
+      terzo.push({ t: 'Aderendo adesso partecipi ' + t.anniPartecipazione + ' anni, quindi la tua aliquota sarebbe ' +
+        perc(t.aliquotaFondo, 2) + (t.anniPartecipazione < 15 ? ' — lo sconto comincia dal sedicesimo anno.' : '.'), forte: true });
+    }
+    tasseP.push({ parti: terzo });
+
+    sezioni.push({ titolo: 'Le tasse, nei tre momenti', paragrafi: tasseP });
+  }
+
+  /* ── LO STESSO TFR, TASSATO NEI DUE MODI ────────────────────────
+     Il confronto si fa sulla stessa somma e senza rivalutazioni ne'
+     rendimenti: cosi' il numero che esce e' SOLO la differenza di tassazione,
+     e non dipende da un rendimento che oggi è un segnaposto. */
+  if (t && t.disponibile) {
+    sezioni.push({
+      titolo: 'Lo stesso TFR, tassato nei due modi',
+      paragrafi: [{ tono: 'nota', testo:
+        'Da qui alla pensione maturerai circa ' + euro(t.tfrFuturo) + ' di TFR (' + euro(t.quotaTfrAnnua) +
+        ' l\'anno, cioè la retribuzione divisa per 13,5 meno lo 0,50% che va al Fondo di Garanzia INPS). ' +
+        'Sulla STESSA somma, senza contare né rivalutazione né rendimenti — così il confronto è solo fra le due tasse:' }],
+      tabella: {
+        intestazioni: ['', 'Aliquota', 'Tasse su ' + euro(t.tfrFuturo)],
+        righe: [
+          { celle: [
+              [{ t: 'Se resta in azienda', forte: true }],
+              [{ t: perc(t.aliquotaTfrAzienda, 2) }],
+              [{ t: euro(t.impostaTfrAzienda) }],
+          ] },
+          { celle: [
+              [{ t: 'Se va nel fondo', forte: true }],
+              [{ t: perc(t.aliquotaFondo, 2) }],
+              [{ t: euro(t.impostaTfrFondo) }],
+          ] },
+          { evidenzia: true, celle: [
+              [{ t: t.aChiConviene === 'fondo' ? 'Differenza a favore del fondo' : (t.aChiConviene === 'azienda' ? 'Differenza a favore dell\'azienda' : 'Nessuna differenza'), forte: true }],
+              [{ t: '' }],
+              [{ t: euro(Math.abs(t.differenza)), forte: true }],
+          ] },
+        ],
+      },
+      note: [{ tono: 'nota', testo:
+        'L\'aliquota del TFR in azienda è la TUA: tassazione separata sul reddito di riferimento di ' +
+        euro(t.redditoRiferimento) + ' (art. 19 c. 1 TUIR), non una percentuale media. ' +
+        'Non comprende ' + t.nonCompreso + ', che può correggerla in su o in giù. ' +
+        'Il TFR già maturato in azienda resta dov\'è: la scelta vale da oggi in avanti.' }],
+    });
+  }
+
   if (e.mostraTfr) {
-    bloccoTfr =
-      '<h2>TFR: in azienda o nel fondo?</h2>' +
-      '<p class="nota">Un confronto, non un consiglio. La scelta dipende anche da cose che in questo foglio non ci sono.</p>' +
-      '<table class="confronto"><tr><th></th><th>TFR in azienda</th><th>TFR nel fondo</th></tr>' +
-      TFR.righe.map(function (r) {
-        return '<tr><th class="voce">' + esc(r.voce) + '</th><td>' + esc(r.azienda) + '</td><td>' + esc(r.fondo) + '</td></tr>';
-      }).join('') + '</table>';
+    sezioni.push({
+      titolo: 'TFR: in azienda o nel fondo?',
+      paragrafi: [{ tono: 'nota', testo: 'Un confronto, non un consiglio. La scelta dipende anche da cose che in questo foglio non ci sono.' }],
+      confronto: {
+        colonne: ['TFR in azienda', 'TFR nel fondo'],
+        righe: TFR.righe.map(function (r) { return { voce: r.voce, celle: [r.azienda, r.fondo] }; }),
+      },
+    });
   }
 
   /* IL BLOCCO DEL RISCATTO VA SEMPRE, anche a chi non ha TFR: «quando posso
-     riprendere i miei soldi» è l'obiezione numero uno di chiunque, non solo
-     dei dipendenti. Se non la si scrive, il cliente ci pensa lo stesso — solo
-     senza risposta davanti. */
+     riprendere i miei soldi» è l'obiezione numero uno di chiunque. Se non la
+     si scrive, il cliente ci pensa lo stesso — solo senza risposta davanti. */
   var q = TFR.quandoLiRiprendo;
-  var bloccoRiscatto =
-    '<h2>' + esc(q.titolo) + '</h2>' +
-    '<table class="confronto"><tr><th>Se il TFR resta in azienda</th><th>Nel fondo pensione</th></tr><tr>' +
-    '<td><ul>' + q.azienda.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '<td><ul>' + q.fondo.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>' +
-    '</tr></table>' +
-    '<p class="nota">' + esc(q.fonte) + ' — ' + esc(q.daVerificare) + '</p>';
+  sezioni.push({
+    titolo: q.titolo,
+    confronto: {
+      colonne: ['Se il TFR resta in azienda', 'Nel fondo pensione'],
+      elenchi: [q.azienda.slice(), q.fondo.slice()],
+    },
+    /* `note` sta DOPO la tabella: e' il rimando alla norma, e un rimando
+       prima di quello a cui rimanda non lo legge nessuno. */
+    note: [{ tono: 'nota', testo: q.fonte + ' — ' + q.daVerificare }],
+  });
 
-  var bloccoMarchi = marchi.length
-    ? '<div class="daconfermare"><b>Valori ancora da confermare</b><ul>' +
-      marchi.map(function (m) { return '<li><b>' + esc(m.gruppo) + '</b> · ' + esc(m.etichetta) + ' — ' + esc(m.fonte) + '</li>'; }).join('') +
-      '</ul></div>'
-    : '';
+  return {
+    ok: true,
+    doc: {
+      titolo: 'La tua pensione, in una pagina',
+      cliente: cli.nome || '',
+      intestazione: [cli.nome, e.etichettaLavoro, e.eta + ' anni', data].filter(Boolean).join(' · '),
+      data: data,
+      logo: d.logo || null,
+      avvisi: avvisi,
+      sezioni: sezioni,
+      daConfermare: daConfermare(),
+      firma: {
+        nome: con.nome || '', ruolo: con.ruolo || '', rui: con.rui || '',
+        email: con.email || '', telefono: con.telefono || '',
+      },
+      disclaimer: disclaimer(e),
+    },
+  };
+}
+
+/* ── LA RESA IN HTML ──────────────────────────────────────────────────────
+   Disegna il contenuto qui sopra. Non decide niente e non calcola niente: se
+   una frase va cambiata si cambia in `contenutoFoglio`, e cambia in tutte e
+   due le forme insieme. */
+function foglioHtml(d) {
+  var c = contenutoFoglio(d);
+  if (!c.ok) return { ok: false, problemi: c.problemi };
+  var doc = c.doc;
+
+  /* Un testo puo' essere una stringa o un elenco di segmenti {t, forte}.
+     I segmenti servono perche' il grassetto sta a META' FRASE — «reddito
+     calcolato su 13 mensilita'» — e spezzare la frase in due paragrafi per
+     ottenerlo la renderebbe illeggibile. */
+  var segmenti = function (v) {
+    if (typeof v === 'string') return esc(v);
+    return (v || []).filter(function (x) { return x && x.t !== '' && x.t != null; }).map(function (x) {
+      var t = esc(x.t);
+      if (x.forte) t = '<b>' + t + '</b>';
+      if (x.tono === 'nota') t = '<span class="nota">' + t + '</span>';
+      return t;
+    }).join('');
+  };
+  var paragrafo = function (p) {
+    if (p.tono === 'allarme') return '<div class="allarme"><b>' + esc(p.forte || '') + '</b> ' + esc(p.testo) + '</div>';
+    var cls = p.tono === 'nota' ? ' class="nota"' : '';
+    var corpo = p.parti ? segmenti(p.parti) : ((p.forte ? '<b>' + esc(p.forte) + '</b> ' : '') + esc(p.testo));
+    return '<p' + cls + '>' + corpo + '</p>';
+  };
+
+  var sezione = function (s) {
+    var out = '<h2>' + esc(s.titolo) + '</h2>';
+    if (s.numeri) {
+      out += '<div class="numeri">' + s.numeri.map(function (n) {
+        return '<div class="n' + (n.tono === 'gap' ? ' gap' : n.tono === 'ok' ? ' ok' : '') + '">' +
+          '<div class="et">' + esc(n.etichetta) + '</div><div class="v">' + esc(n.valore) + '</div>' +
+          '<div class="nota">' + esc(n.nota) + '</div></div>';
+      }).join('') + '</div>';
+    }
+    (s.paragrafi || []).forEach(function (p) { out += paragrafo(p); });
+    if (s.tabella) {
+      out += '<table><tr>' + s.tabella.intestazioni.map(function (t) { return '<th>' + esc(t) + '</th>'; }).join('') + '</tr>' +
+        s.tabella.righe.map(function (r) {
+          return '<tr' + (r.evidenzia ? ' class="azzera"' : '') + '>' +
+            r.celle.map(function (cel) { return '<td>' + segmenti(cel) + '</td>'; }).join('') + '</tr>';
+        }).join('') + '</table>';
+    }
+    if (s.confronto) {
+      var cf = s.confronto;
+      out += '<table class="confronto"><tr>' + (cf.righe ? '<th></th>' : '') +
+        cf.colonne.map(function (t) { return '<th>' + esc(t) + '</th>'; }).join('') + '</tr>';
+      if (cf.righe) {
+        out += cf.righe.map(function (r) {
+          return '<tr><th class="voce">' + esc(r.voce) + '</th>' +
+            r.celle.map(function (cel) { return '<td>' + esc(cel) + '</td>'; }).join('') + '</tr>';
+        }).join('');
+      } else {
+        out += '<tr>' + cf.elenchi.map(function (el) {
+          return '<td><ul>' + el.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td>';
+        }).join('') + '</tr>';
+      }
+      out += '</table>';
+    }
+    (s.note || []).forEach(function (p) { out += paragrafo(p); });
+    return out;
+  };
 
   var html =
 '<!doctype html><html lang="it"><head><meta charset="utf-8">' +
-'<title>Pensione · ' + esc(cli.nome) + '</title><style>' +
+'<title>Pensione · ' + esc(doc.cliente) + '</title><style>' +
 '*{box-sizing:border-box}body{font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1f2a37;margin:0;padding:28px 34px;max-width:860px}' +
 'h1{font-size:22px;margin:0 0 2px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#02984e;margin:26px 0 8px;border-bottom:1px solid #d8e3dc;padding-bottom:5px}' +
 '.testa{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #02984e;padding-bottom:12px;margin-bottom:16px}' +
@@ -976,62 +1346,325 @@ function foglioHtml(d) {
 '@media print{body{padding:0}h2{break-after:avoid}table{break-inside:avoid}}' +
 '</style></head><body>' +
 
-'<div class="testa"><div>' +
-  '<h1>La tua pensione, in una pagina</h1>' +
-  '<div class="sotto">' + esc(cli.nome) + ' · ' + esc(e.etichettaLavoro) + ' · ' + e.eta + ' anni · ' + esc(data) + '</div>' +
-'</div>' + (d.logo ? '<img src="' + esc(d.logo) + '" alt="">' : '') + '</div>' +
+'<div class="testa"><div><h1>' + esc(doc.titolo) + '</h1>' +
+  '<div class="sotto">' + esc(doc.intestazione) + '</div></div>' +
+  (doc.logo ? '<img src="' + esc(doc.logo) + '" alt="">' : '') + '</div>' +
 
-fasciaPrudenziale +
+doc.avvisi.map(function (a) {
+  return '<div class="' + (a.tono === 'allarme' ? 'allarme' : 'prudenziale') + '"><b>' + esc(a.forte) + '</b> ' + esc(a.testo) + '</div>';
+}).join('') +
 
-'<h2>Dove sei oggi, e dove arrivi</h2>' +
-'<div class="numeri">' +
-  '<div class="n"><div class="et">Oggi porti a casa</div><div class="v">' + euro(e.redditoNettoMensile) + '</div><div class="nota">al mese, netti</div></div>' +
-  '<div class="n"><div class="et">Pensione pubblica</div><div class="v">' + euro(e.pensioneNettaMensile) + '</div><div class="nota">' + perc(e.tassoSostituzioneNetto) + ' di quello che prendi oggi</div></div>' +
-  '<div class="n ' + (e.gapMensile > 0 ? 'gap' : 'ok') + '"><div class="et">' + (e.gapMensile > 0 ? 'Ti mancheranno' : 'Sei coperto') + '</div><div class="v">' +
-    euro(e.gapMensile) + '</div><div class="nota">al mese' + (e.gapMensile > 0 ? ', il ' + perc(e.gapPercentuale) + ' del reddito di oggi' : '') + '</div></div>' +
-'</div>' +
-'<p class="nota">Andrai in pensione a ' + e.etaPensione + ' anni, con ' + e.anniContributi + ' anni di contributi' +
-  (e.versamentoMensile > 0
-    ? '. Versando ' + euro(e.versamentoMensile) + ' al mese per i ' + e.anniAllaPensione +
-      ' anni che mancano, il fondo aggiungerebbe ' + euro(e.fondo.renditaMensileNetta) + ' al mese (montante stimato ' + euro(e.fondo.montante) + ').'
-    : '. Oggi non stai versando in nessun fondo: il divario qui sopra è tutto scoperto.') +
-  '</p>' +
-/* LE MENSILITÀ SUL FOGLIO. Senza, un cliente che rifà il conto con la
-   calcolatrice non ritrova i numeri e smette di fidarsi di tutta la pagina. */
-'<p class="nota">Reddito calcolato su <b>' + e.mensilita + ' mensilità</b> (' + euro(e.nettoAnnuo) +
-  ' netti l\'anno). La pensione pubblica si riceve in ' + e.mensilitaPensione +
-  ' rate l\'anno, la rendita del fondo in ' + e.mensilitaRendita + '.</p>' +
-'<p class="nota">Tariffa di riferimento: <b>' + esc(FONDO.prodotto.etichetta) + '</b>. Alternativa: ' + esc(FONDO.prodotto.alternativa) + '.</p>' +
+doc.sezioni.map(sezione).join('') +
 
-'<h2>Con quanto al mese lo copri</h2>' +
-/* LA STESSA NOTA CHE STA A SCHERMO, e qui serve anche di più. Le proposte
-   sono versamenti TOTALI alternativi, quindi le percentuali si misurano sul
-   divario che resterebbe con la sola pensione pubblica. Senza questa riga, un
-   cliente che legge «ti mancheranno 350» e poi «20 € coprono il 6%» fa la
-   divisione e non torna: 33 diviso 350 fa il 9%. Un numero che non torna su un
-   foglio firmato è un numero che distrugge la fiducia in tutto il resto. */
-(e.versamentoMensile > 0 && e.gapSenzaFondoMensile > e.gapMensile + 0.5
-  ? '<p class="nota">Sono ipotesi di versamento <b>al posto</b> dei ' + euro(e.versamentoMensile) +
-    ' di adesso, non in aggiunta: le percentuali si riferiscono al divario di <b>' +
-    euro(e.gapSenzaFondoMensile) + '</b> al mese che resterebbe con la sola pensione pubblica.</p>'
+(doc.daConfermare.length
+  ? '<div class="daconfermare"><b>Valori ancora da confermare</b><ul>' +
+    doc.daConfermare.map(function (m) {
+      return '<li><b>' + esc(m.gruppo) + '</b> · ' + esc(m.etichetta) + ' — ' + esc(m.fonte) + '</li>';
+    }).join('') + '</ul></div>'
   : '') +
-'<table><tr><th>Se versi</th><th>Ti tornano</th><th>Cosa copre</th></tr>' + righeProposte + '</table>' +
 
-'<h2>Quanto ti fa risparmiare di tasse</h2>' + bloccoFiscale +
-
-bloccoTfr + bloccoRiscatto + bloccoMarchi +
-
-'<div class="firma"><b>' + esc(con.nome) + '</b>' +
-  (con.ruolo ? ' · ' + esc(con.ruolo) : '') +
-  (con.rui ? ' · RUI ' + esc(con.rui) : '') +
-  (con.email ? '<br>' + esc(con.email) : '') +
-  (con.telefono ? ' · ' + esc(con.telefono) : '') +
+'<div class="firma"><b>' + esc(doc.firma.nome) + '</b>' +
+  (doc.firma.ruolo ? ' · ' + esc(doc.firma.ruolo) : '') +
+  (doc.firma.rui ? ' · RUI ' + esc(doc.firma.rui) : '') +
+  (doc.firma.email ? '<br>' + esc(doc.firma.email) : '') +
+  (doc.firma.telefono ? ' · ' + esc(doc.firma.telefono) : '') +
 '</div>' +
 
-'<div class="disclaimer">' + esc(disclaimer(e)) + '</div>' +
+'<div class="disclaimer">' + esc(doc.disclaimer) + '</div>' +
 '</body></html>';
 
   return { ok: true, html: html };
+}
+
+/* ── LA RESA IN PDF ───────────────────────────────────────────────────────
+   Disegna lo STESSO contenuto di `foglioHtml`. Non decide niente: se una
+   frase va cambiata si cambia in `contenutoFoglio`, e cambia in tutte e due
+   le forme insieme.
+
+   PERCHE' UN PDF DISEGNATO E NON UNA FOTO DELLA PAGINA. La strada facile
+   sarebbe html2canvas: si fotografa la pagina e si incolla l'immagine dentro
+   un PDF. Viene un file da qualche mega, con il testo che non si puo'
+   selezionare ne' cercare, sgranato sugli schermi piccoli — e va mandato su
+   WhatsApp, cioe' quasi sempre da un telefono con la rete del cliente. Qui il
+   testo e' testo: il file sta sotto i 100 KB e si legge nitido a qualunque
+   ingrandimento.
+
+   `jsPDF` arriva da fuori, come il motore fiscale: questo file non importa
+   niente e resta caricabile anche da Node per le prove. */
+function foglioPdf(d, jsPDF) {
+  if (typeof jsPDF !== 'function') {
+    return { ok: false, problemi: ['Il generatore di PDF non è caricato: il foglio si può stampare, non allegare.'] };
+  }
+  var c = contenutoFoglio(d);
+  if (!c.ok) return { ok: false, problemi: c.problemi };
+  var doc = c.doc;
+
+  var VERDE = [2, 152, 78], INK = [31, 42, 55], GRIGIO = [91, 107, 124];
+  var ROSSO = [192, 57, 43], AMBRA = [217, 139, 0];
+  var M = 16, LARG = 210 - M * 2, FONDO = 297 - 16;
+
+  var p = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  var y = M;
+
+  var font = function (dim, grassetto, colore) {
+    p.setFont('helvetica', grassetto ? 'bold' : 'normal');
+    p.setFontSize(dim);
+    p.setTextColor.apply(p, colore || INK);
+  };
+  /* Il titolo di sezione non si disegna quando lo si incontra: si mette in
+     attesa e lo scrive `spazio`, subito prima del primo blocco e sulla
+     pagina dove quel blocco finisce davvero. Un titolo in fondo alla pagina
+     col suo contenuto in quella dopo e' un foglio che sembra rotto. */
+  var titoloAttesa = null, ALTO_TITOLO = 8.8;
+  var scriviTitolo = function () {
+    if (!titoloAttesa) return;
+    var t = titoloAttesa; titoloAttesa = null;
+    font(9.4, true, VERDE);
+    p.text(String(t).toUpperCase(), M, y + 2);
+    y += 3.6;
+    p.setDrawColor(216, 227, 220); p.setLineWidth(0.25);
+    p.line(M, y, 210 - M, y); y += 5.2;
+  };
+  /* Prima di disegnare un blocco si guarda se ci sta: spezzarlo a meta' di
+     una riga e' il modo in cui un PDF diventa illeggibile proprio nel punto
+     che conta. Nel conto entra anche il titolo ancora da scrivere. */
+  var spazio = function (h) {
+    var nuova = false;
+    if (y + h + (titoloAttesa ? ALTO_TITOLO : 0) > FONDO) { p.addPage(); y = M; nuova = true; }
+    scriviTitolo();
+    return nuova;
+  };
+  var righeDi = function (testo, larghezza) { return p.splitTextToSize(String(testo == null ? '' : testo), larghezza); };
+
+  /* Un testo a segmenti si disegna parola per parola, cambiando grassetto e
+     colore dove serve e andando a capo da solo. E' l'unico modo per avere il
+     grassetto a meta' frase senza spezzare la frase. */
+  var scriviParti = function (parti, x0, larghezza, dim, colorePieno) {
+    var x = x0, altezzaRiga = dim * 0.45 + 0.9;
+    (parti || []).forEach(function (seg) {
+      if (!seg || seg.t == null || seg.t === '') return;
+      var colore = seg.tono === 'nota' ? GRIGIO : (colorePieno || INK);
+      font(dim, !!seg.forte, colore);
+      /* Si spezza sugli spazi tenendoli: senza, le parole si attaccherebbero
+         al cambio di segmento. */
+      var pezzi = String(seg.t).split(/(\s+)/);
+      pezzi.forEach(function (w) {
+        if (w === '') return;
+        var l = p.getTextWidth(w);
+        if (x + l > x0 + larghezza && /\S/.test(w)) { x = x0; y += altezzaRiga; }
+        if (x === x0 && /^\s+$/.test(w)) return;   // niente spazi a inizio riga
+        p.text(w, x, y);
+        x += l;
+      });
+    });
+    y += altezzaRiga;
+    return y;
+  };
+
+  var paragrafo = function (par, larghezza, x0) {
+    x0 = x0 || M; larghezza = larghezza || LARG;
+    var dim = par.tono === 'nota' ? 7.6 : 8.6;
+    if (par.tono === 'allarme') {
+      var testoA = (par.forte ? par.forte + ' ' : '') + par.testo;
+      var rr = righeDi(testoA, larghezza - 8);
+      var h = rr.length * 4 + 6;
+      spazio(h + 3);
+      p.setFillColor(253, 236, 236); p.rect(x0, y - 3.4, larghezza, h, 'F');
+      p.setFillColor.apply(p, ROSSO); p.rect(x0, y - 3.4, 1.2, h, 'F');
+      font(8.2, true, ROSSO);
+      p.text(rr, x0 + 4, y + 0.6);
+      y += h + 2.6;
+      return;
+    }
+    var parti = par.parti || [{ t: (par.forte ? par.forte + ' ' : '') + par.testo, forte: !!par.forte }];
+    if (par.forte && !par.parti) parti = [{ t: par.forte, forte: true }, { t: ' ' + par.testo }];
+    /* Si riserva l'altezza VERA del paragrafo, non una riga di cortesia: un
+       paragrafo lungo cresce mentre lo si scrive, e `scriviParti` non guarda
+       il fondo pagina — l'ultima riga finiva fuori dal foglio. La stima si
+       fa sul testo intero e con una riga di margine, perche' il grassetto
+       occupa piu' spazio del tondo su cui è misurata. */
+    var alto = dim * 0.45 + 0.9;
+    var stima = righeDi(parti.map(function (z) { return z.t; }).join(''), larghezza).length + 1;
+    spazio(stima * alto);
+    scriviParti(parti, x0, larghezza, dim, par.tono === 'nota' ? GRIGIO : INK);
+    y += 1.4;
+  };
+
+  // ── intestazione
+  font(16, true);
+  p.text(doc.titolo, M, y + 4); y += 7;
+  font(8.4, false, GRIGIO);
+  p.text(righeDi(doc.intestazione, LARG), M, y + 1.6); y += 4.4;
+  p.setDrawColor.apply(p, VERDE); p.setLineWidth(0.7);
+  p.line(M, y, 210 - M, y); y += 6;
+
+  // ── le fasce di avviso, in cima
+  doc.avvisi.forEach(function (a) {
+    var rr = righeDi(a.forte + ' ' + a.testo, LARG - 8);
+    var h = rr.length * 4 + 6;
+    spazio(h + 3);
+    p.setFillColor(255, 248, 236); p.rect(M, y - 3.4, LARG, h, 'F');
+    p.setFillColor.apply(p, AMBRA); p.rect(M, y - 3.4, 1.2, h, 'F');
+    font(8.2, true, [122, 82, 0]);
+    p.text(rr, M + 4, y + 0.6);
+    y += h + 3;
+  });
+
+  // ── le sezioni
+  doc.sezioni.forEach(function (s) {
+    titoloAttesa = s.titolo;
+
+    if (s.numeri) {
+      var n = s.numeri.length, gap = 3.5, w = (LARG - gap * (n - 1)) / n, h = 20;
+      spazio(h + 3);
+      s.numeri.forEach(function (num, i) {
+        var x = M + i * (w + gap);
+        if (num.tono === 'gap') { p.setFillColor(253, 236, 236); p.setDrawColor(240, 192, 187); }
+        else if (num.tono === 'ok') { p.setFillColor(234, 247, 240); p.setDrawColor(185, 227, 205); }
+        else { p.setFillColor(255, 255, 255); p.setDrawColor(216, 227, 220); }
+        p.setLineWidth(0.3);
+        p.roundedRect(x, y, w, h, 1.6, 1.6, 'FD');
+        font(6.4, true, GRIGIO);
+        p.text(righeDi(String(num.etichetta).toUpperCase(), w - 5).slice(0, 1), x + 2.6, y + 4.4);
+        font(14, true, num.tono === 'gap' ? ROSSO : num.tono === 'ok' ? VERDE : INK);
+        p.text(String(num.valore), x + 2.6, y + 11.4);
+        font(6.6, false, GRIGIO);
+        p.text(righeDi(num.nota, w - 5).slice(0, 2), x + 2.6, y + 15.4);
+      });
+      y += h + 4;
+    }
+
+    (s.paragrafi || []).forEach(function (par) { paragrafo(par); });
+
+    if (s.tabella) {
+      var cols = s.tabella.intestazioni.length;
+      var wc = LARG / cols;
+      spazio(12);
+      font(6.6, true, GRIGIO);
+      s.tabella.intestazioni.forEach(function (t, i) { p.text(String(t).toUpperCase(), M + i * wc + 1.6, y); });
+      y += 1.8;
+      p.setDrawColor(216, 227, 220); p.setLineWidth(0.25); p.line(M, y, 210 - M, y); y += 4;
+      s.tabella.righe.forEach(function (r) {
+        var alt = Math.max.apply(null, r.celle.map(function (cel) {
+          var t = typeof cel === 'string' ? cel : (cel || []).map(function (x) { return x.t; }).join('');
+          return righeDi(t, wc - 3.2).length;
+        })) * 3.8 + 2.4;
+        spazio(alt + 2);
+        if (r.evidenzia) { p.setFillColor(234, 247, 240); p.rect(M, y - 3.2, LARG, alt, 'F'); }
+        var yRiga = y;
+        r.celle.forEach(function (cel, i) {
+          y = yRiga;
+          var parti = typeof cel === 'string' ? [{ t: cel }] : cel;
+          scriviParti(parti, M + i * wc + 1.6, wc - 3.2, 7.8, INK);
+        });
+        y = yRiga + alt;
+        p.setDrawColor(232, 238, 235); p.setLineWidth(0.2); p.line(M, y - 3, 210 - M, y - 3);
+      });
+      y += 2;
+    }
+
+    if (s.confronto) {
+      var cf = s.confronto;
+      var conVoce = !!cf.righe;
+      var wVoce = conVoce ? 34 : 0;
+      var wCol = (LARG - wVoce) / cf.colonne.length;
+      /* Coi due elenchi affiancati si riserva tutto in un colpo: intestazioni
+         piu' la colonna piu' alta. Riservare solo le intestazioni le
+         lascerebbe da sole in fondo alla pagina. */
+      var alte = cf.elenchi ? cf.elenchi.map(function (el) {
+        return el.reduce(function (t, voce) { return t + righeDi(voce, wCol - 6).length * 3.6 + 1.6; }, 0);
+      }) : null;
+      spazio(14 + (alte ? Math.max.apply(null, alte) : 0));
+      font(6.6, true, GRIGIO);
+      cf.colonne.forEach(function (t, i) { p.text(String(t).toUpperCase(), M + wVoce + i * wCol + 1.6, y); });
+      y += 1.8;
+      p.setDrawColor(216, 227, 220); p.setLineWidth(0.25); p.line(M, y, 210 - M, y); y += 4;
+
+      if (conVoce) {
+        cf.righe.forEach(function (r) {
+          var alt = Math.max.apply(null, [righeDi(r.voce, wVoce - 3).length].concat(
+            r.celle.map(function (cel) { return righeDi(cel, wCol - 3.2).length; }))) * 3.6 + 2.6;
+          spazio(alt + 2);
+          font(7.8, true, INK);
+          p.text(righeDi(r.voce, wVoce - 3), M + 1, y);
+          font(7.6, false, INK);
+          r.celle.forEach(function (cel, i) { p.text(righeDi(cel, wCol - 3.2), M + wVoce + i * wCol + 1.6, y); });
+          y += alt;
+          p.setDrawColor(232, 238, 235); p.setLineWidth(0.2); p.line(M, y - 3, 210 - M, y - 3);
+        });
+      } else {
+        /* I due elenchi affiancati si disegnano colonna per colonna e poi si
+           riparte dalla piu' lunga. Il salto pagina va deciso PRIMA, sulla
+           colonna piu' alta: se lo decidesse la singola voce, la seconda
+           colonna ripartirebbe da `yInizio` sulla pagina nuova e finirebbe
+           sopra la prima. */
+        var yInizio = y, yMax = y;
+        cf.elenchi.forEach(function (el, i) {
+          y = yInizio;
+          var x = M + i * wCol;
+          el.forEach(function (voce) {
+            var rr = righeDi(voce, wCol - 6);
+            font(7.6, false, INK);
+            p.text('•', x + 1.4, y);
+            p.text(rr, x + 4.2, y);
+            y += rr.length * 3.6 + 1.6;
+          });
+          if (y > yMax) yMax = y;
+        });
+        y = yMax + 1.5;
+      }
+      y += 1.5;
+    }
+
+    (s.note || []).forEach(function (par) { paragrafo(par); });
+    if (titoloAttesa) spazio(0);   // sezione senza blocchi: il titolo esce comunque
+    y += 2.5;
+  });
+
+  // ── quello che non è confermato
+  if (doc.daConfermare.length) {
+    var righeM = doc.daConfermare.map(function (m) { return righeDi(m.gruppo + ' · ' + m.etichetta + ' — ' + m.fonte, LARG - 10); });
+    var hM = righeM.reduce(function (t, r) { return t + r.length * 3.4 + 1.2; }, 0) + 10;
+    spazio(hM + 4);
+    p.setFillColor(255, 248, 236); p.setDrawColor(240, 220, 184); p.setLineWidth(0.3);
+    p.roundedRect(M, y - 3, LARG, hM, 1.4, 1.4, 'FD');
+    font(8, true, [122, 82, 0]);
+    p.text('Valori ancora da confermare', M + 4, y + 1.6);
+    var yM = y + 6;
+    righeM.forEach(function (rr) {
+      font(7, false, [122, 82, 0]);
+      p.text(rr, M + 4, yM);
+      yM += rr.length * 3.4 + 1.2;
+    });
+    y += hM + 4;
+  }
+
+  /* ── chi firma e il disclaimer: UN BLOCCO SOLO
+     Separarli vorrebbe dire poter mettere la firma in fondo a una pagina e
+     l'avvertenza che la qualifica in quella dopo. Si riserva l'altezza di
+     tutti e due insieme, e si spezzano solo se davvero non ci stanno. */
+  var rdMis = righeDi(doc.disclaimer, LARG);
+  var altFirma = 4 + (doc.firma.email || doc.firma.telefono ? 4 : 0);
+  spazio(altFirma + rdMis.length * 3.2 + 12);
+  var f = doc.firma;
+  font(8.6, true, INK);
+  p.text(f.nome + (f.ruolo ? ' · ' + f.ruolo : '') + (f.rui ? ' · RUI ' + f.rui : ''), M, y);
+  y += 4;
+  if (f.email || f.telefono) {
+    font(7.6, false, GRIGIO);
+    p.text([f.email, f.telefono].filter(Boolean).join(' · '), M, y);
+    y += 4;
+  }
+
+  // ── il disclaimer, che non è una formalità
+  var rd = rdMis;
+  p.setDrawColor(216, 227, 220); p.setLineWidth(0.25);
+  p.line(M, y, 210 - M, y); y += 4;
+  font(6.8, false, GRIGIO);
+  p.text(rd, M, y);
+
+  var nome = 'Pensione - ' + (doc.cliente || 'cliente').replace(/[^\w\s-]/g, '').trim() + '.pdf';
+  return { ok: true, pdf: p, blob: p.output('blob'), nomeFile: nome, pagine: p.getNumberOfPages() };
 }
 
 /* ══ LA RIGA D'ARCHIVIO ══════════════════════════════════════════════════
@@ -1146,7 +1779,9 @@ var API = {
   numeriDiLegge: numeriDiLegge,
   etaPensioneAll: etaPensioneAll,
   disclaimer: disclaimer,
+  contenutoFoglio: contenutoFoglio,
   foglioHtml: foglioHtml,
+  foglioPdf: foglioPdf,
   problemiDelFoglio: problemiDelFoglio,
   schedaArchivio: schedaArchivio,
   messaggioWhatsApp: messaggioWhatsApp,

@@ -53,6 +53,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- jsPDF serve per ALLEGARE il foglio su WhatsApp: un link wa.me non puo'
+     allegare file, l'unica strada e' la condivisione nativa del telefono, e
+     quella vuole un file vero. Versione fissata: una libreria che si aggiorna
+     da sola sotto un documento che va ai clienti e' un guasto che aspetta. -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <!-- Il calcolo delle tariffe che il backend condivide con questa pagina. Va
      caricato PRIMA del corpo del preventivatore, perche' quello lo chiama.
      Stesso file per browser e server: un premio calcolato qui e uno calcolato
@@ -4203,6 +4208,71 @@ function pensRendi(e) {
   }
   h += '</div>';
 
+  /* ── LE TASSE NEI TRE MOMENTI, ANCHE A SCHERMO ───────────────────
+     Il consulente deve leggere sullo schermo QUELLO CHE C'E' SUL FOGLIO del
+     cliente. Se le due cose divergono, se ne accorge il cliente — davanti a
+     lui — e a quel punto non conta piu' quale delle due era giusta.
+     I numeri vengono tutti dal motore: qui non si calcola niente. */
+  var t = e.tasse;
+  if (t) {
+    h += '<div class="pv-card"><div class="pv-sec">Le tasse, nei tre momenti</div>' +
+      '<div class="pv-piccolo" style="margin-bottom:9px">Il fisco entra tre volte. Ci sono tutte e tre, ' +
+      'compresa quella in cui il fondo non vince.</div>';
+
+    h += '<div class="pv-nota"><b>1. Quando versi.</b> Si deduce fino a ' +
+      pensEuro(Pensione.LEGGE.tettoDeducibilita.v, 2) + ' l\'anno' +
+      (e.fiscale.disponibile && !e.fiscale.inPerdita && e.fiscale.risparmioAnnuo > 0
+        ? ': per lui sono ' + pensEuro(e.fiscale.risparmioAnnuo) + ' di minori imposte ogni anno.'
+        : (e.fiscale.disponibile && e.fiscale.inPerdita
+            ? ' — ma a questo reddito la deduzione non conviene: il vantaggio sta negli altri due momenti.'
+            : '.')) + '</div>';
+
+    if (t.haTfr) {
+      /* LA RIGA CHE GIOCA CONTRO LA VENDITA. Sta a schermo come sta sul
+         foglio: il consulente la deve aver letta PRIMA che gliela legga il
+         cliente. */
+      h += '<div class="pv-nota"><b>2. Mentre cresce.</b> I rendimenti del fondo pagano il ' +
+        pensPerc(t.impostaRendimentiFondo, 0) + ', la rivalutazione del TFR in azienda il ' +
+        pensPerc(t.impostaRivalutazioneTfr, 0) + ': <b>su questo pezzo il TFR in azienda è avvantaggiato</b>.</div>';
+    } else {
+      h += '<div class="pv-nota"><b>2. Mentre cresce.</b> I rendimenti del fondo pagano il ' +
+        pensPerc(t.impostaRendimentiFondo, 0) + ', contro il 26% della gran parte delle rendite finanziarie.</div>';
+    }
+
+    h += '<div class="pv-nota"><b>3. Quando prendi.</b> La prestazione si tassa al 15%, che scende dello 0,30% ' +
+      'per ogni anno di partecipazione oltre il quindicesimo, fino al 9%. Aderendo adesso partecipa ' +
+      t.anniPartecipazione + ' anni: <b>' + pensPerc(t.aliquotaFondo, 2) + '</b>' +
+      (t.anniPartecipazione < 15 ? ' — lo sconto comincia dal sedicesimo anno.' : '.') + '</div>';
+    h += '</div>';
+  }
+
+  /* ── LO STESSO TFR, TASSATO NEI DUE MODI ───────────────────────
+     L'aliquota in azienda è QUELLA DI QUESTO CLIENTE (tassazione separata sul
+     suo reddito di riferimento), non una media da brochure. */
+  if (t && t.disponibile) {
+    h += '<div class="pv-card"><div class="pv-sec">Lo stesso TFR, tassato nei due modi</div>' +
+      '<div class="pv-piccolo" style="margin-bottom:9px">Da qui alla pensione matura circa <b>' +
+      pensEuro(t.tfrFuturo) + '</b> di TFR (' + pensEuro(t.quotaTfrAnnua) + ' l\'anno). Sulla stessa somma, ' +
+      'senza contare né rivalutazione né rendimenti — così il confronto è solo fra le due tasse:</div>' +
+      '<table class="pv-conf"><thead><tr><th></th><th>Aliquota</th><th>Tasse su ' + pensEuro(t.tfrFuturo) + '</th></tr></thead><tbody>' +
+      '<tr><th class="voce">Se resta in azienda</th>' +
+        '<td data-col="Aliquota">' + pensPerc(t.aliquotaTfrAzienda, 2) + '</td>' +
+        '<td data-col="Tasse">' + pensEuro(t.impostaTfrAzienda) + '</td></tr>' +
+      '<tr><th class="voce">Se va nel fondo</th>' +
+        '<td data-col="Aliquota">' + pensPerc(t.aliquotaFondo, 2) + '</td>' +
+        '<td data-col="Tasse">' + pensEuro(t.impostaTfrFondo) + '</td></tr>' +
+      '</tbody></table>' +
+      '<div class="pv-ok" style="margin-top:9px">' +
+        (t.aChiConviene === 'fondo'
+          ? 'Differenza a favore del fondo: <b>' + pensEuro(t.differenza) + '</b> di tasse in meno.'
+          : (t.aChiConviene === 'azienda'
+              ? 'Differenza a favore dell\'azienda: <b>' + pensEuro(Math.abs(t.differenza)) + '</b> di tasse in meno.'
+              : 'Nessuna differenza fra le due tassazioni.')) + '</div>' +
+      '<div class="pv-piccolo" style="margin-top:8px">L\'aliquota in azienda è la sua: tassazione separata sul ' +
+      'reddito di riferimento di ' + pensEuro(t.redditoRiferimento) + ' (art. 19 c. 1 TUIR), non una percentuale media. ' +
+      'Non comprende ' + esc(t.nonCompreso) + '. Il TFR già maturato resta in azienda: la scelta vale da oggi in avanti.</div></div>';
+  }
+
   /* IL CONFRONTO TFR, solo a chi ce l'ha. */
   if (e.mostraTfr) {
     h += '<div class="pv-card"><div class="pv-sec">TFR: in azienda o nel fondo?</div>' +
@@ -4242,8 +4312,15 @@ function pensRendi(e) {
   /* IL FOGLIO E L'INVIO. */
   h += '<div class="pv-card"><div class="pv-sec">Il foglio per il cliente</div>' +
     '<div class="aw-grid">' +
-    '<div class="aw-field"><label>Cliente</label><input id="pens-cli" placeholder="Nome e cognome" value="' +
-      esc((PENS.cliente && PENS.cliente.nome) || '') + '"></div>' +
+    /* CERCARE INVECE DI RIDIGITARE. Il cliente quasi sempre c'e' gia' in
+       portafoglio: scrivendo il nome a mano si perde il collegamento alla
+       scheda, e il progetto non compare piu' sotto di lui. Due lettere e si
+       sceglie; chi non e' in portafoglio si scrive lo stesso, a mano. */
+    '<div class="aw-field geo-wrap"><label>Cliente</label>' +
+      '<input id="pens-cli" placeholder="Cerca in portafoglio, o scrivi il nome" autocomplete="off" ' +
+      'value="' + esc((PENS.cliente && PENS.cliente.nome) || '') + '" oninput="pensClienteCerca(this.value)">' +
+      '<div id="pens-cli-res" class="geo-res"></div>' +
+      '<div id="pens-cli-legame" style="font-size:11.5px;margin-top:4px">' + pensLegameHtml() + '</div></div>' +
     '<div class="aw-field"><label>Consulente che firma</label><input id="pens-cons" value="' +
       esc((typeof INTERM_PROFILO !== 'undefined' && INTERM_PROFILO && INTERM_PROFILO.nome) || (currentUser && currentUser.name) || '') + '"></div>' +
     '<div class="aw-field"><label>Ruolo</label><input id="pens-ruolo" value="Consulente previdenziale"></div>' +
@@ -4255,10 +4332,20 @@ function pensRendi(e) {
     '</div>' +
     '<div class="pv-azioni">' +
       '<button class="btn-primary" onclick="pensFoglio()"><i class="ti ti-printer"></i> Apri il foglio da stampare</button>' +
+      /* SALVARE SENZA STAMPARE. Prima l'unico modo di mandare un progetto a
+         registro era stampare il foglio: chi voleva solo tenerselo per il
+         richiamo fra due settimane doveva aprire una finestra di stampa e
+         chiuderla. */
+      '<button class="btn-ghost" onclick="pensSalva()"><i class="ti ti-device-floppy"></i> Salva sul cliente</button>' +
       '<button class="btn-ghost" onclick="pensWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Messaggio WhatsApp</button>' +
     '</div>' +
-    '<div class="pv-piccolo" style="margin-top:9px">WhatsApp non permette di allegare un file da un collegamento: ' +
-      'stampa prima il foglio in PDF, poi allegalo al messaggio che si apre già scritto.</div>' +
+    '<div class="pv-piccolo" style="margin-top:9px" id="pens-nota-invio">' + pensNotaInvio() + '</div>' +
+    /* DUE RIQUADRI, NON UNO. Rispondono a due domande diverse — «il foglio e'
+       uscito?» e «l'ho salvato?» — e l'archivio parte SUBITO DOPO l'invio: con
+       un riquadro solo, «Salvo l'analisi in archivio...» cancellava l'avviso
+       che diceva che l'allegato NON era partito. Il consulente leggeva che
+       era tutto a posto e il cliente non aveva ricevuto niente. */
+    '<div id="pens-invio"></div>' +
     '<div id="pens-archivio"></div></div>';
 
   box.innerHTML = h;
@@ -4305,21 +4392,162 @@ function pensFoglio() {
   pensArchivia(d);
 }
 
-function pensWhatsApp() {
+/* ── MANDARE IL FOGLIO AL CLIENTE ────────────────────────────────────────
+   UN LINK wa.me NON PUO' ALLEGARE UN FILE. Mai: e' un limite di WhatsApp, non
+   del nostro codice. L'unica strada per far partire il PDF davvero allegato
+   e' la condivisione nativa del telefono — `navigator.share` con il file —
+   che apre il foglio di condivisione del sistema e lascia scegliere WhatsApp.
+
+   Sul telefono, che e' dove sei quando hai il cliente davanti, funziona. Su
+   un computer quella condivisione non esiste: li' si ripiega su «scarica il
+   PDF, poi si apre WhatsApp col messaggio gia' scritto», e si DICE, invece di
+   far credere che l'allegato sia partito. */
+/* La nota sotto i pulsanti dice la verita' DI QUESTO apparecchio, non una
+   verita' generica: su un telefono l'allegato parte da solo, su un computer
+   no, e scrivere la stessa frase in tutti e due i casi vuol dire che in uno
+   dei due e' falsa. */
+function pensNotaInvio() {
+  var nativa = !!(navigator.canShare && navigator.share);
+  return nativa
+    ? 'Da questo apparecchio il PDF parte <b>allegato</b>: si apre la condivisione, scegli WhatsApp e il foglio va col messaggio.'
+    : 'Da questo apparecchio la condivisione diretta non c\'è: il PDF si scarica e WhatsApp si apre col messaggio già scritto, l\'allegato lo aggiungi tu. <b>Dal telefono parte da solo.</b>';
+}
+
+function pensNumeroWhatsApp(telefono) {
+  var n = String(telefono || '').replace(/\D/g, '');
+  /* Nove-undici cifre senza prefisso e' un numero italiano scritto come lo
+     scrive un italiano: si mette il 39. Non solo i cellulari — un fisso senza
+     prefisso apre WhatsApp su un numero che non esiste. */
+  if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
+  return n;
+}
+
+function pensPdf() {
+  var lib = window.jspdf && window.jspdf.jsPDF;
+  return Pensione.foglioPdf(pensDatiFoglio(), lib);
+}
+
+async function pensWhatsApp() {
   if (!PENS.esito) { alert('Prima calcola: il messaggio si costruisce sul risultato.'); return; }
   var d = pensDatiFoglio();
   var testo = Pensione.messaggioWhatsApp(d);
-  /* Il numero si normalizza qui: WhatsApp vuole il prefisso internazionale
-     senza il piu' e senza spazi. Senza numero si apre lo stesso, e il
-     consulente sceglie il destinatario dalla rubrica. */
-  var n = String(d.cliente.telefono || '').replace(/\D/g, '');
-  /* Nove-undici cifre senza prefisso e' un numero italiano scritto come lo
-     scrive un italiano: si mette il 39. Non solo i cellulari — un fisso
-     senza prefisso apre WhatsApp su un numero che non esiste, e il consulente
-     se ne accorge solo dopo aver scritto il messaggio. */
-  if (n && n.length >= 9 && n.length <= 11 && n.slice(0, 2) !== '39') n = '39' + n;
-  var url = 'https://wa.me/' + n + '?text=' + encodeURIComponent(testo);
-  window.open(url, '_blank');
+  var url = 'https://wa.me/' + pensNumeroWhatsApp(d.cliente.telefono) + '?text=' + encodeURIComponent(testo);
+  var dillo = function (t, colore) {
+    var box = document.getElementById('pens-invio');
+    if (box) box.innerHTML = '<div style="margin-top:10px;font-size:12.5px;color:' + colore + '">' + esc(t) + '</div>';
+  };
+
+  var r = pensPdf();
+  if (!r.ok) { alert('Non posso preparare il PDF:\n\n· ' + r.problemi.join('\n· ')); return; }
+  var file = new File([r.blob], r.nomeFile, { type: 'application/pdf' });
+
+  /* `canShare` con i file va chiesto PRIMA: su diversi browser `share` esiste
+     ma i file non li accetta, e chiamarlo lo stesso fallisce dopo che
+     l'utente ha gia' scelto WhatsApp — cioe' nel momento peggiore. */
+  if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+    try {
+      await navigator.share({ files: [file], text: testo });
+      dillo('Foglio condiviso. Se hai scelto WhatsApp, il PDF è partito allegato al messaggio.', 'var(--pv-ink2)');
+      /* Condiviso vuol dire uscito di casa: va a registro come una stampa. */
+      pensArchivia(d);
+      return;
+    } catch (e) {
+      /* L'utente che annulla la condivisione non e' un errore: non si apre
+         niente al posto suo e non si scrive niente di allarmante. */
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+
+  /* Ripiego: il PDF si scarica e WhatsApp si apre col messaggio scritto. */
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(r.blob); a.download = r.nomeFile;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 30000);
+  /* Se la finestra la blocca il browser, WhatsApp NON si e' aperto: dirlo
+     lo stesso vorrebbe dire mandare il consulente a cercare una finestra che
+     non c'e'. Stessa cura del foglio da stampare, che ha gia' questo caso. */
+  var w = window.open(url, '_blank');
+  dillo(w
+    ? 'Da qui la condivisione diretta non è disponibile: il PDF è stato scaricato e WhatsApp si è aperto col messaggio già scritto — allega il file a mano. Dal telefono parte allegato da solo.'
+    : 'Il PDF è stato scaricato, ma il browser ha bloccato l\'apertura di WhatsApp: consenti le finestre per questo sito, oppure apri WhatsApp e allega il file a mano. Dal telefono parte allegato da solo.',
+    '#b06a00');
+  pensArchivia(d);
+}
+
+/* ── CERCARE IL CLIENTE IN PORTAFOGLIO ───────────────────────────────────
+   Lo stesso gesto degli altri moduli (vedi vitaClienteSearch): due lettere,
+   sei risultati, si sceglie. Quello che cambia qui e' cosa succede DOPO: non
+   si riempie solo il nome, si aggancia l'id — ed e' l'aggancio che fa comparire
+   il progetto sotto quel cliente nella sua scheda. Un nome scritto a mano
+   produce un foglio identico e un progetto che non si ritrova piu'. */
+var PENS_CERCA_T = null;
+function pensClienteCerca(q) {
+  var box = document.getElementById('pens-cli-res');
+  clearTimeout(PENS_CERCA_T);
+  /* Se il consulente riscrive il nome a mano, il legame di prima non vale
+     piu': tenerlo vorrebbe dire salvare il progetto sotto un cliente che non
+     e' quello scritto nel campo. */
+  if (PENS.cliente && PENS.cliente.id && (q || '').trim() !== (PENS.cliente.nome || '').trim()) {
+    PENS.cliente = { id: null, nome: q, telefono: (PENS.cliente && PENS.cliente.telefono) || '' };
+    pensLegameAggiorna();
+  }
+  if (!q || q.trim().length < 2) { if (box) { box.classList.remove('show'); box.innerHTML = ''; } return; }
+  PENS_CERCA_T = setTimeout(async function () {
+    try {
+      var qs = sbq(q);
+      var r = await db.from('quote_anagrafiche').select('*')
+        .or('nominativo.ilike.%' + qs + '%,codice_fiscale.ilike.%' + qs + '%,partita_iva.ilike.%' + qs + '%')
+        .limit(6);
+      var dati = (r && r.data) || [];
+      /* Il fondo pensione e' di una persona: una societa' non si propone. */
+      dati = dati.filter(function (a) { return a.tipo !== 'giuridica'; });
+      window.__PENS_CERCA = dati;
+      if (!box) return;
+      box.innerHTML = dati.length
+        ? dati.map(function (a, i) {
+            return '<div class="geo-item" onclick="pensClienteScelto(' + i + ')"><b>' + esc(a.nominativo) + '</b> · ' +
+              esc(a.codice_fiscale || a.partita_iva || '') + '</div>';
+          }).join('')
+        : '<div class="geo-item" style="color:var(--muted)">Nessun cliente in portafoglio con questo nome — scrivilo pure a mano</div>';
+      box.classList.add('show');
+    } catch (e) {}
+  }, 300);
+}
+
+function pensClienteScelto(i) {
+  var a = (window.__PENS_CERCA || [])[i];
+  if (!a) return;
+  PENS.cliente = { id: a.id, nome: a.nominativo || '', telefono: a.cellulare || a.telefono || '' };
+  var campo = document.getElementById('pens-cli'); if (campo) campo.value = PENS.cliente.nome;
+  var tel = document.getElementById('pens-tel');
+  if (tel && !tel.value && PENS.cliente.telefono) tel.value = PENS.cliente.telefono;
+  var box = document.getElementById('pens-cli-res'); if (box) { box.classList.remove('show'); box.innerHTML = ''; }
+  pensLegameAggiorna();
+}
+
+/* Il legame si DICE. Un progetto salvato senza aggancio non compare nella
+   scheda del cliente, e chi lo ha salvato lo scopre fra due settimane. */
+function pensLegameHtml() {
+  if (PENS.cliente && PENS.cliente.id) {
+    return '<span style="color:#02984e"><i class="ti ti-link" style="vertical-align:-2px"></i> Collegato alla scheda di <b>' +
+      esc(PENS.cliente.nome) + '</b>: il progetto comparirà lì sotto, in Previdenza.</span>';
+  }
+  return '<span style="color:var(--muted)">Nessun cliente collegato: il progetto si salva lo stesso, ma non comparirà in nessuna scheda.</span>';
+}
+function pensLegameAggiorna() {
+  var e = document.getElementById('pens-cli-legame');
+  if (e) e.innerHTML = pensLegameHtml();
+}
+
+/* ── SALVARE SENZA STAMPARE ──────────────────────────────────────────────
+   Stesso archivio del foglio, stessa riga: cambia solo che non si apre nessuna
+   finestra di stampa. Il risultato si dice sempre — riuscito o no. */
+async function pensSalva() {
+  if (!PENS.esito) { alert('Prima calcola: non c\'è ancora niente da salvare.'); return; }
+  var d = pensDatiFoglio();
+  if (!String(d.cliente.nome || '').trim()) { alert('Scrivi o cerca il cliente: un progetto senza intestatario non si ritrova più.'); return; }
+  if (!String(d.consulente.nome || '').trim()) { alert('Manca il consulente che firma.'); return; }
+  await pensArchivia(d);
 }
 
 /* ── L'ANALISI VA A REGISTRO ──────────────────────────────────────────────
@@ -4351,6 +4579,280 @@ async function pensArchivia(d) {
   } catch (e) {
     dica('Il foglio è stato stampato ma NON è finito in archivio: ' + (e && e.message ? e.message : e) +
       '. Segnalalo: questa analisi non risulterà a registro.', 'var(--pv-rosso)');
+  }
+}
+
+/* ── I PROGETTI PENSIONISTICI DEL CLIENTE ─────────────────────────────────
+   Stanno accanto ai preventivi nella scheda, e si leggono dall'archivio —
+   quello in cui finisce ogni foglio stampato. La riservatezza la decide il
+   server (un collaboratore vede i propri, lo staff tutti): qui si mostra
+   quello che risponde, senza filtrare per conto proprio. */
+async function caricaPrevidenzaCliente(anagraficaId) {
+  var box = document.getElementById('cl-prevd');
+  if (!box) return;
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/analisi-previdenziali?anagrafica_id=' + encodeURIComponent(anagraficaId),
+      { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    PENS_ELENCO = d.items || [];
+    /* GLI INVITI si leggono insieme ai progetti, ma con una fetch che NON
+       puo' far fallire l'altra: se la porta degli inviti e' chiusa, i
+       progetti gia' fatti si devono vedere lo stesso. */
+    PENS_INVITI = await pensLeggiInviti(anagraficaId);
+    box.innerHTML = pensElencoHtml(PENS_ELENCO, anagraficaId) + pensInvitiHtml(PENS_INVITI, anagraficaId);
+  } catch (e) {
+    /* NON si finge che non ce ne siano: «nessun progetto» e «non sono
+       riuscito a leggerli» sono due cose diverse, e confonderle fa rifare al
+       consulente un lavoro che aveva gia' fatto. */
+    box.innerHTML = '<div class="cl-empty" style="color:#c0392b">Non sono riuscito a leggere i progetti pensionistici: ' +
+      esc(e && e.message ? e.message : e) + '</div>';
+  }
+}
+
+var PENS_ELENCO = [];
+
+function pensElencoHtml(righe, anagraficaId) {
+  var nuovo = '<div style="margin-bottom:10px"><button class="btn-emetti" style="padding:5px 12px" ' +
+    'onclick="pensDaCliente(\'' + anagraficaId + '\')"><i class="ti ti-plus"></i> Nuovo progetto pensionistico</button></div>';
+  if (!righe.length) {
+    return nuovo + '<div class="cl-empty">Nessun progetto pensionistico per questo cliente. ' +
+      'Il pulsante qui sopra apre il calcolo con i dati che sappiamo già.</div>';
+  }
+  return nuovo + '<div style="display:flex;flex-direction:column;gap:8px">' + righe.map(function (x) {
+    var d = x.dati || {}, o = x.obiettivo || {};
+    var quando = x.creata_il ? new Date(x.creata_il).toLocaleDateString('it-IT') : (d.dataRiferimento || '');
+    /* IL DIVARIO E' IL NUMERO CHE SI CERCA guardando questo elenco: sta
+       grande, il resto sta piccolo. */
+    var gap = (o.gapMensile != null) ? pensEuro(o.gapMensile) : '—';
+    return '<div style="border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">' +
+        '<div style="font-weight:700">' + esc(d.etichettaLavoro || 'Progetto pensionistico') +
+          (d.eta ? ' · ' + d.eta + ' anni' : '') + '</div>' +
+        '<div style="font-size:17px;font-weight:800;color:#c0392b">' + gap + '<span style="font-size:11px;font-weight:600;color:var(--muted)"> /mese scoperti</span></div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:3px">' + esc(quando) +
+        (d.versamentoMensile ? ' · versamento ipotizzato ' + pensEuro(d.versamentoMensile) : '') +
+        (d.mensilita ? ' · ' + d.mensilita + ' mensilità' : '') +
+        (d.prudenziale ? ' · <b style="color:#b06a00">stima prudenziale</b>' : '') +
+      '</div>' +
+      '<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">' +
+        '<button class="sc-edit" onclick="pensRiapri(\'' + x.id + '\')"><i class="ti ti-rotate"></i> Riapri e ricalcola</button>' +
+      '</div></div>';
+  }).join('') + '</div>';
+}
+
+/* Riaprire un progetto NON vuol dire rimostrare i numeri di allora: vuol dire
+   rimettere nel modulo i dati che erano stati inseriti e RIFARE il conto con
+   i parametri di oggi. I numeri di allora restano in archivio, ed e' li' che
+   si guardano quando il cliente torna col foglio in mano. */
+/* ══ IL LINK CHE COMPILA IL CLIENTE ═══════════════════════════════════════
+   Il consulente non ha sempre il cliente davanti. Con il link, il cliente
+   scrive i suoi quattro dati da solo, dal telefono, e il progetto arriva
+   attaccato alla SUA scheda — non a un foglio volante che poi va ricollegato
+   a mano.
+
+   IL LINK SI VEDE UNA VOLTA SOLA. Il server ne salva solo l'impronta: se il
+   consulente chiude questo riquadro senza copiarlo, non lo si recupera e se
+   ne fa un altro. E' scritto nel riquadro, perche' scoprirlo dopo sarebbe
+   una cattiva sorpresa. */
+var PENS_INVITI = [];
+
+async function pensLeggiInviti(anagraficaId) {
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/progetti-previdenziali?anagrafica_id=' + encodeURIComponent(anagraficaId),
+      { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) return { errore: d.error || ('errore ' + r.status) };
+    return { items: d.items || [] };
+  } catch (e) { return { errore: (e && e.message) || String(e) }; }
+}
+
+/* Lo stato di un invito, in una parola sola e con un colore. Non e' un
+   dettaglio estetico: «mandato» e «compilato» sono due telefonate diverse. */
+function pensStatoInvito(x) {
+  if (x.completato_il) return { t: 'Compilato', c: '#1e7d46' };
+  if (x.revocato_il) return { t: 'Annullato', c: 'var(--muted)' };
+  if (x.bloccato) return { t: 'Bloccato', c: '#c0392b' };
+  if (new Date(x.scade_il).getTime() < Date.now()) return { t: 'Scaduto', c: 'var(--muted)' };
+  if (x.aperto_il) return { t: 'Aperto, non compilato', c: '#b06a00' };
+  return { t: 'In attesa', c: '#b06a00' };
+}
+
+function pensInvitiHtml(risp, anagraficaId) {
+  var testa = '<div style="margin:16px 0 9px;font-weight:700;font-size:13px">Link mandati al cliente</div>' +
+    '<div style="margin-bottom:10px"><button class="btn-emetti" style="padding:5px 12px" ' +
+    'onclick="pensLinkCrea(\'' + anagraficaId + '\')"><i class="ti ti-link"></i> Manda il link al cliente</button></div>' +
+    '<div id="pens-link-nuovo"></div>';
+  if (risp && risp.errore) {
+    return testa + '<div class="cl-empty" style="color:#c0392b">Non sono riuscito a leggere i link mandati: ' +
+      esc(risp.errore) + '</div>';
+  }
+  var righe = (risp && risp.items) || [];
+  if (!righe.length) {
+    return testa + '<div class="cl-empty">Nessun link mandato. Il cliente compila da solo, dal telefono, ' +
+      'e il progetto arriva qui sotto.</div>';
+  }
+  return testa + '<div style="display:flex;flex-direction:column;gap:8px">' + righe.map(function (x, i) {
+    var st = pensStatoInvito(x), d = x.dati || {}, o = x.esito || {};
+    var quando = x.creato_il ? new Date(x.creato_il).toLocaleDateString('it-IT') : '';
+    var h = '<div style="border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:#fff">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">' +
+        '<div style="font-weight:700;color:' + st.c + '">' + esc(st.t) + '</div>' +
+        '<div style="font-size:12px;color:var(--muted)">mandato il ' + esc(quando) + '</div></div>';
+    if (x.completato_il) {
+      h += '<div style="font-size:12.5px;margin-top:5px">' +
+        esc((window.Pensione && Pensione.LAVORI[d.lavoro] && Pensione.LAVORI[d.lavoro].etichetta) || 'Compilato') +
+        (d.eta ? ' · ' + d.eta + ' anni' : '') +
+        (d.redditoMensile ? ' · ' + pensEuro(d.redditoMensile) + '/mese' : '') +
+        (d.versamentoMensile ? ' · versa ' + pensEuro(d.versamentoMensile) : '') +
+        (d.etaInizioLavoro == null ? ' · <b style="color:#b06a00">non ricordava l\'inizio</b>' : '') +
+        '</div>';
+      if (o.gapMensile != null) {
+        h += '<div style="font-size:12px;color:var(--muted);margin-top:3px">Gli è comparso un divario di <b>' +
+          pensEuro(o.gapMensile) + '</b> al mese' + (o.prudenziale ? ' (stima prudenziale)' : '') + '.</div>';
+      }
+      h += '<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">' +
+        '<button class="sc-edit" onclick="pensApriCompilato(' + i + ')"><i class="ti ti-rotate"></i> Apri e ricalcola</button>' +
+        '</div>';
+    } else if (!x.revocato_il && !x.bloccato && new Date(x.scade_il).getTime() >= Date.now()) {
+      h += '<div style="font-size:12px;color:var(--muted);margin-top:4px">Scade il ' +
+        esc(new Date(x.scade_il).toLocaleDateString('it-IT')) +
+        (x.tentativi ? ' · ' + x.tentativi + ' tentativi sbagliati sulla data di nascita' : '') + '</div>' +
+        '<div style="margin-top:8px"><button class="sc-edit" onclick="pensLinkRevoca(\'' + x.id + '\',\'' + anagraficaId + '\')">' +
+        '<i class="ti ti-ban"></i> Annulla il link</button></div>';
+    }
+    return h + '</div>';
+  }).join('') + '</div>';
+}
+
+async function pensLinkCrea(anagraficaId) {
+  var box = document.getElementById('pens-link-nuovo');
+  if (box) box.innerHTML = '<div class="cl-empty">Preparo il link…</div>';
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/progetti-previdenziali', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (tok || '') },
+      body: JSON.stringify({ anagrafica_id: anagraficaId }),
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    var testo = 'Ciao' + (d.cliente && d.cliente.nominativo ? ' ' + String(d.cliente.nominativo).split(' ')[0] : '') +
+      ', qui puoi vedere in un minuto quanto ti manderà l\'INPS e quanto ti mancherà: ' + d.link +
+      '\n\nTi chiede la tua data di nascita: serve perché il link apre dati che riguardano te.';
+    var wa = 'https://wa.me/' + pensNumeroWhatsApp((d.cliente && d.cliente.telefono) || '') +
+      '?text=' + encodeURIComponent(testo);
+    if (box) {
+      box.innerHTML = '<div style="border:1.5px solid var(--pv-verde,#02984e);border-radius:11px;padding:11px 13px;background:#f5f9f6">' +
+        '<div style="font-weight:700;font-size:12.5px;margin-bottom:6px">Link pronto — vale ' + d.giorni + ' giorni</div>' +
+        '<input id="pens-link-val" readonly value="' + esc(d.link) + '" ' +
+          'style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;font-size:12px;background:#fff">' +
+        '<div style="margin-top:8px;display:flex;gap:7px;flex-wrap:wrap">' +
+          '<button class="btn-emetti" style="padding:5px 12px" onclick="pensLinkCopia(this)"><i class="ti ti-copy"></i> Copia</button>' +
+          '<a class="sc-edit" href="' + esc(wa) + '" target="_blank" rel="noopener"><i class="ti ti-brand-whatsapp"></i> Manda su WhatsApp</a>' +
+        '</div>' +
+        /* SI VEDE UNA VOLTA SOLA, e va detto adesso: il server ne tiene solo
+           l'impronta, e scoprirlo dopo averlo chiuso sarebbe una sorpresa. */
+        '<div style="font-size:11.5px;color:var(--muted);margin-top:8px">Questo indirizzo si vede <b>una volta sola</b>: ' +
+          'di qui in avanti resta solo la sua impronta. Se lo perdi, fanne un altro.</div>' +
+        '</div>';
+    }
+    PENS_INVITI = await pensLeggiInviti(anagraficaId);
+  } catch (e) {
+    if (box) box.innerHTML = '<div class="cl-empty" style="color:#c0392b">Non sono riuscito a preparare il link: ' +
+      esc((e && e.message) || e) + '</div>';
+  }
+}
+
+/* La copia passa da `copiaTesto`, che sta in un posto solo. Dentro il
+   riquadro di IAM il browser NEGA `navigator.clipboard`: una copia scritta
+   qui a mano fallirebbe in silenzio proprio dove il modulo vive. */
+async function pensLinkCopia(bottone) {
+  var i = document.getElementById('pens-link-val');
+  if (!i) return;
+  var fatto = await copiaTesto(i.value);
+  if (!bottone) return;
+  var prima = bottone.innerHTML;
+  bottone.innerHTML = fatto ? '<i class="ti ti-check"></i> Copiato'
+                            : '<i class="ti ti-alert-triangle"></i> Copialo a mano';
+  setTimeout(function () { bottone.innerHTML = prima; }, 1800);
+}
+
+async function pensLinkRevoca(id, anagraficaId) {
+  if (!confirm('Annullo questo link? Il cliente non potrà più aprirlo.')) return;
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/progetti-previdenziali/' + encodeURIComponent(id),
+      { method: 'DELETE', headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    caricaPrevidenzaCliente(anagraficaId);
+  } catch (e) { alert('Non sono riuscito ad annullare il link: ' + ((e && e.message) || e)); }
+}
+
+/* Il progetto compilato dal cliente si apre nel calcolo del consulente. I
+   DATI sono i suoi, IL CONTO si rifa' adesso: e' l'unico modo perche' il
+   consulente veda gli stessi numeri con i parametri di oggi. */
+function pensApriCompilato(i) {
+  var x = ((PENS_INVITI && PENS_INVITI.items) || [])[i];
+  if (!x || !x.dati) { alert('Questo progetto non porta dati da riaprire.'); return; }
+  var d = x.dati;
+  var ov = document.getElementById('anag-overlay'); if (ov) ov.remove();
+  pensPulisci();
+  var a = (typeof ANAG_CACHE !== 'undefined' && ANAG_CACHE || []).filter(function (y) { return y.id === x.anagrafica_id; })[0];
+  PENS.cliente = { id: x.anagrafica_id, nome: (a && a.nominativo) || '', telefono: (a && (a.cellulare || a.telefono)) || '' };
+  var set = function (campo, valore) { var e = document.getElementById(campo); if (e && valore != null && valore !== '') e.value = valore; };
+  set('pens-eta', d.eta); set('pens-lavoro', d.lavoro);
+  set('pens-reddito', d.redditoMensile); set('pens-versamento', d.versamentoMensile);
+  if (d.mensilita) { PENS.mensilitaAMano = true; set('pens-mensilita', d.mensilita); }
+  else pensMensilitaProposta();
+  pensBase(d.baseReddito === 'lordo' ? 'lordo' : 'netto');
+  if (d.etaInizioLavoro == null) { var c = document.getElementById('pens-inizio-ignoto'); if (c) { c.checked = true; pensIgnoto(); } }
+  else set('pens-inizio', d.etaInizioLavoro);
+  var nota = document.getElementById('pens-da-cliente');
+  if (nota) {
+    nota.innerHTML = '<div class="pv-nota" style="margin-top:0"><b>Compilato dal cliente</b> il ' +
+      esc(x.completato_il ? new Date(x.completato_il).toLocaleDateString('it-IT') : '') +
+      '. I dati sono quelli che ha scritto lui: <b>controllali con lui</b> — il reddito dichiarato a memoria ' +
+      'e l\'età di inizio sono le due cose che spostano di più il risultato. Il conto lo rifaccio adesso.</div>';
+  }
+  showPage('previdenza');
+  if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+}
+
+async function pensRiapri(id) {
+  try {
+    var tok = await payToken();
+    var r = await fetch(PAY_API + '/analisi-previdenziali/' + encodeURIComponent(id),
+      { headers: { Authorization: 'Bearer ' + (tok || '') } });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok || !d.ok) throw new Error(d.error || ('errore ' + r.status));
+    var riga = d.item || {}, dati = riga.dati || {};
+    var ov = document.getElementById('anag-overlay'); if (ov) ov.remove();
+    pensPulisci();
+    PENS.cliente = { id: riga.anagrafica_id || null, nome: dati.cliente || '', telefono: '' };
+    var set = function (campo, valore) { var e = document.getElementById(campo); if (e && valore != null && valore !== '') e.value = valore; };
+    set('pens-eta', dati.eta); set('pens-lavoro', dati.lavoro);
+    set('pens-reddito', dati.redditoMensileDichiarato); set('pens-versamento', dati.versamentoMensile);
+    if (dati.mensilita) { PENS.mensilitaAMano = true; set('pens-mensilita', dati.mensilita); }
+    else pensMensilitaProposta();
+    pensBase(dati.baseReddito === 'lordo' ? 'lordo' : 'netto');
+    if (dati.prudenziale) { var c = document.getElementById('pens-inizio-ignoto'); if (c) { c.checked = true; pensIgnoto(); } }
+    else set('pens-inizio', dati.etaInizioUsata);
+    var nota = document.getElementById('pens-da-cliente');
+    if (nota) nota.innerHTML = '<div class="pv-nota" style="margin-top:0">Riaperto il progetto del <b>' +
+      esc(riga.creata_il ? new Date(riga.creata_il).toLocaleDateString('it-IT') : '') + '</b>' +
+      (dati.cliente ? ' per <b>' + esc(dati.cliente) + '</b>' : '') +
+      '. I dati sono quelli di allora, <b>il conto lo rifaccio adesso</b> con i parametri di oggi: se qualcosa è cambiato, i numeri saranno diversi.</div>';
+    showPage('previdenza');
+    if (PENS.parametri !== 'ok') PENS.caricamento = caricaNumeriPensione();
+    pensAvvisi();
+    await pensCalcola();
+  } catch (e) {
+    alert('Non riesco a riaprire il progetto: ' + (e && e.message ? e.message : e));
   }
 }
 
@@ -22027,6 +22529,11 @@ function apriAnagrafica(id) {
                  separati e nessuna storia. -->
             <button class="cl-tab" data-t="note" onclick="clTab('note')"><i class="ti ti-notes"></i> Note</button>
             <button class="cl-tab" data-t="tratt" onclick="clTab('tratt')"><i class="ti ti-chart-arrows-vertical"></i> Trattative</button>
+            <!-- I progetti pensionistici salvati per questo cliente. Stanno qui
+                 accanto ai preventivi e non in un riquadro tutto loro: per chi
+                 guarda la scheda sono la stessa cosa — una posizione aperta su
+                 quella persona, da riprendere in mano. -->
+            <button class="cl-tab" data-t="prevd" onclick="clTab('prevd')"><i class="ti ti-pig-money"></i> Previdenza</button>
             <button class="cl-tab" data-t="cro" onclick="clTab('cro')"><i class="ti ti-history"></i> Cronologia</button>
           </div>
           <div id="cl-pol" class="cl-pane"><div class="cl-empty">Caricamento…</div></div>
@@ -22035,6 +22542,7 @@ function apriAnagrafica(id) {
           <div id="cl-sin" class="cl-pane" style="display:none"></div>
           <div id="cl-note" class="cl-pane" style="display:none"></div>
           <div id="cl-tratt" class="cl-pane" style="display:none"></div>
+          <div id="cl-prevd" class="cl-pane" style="display:none"><div class="cl-empty">Caricamento…</div></div>
           <div id="cl-cro" class="cl-pane" style="display:none"></div>
         </div>
       </div>
@@ -22055,6 +22563,7 @@ function apriAnagrafica(id) {
   document.body.insertAdjacentHTML('beforeend', html);
   caricaCollegati(a.id, a.nominativo);
   caricaGruppiCliente(a.id);
+  caricaPrevidenzaCliente(a.id);
   // L'intermediario può non essere ancora in cache (scheda aperta senza passare da
   // Clienti): lo carico e riempio la riga quando c'è.
   if (a.intermediario_id) caricaIntermediari().then(() => { const el = document.getElementById('sc-interm'); if (el) { const n = intermediarioNome(a.intermediario_id); if (n) { el.textContent = n; el.classList.remove('empty'); } } });
@@ -22884,7 +23393,7 @@ async function decidiResidenza(id, campi, riga){
 }
 
 function clTab(t) {
-  ['pol','prev','doc','sin','note','tratt','cro'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
+  ['pol','prev','doc','sin','note','tratt','cro','prevd'].forEach(k => { const e = document.getElementById('cl-' + k); if (e) e.style.display = k === t ? 'block' : 'none'; });
   document.querySelectorAll('.cl-tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
 }
 async function caricaCollegati(id, nominativo) {

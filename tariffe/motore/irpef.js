@@ -663,6 +663,49 @@ function lordoDaNetto(nettoAnnuo, gestione, f) {
   return inversioneNetto(nettoAnnuo, gestione, f).lordo;
 }
 
+/* ── LA TASSAZIONE SEPARATA DEL TFR (art. 19 c. 1 TUIR) ────────────────
+   Il TFR lasciato in azienda NON si tassa con l'aliquota dell'anno in cui lo
+   si incassa, e nemmeno con una percentuale di comodo. Si tassa con
+   l'aliquota media che si otterrebbe su un «reddito di riferimento»:
+
+       reddito di riferimento = (TFR maturato / anni di servizio) × 12
+
+   Su quel reddito si calcola l'IRPEF a scaglioni, e il rapporto fra imposta e
+   reddito è l'aliquota che si applica a tutto il TFR.
+
+   PERCHE' STA QUI E NON IN UNA TABELLA. E' il conto che decide se al cliente
+   conviene il fondo: un dipendente a 1.200 € al mese e uno a 4.000 € non
+   hanno la stessa aliquota, e scriverne una sola («tipicamente sopra il
+   20%») vuol dire dare a tutti e due un numero che non è il loro — in
+   un caso a favore del fondo, nell'altro contro.
+
+   QUELLO CHE QUESTO CONTO NON FA, e che va detto dove compare:
+     · la riliquidazione che l'Agenzia esegue d'ufficio confrontando con
+       l'aliquota media dei cinque anni precedenti (art. 19 c. 1, quarto
+       periodo): può correggere il risultato in su o in giù;
+     · le rivalutazioni già maturate, che sono FUORI da questa base perché
+       hanno già pagato la loro imposta sostitutiva anno per anno;
+     · le detrazioni previste per i redditi di riferimento più bassi. */
+function tassazioneSeparataTfr(tfrMaturato, anniServizio, f) {
+  var tfr = Math.max(0, Number(tfrMaturato) || 0);
+  var anni = Number(anniServizio);
+  /* Meno di un anno di servizio non esiste come divisore: produrrebbe un
+     reddito di riferimento gonfiato e un'aliquota inventata. */
+  if (!isFinite(anni) || anni < 1) anni = 1;
+  var riferimento = (tfr / anni) * 12;
+  var imposta = irpefLorda(riferimento, f);
+  var aliquota = riferimento > 0 ? imposta / riferimento : 0;
+  return {
+    redditoRiferimento: riferimento,
+    anniServizio: anni,
+    aliquota: aliquota,
+    imposta: tfr * aliquota,
+    netto: tfr - tfr * aliquota,
+    fonte: 'TUIR art. 19 c. 1',
+    nonCompreso: 'la riliquidazione d\'ufficio dell\'Agenzia sull\'aliquota media dei cinque anni precedenti',
+  };
+}
+
 /* Tutto quello che in questo file è ancora in attesa di essere letto su un
    documento ufficiale. Chi produce un foglio per un cliente lo chiama e
    stampa quello che torna: è l'unico modo perché l'avviso arrivi davvero
@@ -701,6 +744,7 @@ var API = {
   nettoDaLordo: nettoDaLordo,
   lordoDaNetto: lordoDaNetto,
   inversioneNetto: inversioneNetto,
+  tassazioneSeparataTfr: tassazioneSeparataTfr,
   numeriFiscaliDaRiscontrare: numeriFiscaliDaRiscontrare,
 };
 

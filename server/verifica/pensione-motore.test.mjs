@@ -798,6 +798,179 @@ prova('il foglio e l\'archivio dicono su quante mensilità è stato fatto il con
   return 'foglio e archivio dichiarano 13 / 13 / 12';
 });
 
+/* ── UNA FONTE SOLA, PIÙ RESE (12/09/2026) ───────────────────────────────
+   Il foglio esiste in due forme — la pagina da stampare e il PDF da allegare
+   su WhatsApp — e il contenuto si costruisce una volta sola. Scriverlo due
+   volte vorrebbe dire due posti che si scostano, ed è già successo in questo
+   modulo: la stessa frase stava nella schermata e nel foglio, e i due si
+   erano già disallineati. */
+
+prova('il contenuto del foglio è dati, non markup', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'dipendente' });
+  const c = P.contenutoFoglio({ esito: e, cliente: { nome: 'Mario Rossi' }, consulente: { nome: 'Francesco Oddo' } });
+  deve(c.ok, (c.problemi || []).join('; '));
+  const testo = JSON.stringify(c.doc);
+  /* SE QUI DENTRO COMPARE UN TAG, il contenuto ha ricominciato a sapere come
+     viene disegnato — e il PDF erediterebbe l'HTML. */
+  deve(!/<[a-z/]/i.test(testo), 'nel contenuto del foglio è finito del markup: non è più indipendente dalla resa');
+  deve(!/class=|style=|#[0-9a-f]{6}/i.test(testo), 'nel contenuto sono finiti classi, stili o colori');
+  deve(c.doc.sezioni.length >= 4, 'il foglio ha meno di quattro sezioni: ' + c.doc.sezioni.length);
+  deve(c.doc.disclaimer && c.doc.avvisi && c.doc.firma, 'al contenuto mancano disclaimer, avvisi o firma');
+  return c.doc.sezioni.length + ' sezioni, zero markup';
+});
+
+prova('lo stesso contenuto regge tutte le forme del foglio, senza buchi', () => {
+  /* Si gira su molti profili e si controlla che ogni sezione abbia davvero
+     qualcosa dentro: una sezione con un titolo e niente sotto è un buco che
+     in HTML non si nota e in PDF diventa una pagina mezza vuota. */
+  let sezioni = 0;
+  for (const lavoro of ['dipendente', 'autonomo', 'professionista']) {
+    for (const versa of [0, 100, 600]) {
+      for (const inizio of [25, null]) {
+        const e = P.calcola({ ...BASE, lavoro, versamentoMensile: versa, etaInizioLavoro: inizio });
+        const c = P.contenutoFoglio({ esito: e, cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } });
+        deve(c.ok, (c.problemi || []).join('; '));
+        for (const s of c.doc.sezioni) {
+          deve(s.titolo, 'una sezione senza titolo');
+          const pieno = (s.numeri && s.numeri.length) || (s.paragrafi && s.paragrafi.length) ||
+            s.tabella || s.confronto || (s.note && s.note.length);
+          deve(pieno, 'la sezione «' + s.titolo + '» è vuota (' + lavoro + ', versa ' + versa + ')');
+          sezioni++;
+        }
+      }
+    }
+  }
+  return sezioni + ' sezioni controllate su 18 profili, nessuna vuota';
+});
+
+prova('il TFR resta fuori dal contenuto per chi non ce l\'ha', () => {
+  const conTfr = P.contenutoFoglio({ esito: P.calcola({ ...BASE, lavoro: 'dipendente' }),
+    cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } }).doc;
+  const senza = P.contenutoFoglio({ esito: P.calcola({ ...BASE, lavoro: 'autonomo' }),
+    cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } }).doc;
+  const ha = (doc) => doc.sezioni.some(s => /TFR: in azienda/.test(s.titolo));
+  deve(ha(conTfr), 'il dipendente non ha il confronto TFR nel contenuto');
+  deve(!ha(senza), 'l\'autonomo ha un confronto TFR che non lo riguarda');
+  /* Il riscatto invece va a tutti: è l'obiezione numero uno di chiunque. */
+  const riscatto = (doc) => doc.sezioni.some(s => /prendere prima i miei soldi/.test(s.titolo));
+  deve(riscatto(conTfr) && riscatto(senza), 'il blocco sul riscatto non arriva a tutti');
+  return 'TFR solo al dipendente, riscatto a tutti';
+});
+
+/* ══ LE TASSE NEI TRE MOMENTI ════════════════════════════════
+   Il confronto fra tassazione separata del TFR e tassazione della prestazione
+   del fondo. E' il numero piu' facile da gonfiare di tutto il modulo: basta
+   scrivere 9% a chiunque, e nessuno se ne accorge fino alla liquidazione. */
+
+prova('l\'aliquota del fondo dipende dagli anni che MANCANO, non dal desiderio', () => {
+  /* Lo sconto dello 0,30% parte dal sedicesimo anno di partecipazione. Chi
+     aderisce a 55 anni partecipa 12 anni: paga il 15% pieno. Mostrargli il
+     9% sarebbe la promessa piu' facile e piu' falsa del foglio. */
+  const giovane = P.calcola({ ...BASE, eta: 25, lavoro: 'dipendente' }).tasse;
+  const mezzo   = P.calcola({ ...BASE, eta: 38, lavoro: 'dipendente' }).tasse;
+  const tardi   = P.calcola({ ...BASE, eta: 55, lavoro: 'dipendente' }).tasse;
+  deve(vicino(tardi.aliquotaFondo, 0.15, 1e-9),
+    'chi partecipa ' + tardi.anniPartecipazione + ' anni non paga il 15% pieno: ' + pc(tardi.aliquotaFondo));
+  deve(vicino(giovane.aliquotaFondo, 0.09, 1e-9),
+    'chi partecipa ' + giovane.anniPartecipazione + ' anni non arriva al minimo: ' + pc(giovane.aliquotaFondo));
+  /* 29 anni di partecipazione: 15% − 0,30% × 14 = 10,80%. Conto a mano. */
+  deve(vicino(mezzo.aliquotaFondo, 0.15 - 0.003 * (mezzo.anniPartecipazione - 15), 1e-9),
+    'lo sconto non segue la regola: ' + pc(mezzo.aliquotaFondo));
+  deve(giovane.aliquotaFondo < mezzo.aliquotaFondo && mezzo.aliquotaFondo < tardi.aliquotaFondo,
+    'l\'aliquota non scende con gli anni di partecipazione');
+  return '25 anni → ' + pc(giovane.aliquotaFondo) + ', 38 → ' + pc(mezzo.aliquotaFondo) + ', 55 → ' + pc(tardi.aliquotaFondo);
+});
+
+prova('l\'aliquota del fondo non scende mai sotto il minimo di legge', () => {
+  /* Senza il pavimento del 9%, chi partecipa 50 anni uscirebbe con lo zero:
+     un numero che non esiste, e che nessuno metterebbe in discussione. */
+  for (let eta = 18; eta <= 66; eta++) {
+    const t = P.calcola({ ...BASE, eta, lavoro: 'dipendente' }).tasse;
+    deve(t.aliquotaFondo >= 0.09 - 1e-9, 'a ' + eta + ' anni l\'aliquota scende a ' + pc(t.aliquotaFondo));
+    deve(t.aliquotaFondo <= 0.15 + 1e-9, 'a ' + eta + ' anni l\'aliquota supera il 15%: ' + pc(t.aliquotaFondo));
+  }
+  return '49 età provate, sempre fra il 9% e il 15%';
+});
+
+prova('l\'aliquota del TFR in azienda è QUELLA DEL CLIENTE, non una media', () => {
+  /* Era scritta «tipicamente sopra il 20%». Un dipendente a 1.000 € e uno a
+     4.000 € non hanno la stessa aliquota: se il conto ne desse una sola,
+     starebbe usando una percentuale a occhio col vestito buono. */
+  const basso = P.calcola({ ...BASE, lavoro: 'dipendente', redditoMensile: 1000 }).tasse;
+  const alto  = P.calcola({ ...BASE, lavoro: 'dipendente', redditoMensile: 4500 }).tasse;
+  deve(basso.disponibile && alto.disponibile, 'il confronto non è stato calcolato');
+  deve(alto.aliquotaTfrAzienda > basso.aliquotaTfrAzienda + 0.005,
+    'due redditi molto diversi danno la stessa aliquota (' + pc(basso.aliquotaTfrAzienda) +
+    ' e ' + pc(alto.aliquotaTfrAzienda) + '): il conto sta usando una media');
+  return pc(basso.aliquotaTfrAzienda) + ' a 1.000 €, ' + pc(alto.aliquotaTfrAzienda) + ' a 4.500 €';
+});
+
+prova('il TFR annuo è la retribuzione / 13,5 meno lo 0,50% di legge', () => {
+  const e = P.calcola({ ...BASE, lavoro: 'dipendente', redditoMensile: 1800 });
+  const atteso = e.lordoAnnuo / 13.5 - e.lordoAnnuo * 0.005;
+  deve(vicino(e.tasse.quotaTfrAnnua, atteso, 0.01),
+    'quota TFR annua sbagliata: ' + eur(e.tasse.quotaTfrAnnua) + ' invece di ' + eur(atteso));
+  /* Il TFR futuro è quello che maturera' DA QUI alla pensione: contare anche
+     quello già maturato vorrebbe dire promettere un risparmio su soldi su cui
+     la scelta di oggi non può piu' incidere. */
+  deve(vicino(e.tasse.tfrFuturo, atteso * e.anniAllaPensione, 0.01),
+    'il TFR futuro non è la quota per gli anni che mancano');
+  return eur(e.tasse.quotaTfrAnnua) + ' l\'anno, ' + eur(e.tasse.tfrFuturo) + ' da qui alla pensione';
+});
+
+prova('chi non ha TFR non riceve un confronto sul TFR', () => {
+  for (const lavoro of ['autonomo', 'professionista']) {
+    const t = P.calcola({ ...BASE, lavoro }).tasse;
+    deve(t.haTfr === false, lavoro + ': risulta avere il TFR');
+    deve(t.disponibile === false, lavoro + ': gli esce un confronto TFR che non lo riguarda');
+    deve(t.aliquotaFondo > 0, lavoro + ': senza TFR perde anche l\'aliquota del fondo, che invece lo riguarda');
+  }
+  return 'autonomo e professionista: niente TFR, ma l\'aliquota del fondo resta';
+});
+
+prova('la differenza fra le due tasse si ricompone, e non è un numero staccato', () => {
+  const t = P.calcola({ ...BASE, lavoro: 'dipendente', redditoMensile: 1800 }).tasse;
+  deve(vicino(t.impostaTfrAzienda, t.tfrFuturo * t.aliquotaTfrAzienda, 0.01), 'l\'imposta in azienda non torna');
+  deve(vicino(t.impostaTfrFondo, t.tfrFuturo * t.aliquotaFondo, 0.01), 'l\'imposta nel fondo non torna');
+  deve(vicino(t.differenza, t.impostaTfrAzienda - t.impostaTfrFondo, 0.01), 'la differenza non è la sottrazione delle due');
+  deve(t.aChiConviene === (t.differenza > 0 ? 'fondo' : t.differenza < 0 ? 'azienda' : 'pari'),
+    'la conclusione non segue il segno della differenza');
+  return eur(t.impostaTfrAzienda) + ' contro ' + eur(t.impostaTfrFondo) + ': ' + eur(t.differenza) + ' al ' + t.aChiConviene;
+});
+
+prova('il foglio dice anche il momento in cui il fondo NON vince', () => {
+  /* La rivalutazione del TFR paga il 17%, i rendimenti del fondo il 20%: su
+     quel pezzo il TFR in azienda è avanti. E' l'unica riga del foglio che
+     gioca contro la vendita, ed è la ragione per cui le altre si credono.
+     Se sparisce, il foglio è diventato una brochure. */
+  const doc = P.contenutoFoglio({ esito: P.calcola({ ...BASE, lavoro: 'dipendente' }),
+    cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } }).doc;
+  const sez = doc.sezioni.find(s => /tre momenti/i.test(s.titolo));
+  deve(sez, 'la sezione sulle tre tassazioni non c\'è');
+  const testo = sez.paragrafi.map(pp => pp.parti ? pp.parti.map(x => x.t).join('') : (pp.testo || '')).join(' ');
+  deve(/17%/.test(testo) && /20%/.test(testo), 'non mette a confronto il 17% e il 20%');
+  deve(/avvantaggiato|in azienda è/i.test(testo),
+    'non dice che su quel pezzo il TFR in azienda è avvantaggiato: ' + testo.slice(0, 160));
+  return 'il 17% contro il 20%, scritto invece che nascosto';
+});
+
+prova('il confronto fiscale non promette rendimenti che non sono confermati', () => {
+  /* Il confronto si fa a rivalutazione zero APPOSTA: il rendimento del fondo
+     è ancora un segnaposto, e sommarlo vorrebbe dire vendere una differenza
+     che nessuno ha ancora confermato. */
+  const doc = P.contenutoFoglio({ esito: P.calcola({ ...BASE, lavoro: 'dipendente' }),
+    cliente: { nome: 'X Y' }, consulente: { nome: 'Z W' } }).doc;
+  const sez = doc.sezioni.find(s => /tassato nei due modi/i.test(s.titolo));
+  deve(sez, 'la sezione col confronto delle due tasse non c\'è');
+  const tutto = (sez.paragrafi || []).concat(sez.note || [])
+    .map(pp => pp.parti ? pp.parti.map(x => x.t).join('') : (pp.testo || '')).join(' ');
+  deve(/senza contare/i.test(tutto) && /rivalutazione/i.test(tutto),
+    'non dichiara che il confronto è a rivalutazione e rendimenti esclusi: ' + tutto.slice(0, 160));
+  deve(/art\. 19/i.test(tutto), 'non cita la norma da cui viene l\'aliquota');
+  deve(/riliquidazione/i.test(tutto), 'non avverte della riliquidazione d\'ufficio dell\'Agenzia');
+  return 'dichiara cosa non comprende, e da dove viene l\'aliquota';
+});
+
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
 let ok = 0;
 for (const [passata, nome, msg] of esiti) {

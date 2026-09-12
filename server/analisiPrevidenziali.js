@@ -76,6 +76,65 @@ export function preparaRiga(corpo, utente) {
   return { ok: true, riga };
 }
 
+/* ── CHI VEDE COSA ────────────────────────────────────────────────────────
+   Il backend usa la chiave di servizio, che SCAVALCA le RLS: la riservatezza
+   non la garantiscono le policy del database, la garantisce questo codice.
+   E' la stessa scelta, e lo stesso filtro, dei preventivi (server/preventivi.js):
+   il collaboratore vede le proprie analisi, lo staff con ?scope=all le vede
+   tutte. Averne due diverse sarebbe il modo piu' rapido perche' una delle due
+   diventi sbagliata senza che nessuno se ne accorga. */
+const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || '').toLowerCase();
+const STAFF_RUOLI = ['admin', 'master', 'top_master'];
+
+async function sbGet(path) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: sbHeaders() });
+  if (!r.ok) throw new Error('Supabase select: ' + (await r.text()).slice(0, 200));
+  return r.json();
+}
+
+export async function isStaff(req) {
+  const email = ((req.user && req.user.email) || '').toLowerCase();
+  if (email && SUPER_ADMIN_EMAIL && email === SUPER_ADMIN_EMAIL) return true;
+  try {
+    const u = await sbGet(`quote_utenti?id=eq.${encodeURIComponent(req.user.id)}&select=ruolo&limit=1`);
+    return !!(u[0] && STAFF_RUOLI.includes(String(u[0].ruolo || '').toLowerCase()));
+  } catch (_) { return false; }
+}
+
+/* Le colonne che servono per un ELENCO. Non si tira su `risultato` e
+   `parametri_usati`: sono l'analisi intera, decine di KB per riga, e in un
+   elenco non si guardano. Chi apre una scheda la chiede per id. */
+export const COLONNE_ELENCO = 'id,creata_il,creato_da,anagrafica_id,titolo,dati,obiettivo,versione_motore,nota';
+
+/* LE DUE DECISIONI CHE CONTANO, ESTRATTE E PURE. Dentro una rotta che parla
+   con Supabase non si provano senza accendere mezzo mondo; qui si provano con
+   una riga. E sono esattamente le due dove un errore non si vede: una query
+   senza filtro mostra i clienti di un collega, e un controllo di proprieta'
+   sbagliato li lascia aprire. */
+export function parametriElenco(query, utenteId, staff) {
+  const q = query || {};
+  const scopeAll = !!staff && q.scope === 'all';
+  const p = new URLSearchParams();
+  p.set('select', COLONNE_ELENCO);
+  p.set('order', 'creata_il.desc');
+  p.set('limit', String(Math.min(Math.max(Number(q.limit) || 50, 1), 200)));
+  /* IL FILTRO C'E' SEMPRE, tranne per lo staff che ha chiesto tutto. */
+  if (!scopeAll) p.set('creato_da', 'eq.' + utenteId);
+  if (q.anagrafica_id !== undefined) {
+    const a = String(q.anagrafica_id || '');
+    /* Un riferimento storto NON vale «tutte»: senza questo controllo la
+       scheda di Mario mostrerebbe le analisi di chiunque. */
+    if (!UUID.test(a)) return { ok: false, errore: 'Il riferimento anagrafica non è valido.' };
+    p.set('anagrafica_id', 'eq.' + a);
+  }
+  return { ok: true, scopeAll, params: p };
+}
+
+export function puoVedere(riga, utenteId, staff) {
+  if (!riga) return false;
+  return riga.creato_da === utenteId || !!staff;
+}
+
 export const analisiPrevRouter = Router();
 
 analisiPrevRouter.post('/', async (req, res) => {
@@ -89,6 +148,47 @@ analisiPrevRouter.post('/', async (req, res) => {
     if (!r.ok) throw new Error('Supabase insert: ' + testo.slice(0, 300));
     const scritte = JSON.parse(testo || '[]');
     res.json({ ok: true, id: (scritte[0] && scritte[0].id) || null, creata_il: (scritte[0] && scritte[0].creata_il) || null });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* ── L'ELENCO ─────────────────────────────────────────────────────────────
+   `?anagrafica_id=<uuid>` e' il caso che serve alla scheda cliente: tutte le
+   analisi fatte a quella persona, dalla piu' recente. Senza filtro torna le
+   ultime dell'operatore.
+
+   NIENTE `anagrafica_id` NON VALIDO TRATTATO COME «TUTTE». Se arrivasse una
+   stringa storta e la si ignorasse, la scheda di Mario mostrerebbe le analisi
+   di tutti: si rifiuta e si dice perche'. */
+analisiPrevRouter.get('/', async (req, res) => {
+  try {
+    const staff = await isStaff(req);
+    const q = parametriElenco(req.query, req.user.id, staff);
+    if (!q.ok) return res.status(400).json({ error: q.errore });
+    const righe = await sbGet(`quote_analisi_previdenziali?${q.params.toString()}`);
+    res.json({ ok: true, staff, scope: q.scopeAll ? 'all' : 'own', items: righe });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/* ── UNA SCHEDA INTERA ────────────────────────────────────────────────────
+   Qui si tira su tutto, parametri di quel giorno compresi: e' il motivo per
+   cui l'archivio esiste. Il controllo di proprieta' si fa DOPO aver letto la
+   riga, sul suo `creato_da`: filtrare nella query e basta direbbe «non
+   trovata» a chi non ha il permesso, che e' la risposta giusta per un id
+   inesistente ma non per uno esistente e altrui. */
+analisiPrevRouter.get('/:id', async (req, res) => {
+  try {
+    if (!UUID.test(String(req.params.id || ''))) return res.status(400).json({ error: 'Riferimento non valido.' });
+    const righe = await sbGet(`quote_analisi_previdenziali?id=eq.${encodeURIComponent(req.params.id)}&select=*&limit=1`);
+    const riga = righe[0];
+    if (!riga) return res.status(404).json({ error: 'Analisi non trovata.' });
+    if (!puoVedere(riga, req.user.id, await isStaff(req))) {
+      return res.status(403).json({ error: 'Questa analisi è di un altro collaboratore.' });
+    }
+    res.json({ ok: true, item: riga });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

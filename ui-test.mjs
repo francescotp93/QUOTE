@@ -199,6 +199,17 @@ async function bloccaRete(context) {
     if (url.startsWith(BASE)) return route.continue();      // file locali: veri
     // tutto il resto (CDN, API, Supabase) riceve una risposta finta e innocua
     if (/\.css(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '/* collaudo */' });
+    /* jsPDF: la libreria VERA, presa da node_modules e servita all'indirizzo
+       del CDN. Rispondergli con lo stesso commento vuoto di tutti gli altri
+       script vorrebbe dire collaudare per sempre la strada SENZA PDF — quella
+       che il consulente non usa mai. Cosi' invece si prova anche che l'URL
+       scritto nella pagina e il nome globale (`window.jspdf`) sono quelli
+       giusti. Se il pacchetto non c'e', si ripiega sul finto e le prove del
+       PDF si saltano da sole dicendolo. */
+    if (/jspdf/i.test(url)) {
+      const f = 'node_modules/jspdf/dist/jspdf.umd.min.js';
+      if (fs.existsSync(f)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(f) });
+    }
     if (/\.m?js(\?|$)|jsdelivr|unpkg|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* collaudo */' });
     if (/\.(png|jpe?g|gif|svg|ico|woff2?)(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'image/png', body: Buffer.alloc(0) });
     /* I NUMERI DI LEGGE, come li servirebbe il server vero. Dal 05/09/2026 il
@@ -2686,6 +2697,13 @@ const avvio = async () => {
           proposte: [...box.querySelectorAll('.pv-prop')].length,
           barra: [...box.querySelectorAll('.pv-barra span')].map(x => x.style.width),
           gap: PENS.esito.gapMensile,
+          /* I COMANDI, non le parole. Cercare «avanti» nel testo pescava
+             anche «la scelta vale da oggi in avanti»: un falso rosso su una
+             frase italiana qualunque. Un flusso a passi si riconosce dai
+             BOTTONI che lo fanno avanzare. */
+          passi: [...document.querySelectorAll('#page-previdenza button, #page-previdenza a, #page-previdenza [data-passo]')]
+                   .map(x => (x.textContent || '').trim())
+                   .filter(t => /^(avanti|indietro|passo\s*\d|continua)\b/i.test(t)),
         };
       });
       deve(r.numeri.length >= 4, 'i numeri grandi non sono quattro: ' + r.numeri.length);
@@ -2695,7 +2713,8 @@ const avvio = async () => {
       deve(r.gap > 0, 'su questo profilo il divario dovrebbe esserci');
       /* NIENTE PASSI. La risposta sta sotto i campi, sulla stessa schermata:
          se per vederla bisogna cambiare pagina, il cliente smette di guardare. */
-      deve(!/passo 1|passo 2|Avanti/i.test(r.testo), 'e\' tornato un flusso a passi');
+      deve(r.passi.length === 0, 'e\' tornato un flusso a passi, comandi trovati: ' + r.passi.join(', '));
+      deve(!/passo 1|passo 2/i.test(r.testo), 'la schermata numera dei passi: e\' tornato un flusso a passi');
       return r.numeri.join(' · ');
     });
 
@@ -3115,34 +3134,402 @@ const avvio = async () => {
       return r.length + ' professioni, nessuna attribuita male';
     });
 
-    await prova('pensione: il messaggio WhatsApp e\' precompilato e non promette niente', async () => {
+    /* ── IL PDF CHE PARTE ALLEGATO ────────────────────────────────────────
+       Il consulente chiude il colloquio mandando il foglio su WhatsApp. Un
+       collegamento `wa.me` NON puo' allegare un file: e' un limite di
+       WhatsApp. L'unica strada vera e' la condivisione nativa del telefono
+       (`navigator.share` coi file). Qui si prova che:
+         · dove la condivisione c'e', parte un PDF VERO (e non si apre wa.me);
+         · dove non c'e', si ripiega E SI DICE, invece di lasciar credere che
+           l'allegato sia partito;
+         · annullare non e' un guasto;
+         · senza la libreria si legge una frase, non uno stack.
+       La bugia da evitare e' una sola, ed e' sempre la stessa: far credere
+       che il cliente abbia ricevuto un foglio che non ha ricevuto. */
+
+    const senzaCondivisione = () => page.evaluate(() => {
+      Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
+      Object.defineProperty(navigator, 'share', { value: undefined, configurable: true });
+    });
+    /* La finta condivisione del telefono: accetta i file e registra cosa ha
+       ricevuto davvero, byte compresi. */
+    const conCondivisione = (esito) => page.evaluate((e) => {
+      window.__COND = null;
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: (d) => !!(d && d.files && d.files.length) });
+      Object.defineProperty(navigator, 'share', { configurable: true, value: async (d) => {
+        const f = d.files[0];
+        const testa = new Uint8Array(await f.slice(0, 5).arrayBuffer());
+        window.__COND = { nome: f.name, tipo: f.type, peso: f.size, testo: d.testo || d.text || '',
+                          magia: String.fromCharCode.apply(null, testa) };
+        if (e === 'annulla') { const err = new Error('annullato'); err.name = 'AbortError'; throw err; }
+        if (e === 'errore') throw new Error('condivisione fallita');
+      } });
+    }, esito);
+
+    const preparaPensione = () => page.evaluate(() => {
+      apriPensione();
+      PENS.parametri = 'ok'; PENS.avvisi = [];
+      PENS.cliente = { id: null, nome: 'Mario Rossi', telefono: '3331234567' };
+      document.getElementById('pens-eta').value = 38;
+      document.getElementById('pens-reddito').value = 1800;
+      document.getElementById('pens-versamento').value = 100;
+      document.getElementById('pens-inizio').value = 25;
+      pensCalcola();
+      document.getElementById('pens-cli').value = 'Mario Rossi';
+      document.getElementById('pens-cons').value = 'Francesco Oddo';
+      document.getElementById('pens-tel').value = '3331234567';
+    });
+
+    await prova('pensione: la libreria del PDF e\' quella vera, all\'indirizzo scritto nella pagina', async () => {
+      const r = await page.evaluate(() => ({
+        globale: typeof (window.jspdf && window.jspdf.jsPDF),
+        tag: [...document.querySelectorAll('script[src]')].filter(s => /jspdf/i.test(s.src)).length,
+      }));
+      deve(r.tag === 1, 'la pagina non carica jsPDF una volta sola (tag trovati: ' + r.tag + ')');
+      deve(r.globale === 'function',
+        'window.jspdf.jsPDF non esiste: o l\'indirizzo nella pagina e\' sbagliato, o manca il pacchetto (npm i --no-save jspdf@2.5.2)');
+      return 'un solo tag, globale window.jspdf.jsPDF viva';
+    });
+
+    await prova('pensione: dove il telefono sa condividere, parte un PDF vero e wa.me non si apre', async () => {
+      await preparaPensione();
+      await conCondivisione('ok');
+      const r = await page.evaluate(async () => {
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return null; };
+        const dice = window.alert; let avviso = null;
+        window.alert = (t) => { avviso = t; };
+        try { await pensWhatsApp(); } finally { window.open = apri; window.alert = dice; }
+        return { url, avviso, cond: window.__COND, nota: document.getElementById('pens-invio').textContent };
+      });
+      deve(!r.avviso, 'ha avvisato di un problema: ' + r.avviso);
+      deve(r.cond, 'la condivisione nativa non e\' stata usata: il PDF non e\' partito allegato');
+      deve(r.cond.magia === '%PDF-', 'il file condiviso non e\' un PDF (inizia per «' + r.cond.magia + '»)');
+      deve(r.cond.tipo === 'application/pdf', 'tipo sbagliato: ' + r.cond.tipo);
+      deve(/^Pensione - Mario Rossi\.pdf$/.test(r.cond.nome), 'nome file sbagliato: ' + r.cond.nome);
+      deve(r.cond.peso > 5000, 'PDF sospettosamente leggero: ' + r.cond.peso + ' byte');
+      deve(/Mario/.test(r.cond.testo) && /Francesco Oddo/.test(r.cond.testo),
+        'il messaggio che accompagna il file non saluta il cliente o non e\' firmato');
+      /* Se si aprisse ANCHE wa.me, il consulente si troverebbe due finestre e
+         manderebbe il messaggio due volte, una senza allegato. */
+      deve(r.url === null, 'si e\' aperto anche wa.me dopo aver condiviso: ' + r.url);
+      return 'PDF di ' + Math.round(r.cond.peso / 1024) + ' KB allegato, nessuna seconda finestra';
+    });
+
+    await prova('pensione: annullare la condivisione non e\' un guasto e non apre niente', async () => {
+      await preparaPensione();
+      await conCondivisione('annulla');
+      const r = await page.evaluate(async () => {
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return null; };
+        const dice = window.alert; let avviso = null;
+        window.alert = (t) => { avviso = t; };
+        document.getElementById('pens-invio').innerHTML = '';
+        try { await pensWhatsApp(); } finally { window.open = apri; window.alert = dice; }
+        return { url, avviso, nota: document.getElementById('pens-invio').textContent };
+      });
+      deve(r.url === null, 'dopo un annullamento si e\' aperto wa.me: ' + r.url);
+      deve(!r.avviso, 'un annullamento ha prodotto un avviso di errore: ' + r.avviso);
+      deve(!/errore|non . stato possibile/i.test(r.nota), 'la schermata tratta l\'annullamento come un guasto: ' + r.nota);
+      return 'chi annulla non vede niente';
+    });
+
+    await prova('pensione: dove la condivisione non c\'e\', si ripiega E SI DICE', async () => {
+      await preparaPensione();
+      await senzaCondivisione();
+      const r = await page.evaluate(async () => {
+        /* La finestra finta torna un oggetto, non `null`: `null` vuol dire
+           «bloccata dal browser», ed e' un altro ramo con un'altra frase. */
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return {}; };
+        /* Lo scarico non deve partire davvero dentro il collaudo. */
+        const clic = HTMLAnchorElement.prototype.click; let scaricato = null;
+        HTMLAnchorElement.prototype.click = function () { if (this.download) scaricato = this.download; };
+        try { await pensWhatsApp(); }
+        finally { window.open = apri; HTMLAnchorElement.prototype.click = clic; }
+        /* Si aspetta che ANCHE l'archivio abbia finito di scrivere la sua
+           riga: l'avviso dell'allegato deve sopravvivere a quello. */
+        await new Promise(r => setTimeout(r, 400));
+        return { url, scaricato, testo: decodeURIComponent(String(url).split('text=')[1] || ''),
+                 nota: document.getElementById('pens-invio').textContent,
+                 archivio: document.getElementById('pens-archivio').textContent };
+      });
+      deve(/^https:\/\/wa\.me\/393331234567\?text=/.test(r.url),
+        'il numero non e\' stato normalizzato col prefisso: ' + String(r.url).slice(0, 60));
+      deve(/Mario/.test(r.testo), 'il messaggio non saluta il cliente per nome');
+      deve(/illustrativo|non . una promessa/i.test(r.testo), 'il messaggio non dice che non e\' una promessa di rendimento');
+      deve(/Francesco Oddo/.test(r.testo), 'il messaggio non e\' firmato');
+      deve(/^Pensione - Mario Rossi\.pdf$/.test(String(r.scaricato)),
+        'il PDF non e\' stato scaricato come ripiego: ' + r.scaricato);
+      /* La frase deve dire che l'allegato NON e' partito. Senza, il consulente
+         crede di aver mandato il foglio e il cliente non ha ricevuto niente.
+         E deve essere ancora LI' dopo che l'archivio ha scritto la sua: con
+         un riquadro solo, «Salvo l'analisi in archivio...» la cancellava —
+         e il messaggio che restava diceva che era andato tutto bene. */
+      deve(/allega/i.test(r.nota), 'la schermata non dice che l\'allegato va aggiunto a mano: ' + r.nota);
+      deve(r.archivio.trim().length > 0, 'l\'archivio non ha scritto niente: la prova non dimostra la convivenza');
+      deve(!/allega/i.test(r.archivio), 'i due messaggi finiscono nello stesso riquadro');
+      return 'wa.me col messaggio, PDF scaricato, avviso che sopravvive all\'archivio';
+    });
+
+    await prova('pensione: se il browser blocca la finestra, non si dice che WhatsApp si e\' aperto', async () => {
+      await preparaPensione();
+      await senzaCondivisione();
+      const r = await page.evaluate(async () => {
+        const apri = window.open;
+        window.open = () => null;                      // bloccata, come fa un browser
+        const clic = HTMLAnchorElement.prototype.click; let scaricato = null;
+        HTMLAnchorElement.prototype.click = function () { if (this.download) scaricato = this.download; };
+        document.getElementById('pens-invio').innerHTML = '';
+        try { await pensWhatsApp(); }
+        finally { window.open = apri; HTMLAnchorElement.prototype.click = clic; }
+        return { scaricato, nota: document.getElementById('pens-invio').textContent };
+      });
+      deve(r.scaricato, 'col popup bloccato il PDF non e\' stato nemmeno scaricato');
+      deve(/bloccat/i.test(r.nota), 'non dice che la finestra e\' stata bloccata: ' + r.nota);
+      deve(!/si . aperto col messaggio/i.test(r.nota),
+        'dice che WhatsApp si e\' aperto quando non si e\' aperto: ' + r.nota);
+      return 'il PDF resta scaricato, e la frase non mente';
+    });
+
+    await prova('pensione: la nota sotto i bottoni dice la verita\' DI QUESTO apparecchio', async () => {
+      await conCondivisione('ok');
+      const conNativa = await page.evaluate(() => pensNotaInvio());
+      await senzaCondivisione();
+      const senzaNativa = await page.evaluate(() => pensNotaInvio());
+      deve(conNativa !== senzaNativa, 'la nota e\' la stessa nei due casi: in uno dei due sta mentendo');
+      deve(/allegato/i.test(conNativa), 'dove si puo\' allegare, la nota non lo dice');
+      deve(/a mano|aggiungi tu/i.test(senzaNativa), 'dove NON si puo\' allegare, la nota non avverte');
+      return 'due frasi diverse per due situazioni diverse';
+    });
+
+    await prova('pensione: senza la libreria del PDF si legge una frase, non uno stack', async () => {
+      await preparaPensione();
+      const r = await page.evaluate(async () => {
+        const vera = window.jspdf; window.jspdf = undefined;
+        const apri = window.open; let url = null;
+        window.open = (u) => { url = u; return null; };
+        const dice = window.alert; let avviso = null;
+        window.alert = (t) => { avviso = t; };
+        let esploso = null;
+        try { await pensWhatsApp(); } catch (e) { esploso = e && e.message || String(e); }
+        finally { window.jspdf = vera; window.open = apri; window.alert = dice; }
+        return { url, avviso, esploso };
+      });
+      deve(!r.esploso, 'senza libreria il codice e\' esploso: ' + r.esploso);
+      deve(r.avviso && /PDF/i.test(r.avviso), 'non spiega che manca il PDF: ' + r.avviso);
+      /* Non si apre WhatsApp a meta': meglio niente che un messaggio che
+         promette un allegato che non c'e'. */
+      deve(r.url === null, 'ha aperto WhatsApp lo stesso, senza PDF: ' + r.url);
+      return r.avviso.slice(0, 60);
+    });
+
+    /* ── LE TASSE, LATO CLIENTE ───────────────────────────────
+       Il confronto fra la tassazione separata del TFR e quella della
+       prestazione del fondo è il numero che vende il modulo — e quindi
+       quello che va sorvegliato di piu'. */
+
+    await prova('pensione: lo schermo e il foglio dicono le STESSE aliquote', async () => {
+      /* La schermata e il foglio sono due HTML diversi scritti in due punti
+         diversi. Se divergono se ne accorge il cliente, davanti al
+         consulente, e a quel punto non conta chi dei due aveva ragione. */
       const r = await page.evaluate(() => {
         apriPensione();
         PENS.parametri = 'ok'; PENS.avvisi = [];
-        PENS.cliente = { id: null, nome: 'Mario Rossi', telefono: '3331234567' };
         document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-lavoro').value = 'dipendente';
         document.getElementById('pens-reddito').value = 1800;
         document.getElementById('pens-versamento').value = 100;
         document.getElementById('pens-inizio').value = 25;
         pensCalcola();
         document.getElementById('pens-cli').value = 'Mario Rossi';
         document.getElementById('pens-cons').value = 'Francesco Oddo';
-        document.getElementById('pens-tel').value = '3331234567';
-        const apri = window.open; let url = null;
-        window.open = (u) => { url = u; return null; };
-        try { pensWhatsApp(); } finally { window.open = apri; }
-        return { url, testo: decodeURIComponent(String(url).split('text=')[1] || ''),
-                 nota: document.getElementById('pens-esito').textContent };
+        const foglio = Pensione.foglioHtml(pensDatiFoglio());
+        return { schermo: document.getElementById('pens-esito').textContent,
+                 foglio: foglio.ok ? foglio.html.replace(/<[^>]+>/g, ' ') : '',
+                 t: PENS.esito.tasse };
       });
-      deve(/^https:\/\/wa\.me\/393331234567\?text=/.test(r.url), 'il numero non e\' stato normalizzato col prefisso: ' + String(r.url).slice(0, 60));
-      deve(/Mario/.test(r.testo), 'il messaggio non saluta il cliente per nome');
-      deve(/illustrativo|non . una promessa/i.test(r.testo), 'il messaggio non dice che non e\' una promessa di rendimento');
-      deve(/Francesco Oddo/.test(r.testo), 'il messaggio non e\' firmato');
-      /* WhatsApp non allega file da un collegamento: dirlo evita che il
-         consulente creda di aver mandato il PDF e non l'abbia mandato. */
-      deve(/non permette di allegare/i.test(r.nota), 'la schermata non avverte che il PDF va allegato a mano');
-      return 'messaggio firmato, numero col prefisso, nessuna promessa';
+      const perc = (n) => (n * 100).toFixed(2).replace('.', ',') + '%';
+      const aliquote = [perc(r.t.aliquotaFondo), perc(r.t.aliquotaTfrAzienda)];
+      for (const a of aliquote) {
+        deve(r.schermo.includes(a), 'l\'aliquota ' + a + ' non c\'è sullo schermo');
+        deve(r.foglio.includes(a), 'l\'aliquota ' + a + ' non c\'è sul foglio del cliente');
+      }
+      return 'fondo ' + aliquote[0] + ', TFR in azienda ' + aliquote[1] + ': uguali di qua e di là';
     });
+
+    await prova('pensione: l\'aliquota del TFR è quella del cliente, e cambia col reddito', async () => {
+      /* Era «tipicamente sopra il 20%»: vera in media, falsa per il singolo.
+         E il foglio lo firma un singolo. */
+      const r = await page.evaluate(() => {
+        const leggi = (reddito) => {
+          apriPensione();
+          PENS.parametri = 'ok'; PENS.avvisi = [];
+          document.getElementById('pens-eta').value = 38;
+          document.getElementById('pens-lavoro').value = 'dipendente';
+          document.getElementById('pens-reddito').value = reddito;
+          document.getElementById('pens-versamento').value = 100;
+          document.getElementById('pens-inizio').value = 25;
+          pensCalcola();
+          return PENS.esito.tasse.aliquotaTfrAzienda;
+        };
+        return { basso: leggi(1000), alto: leggi(4500),
+                 testo: document.getElementById('pens-esito').textContent };
+      });
+      deve(r.alto > r.basso + 0.005,
+        'due redditi molto diversi danno la stessa aliquota: sta usando una media');
+      deve(/art\. 19/.test(r.testo), 'la schermata non dice da quale norma viene l\'aliquota');
+      deve(/reddito di riferimento/i.test(r.testo), 'non spiega su cosa è calcolata');
+      return (r.basso * 100).toFixed(1) + '% a 1.000 €, ' + (r.alto * 100).toFixed(1) + '% a 4.500 €';
+    });
+
+    await prova('pensione: a schermo si dice anche il momento in cui il fondo NON vince', async () => {
+      /* Se questa riga sparisce, la schermata è diventata una brochure — e
+         il consulente perde l'unica frase che rende credibili le altre due. */
+      const testo = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-lavoro').value = 'dipendente';
+        document.getElementById('pens-reddito').value = 1800;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        return document.getElementById('pens-esito').textContent;
+      });
+      deve(/17%/.test(testo) && /20%/.test(testo), 'non mette a confronto il 17% e il 20%');
+      deve(/avvantaggiato/i.test(testo), 'non dice che su quel pezzo il TFR in azienda è avvantaggiato');
+      deve(/senza contare/i.test(testo), 'non dichiara che il confronto è senza rivalutazione né rendimenti');
+      return 'il 17% contro il 20%, scritto anche a schermo';
+    });
+
+    await prova('pensione: chi non ha TFR non vede un confronto sul TFR', async () => {
+      const r = await page.evaluate(() => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = [];
+        document.getElementById('pens-eta').value = 38;
+        document.getElementById('pens-lavoro').value = 'autonomo';
+        document.getElementById('pens-reddito').value = 2000;
+        document.getElementById('pens-versamento').value = 100;
+        document.getElementById('pens-inizio').value = 25;
+        pensCalcola();
+        return document.getElementById('pens-esito').textContent;
+      });
+      deve(!/Lo stesso TFR/i.test(r), 'all\'autonomo esce un confronto TFR che non lo riguarda');
+      /* L'aliquota del fondo però lo riguarda eccome: quella resta. */
+      deve(/tre momenti/i.test(r), 'all\'autonomo sparisce anche la sezione sulle tasse, che lo riguarda');
+      return 'niente TFR, ma le tasse del fondo restano';
+    });
+
+    await prova('pensione: il cliente si cerca in portafoglio, e il legame si vede', async () => {
+      /* Scrivere il nome a mano produce un foglio identico e un progetto che
+         non si ritrova piu': non compare sotto nessuna scheda. Il legame
+         quindi non basta che ci sia — si deve VEDERE. */
+      const r = await page.evaluate(async () => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = []; pensBase('netto');
+        const v = (i, x) => { const e = document.getElementById(i); if (e) e.value = x; };
+        v('pens-eta', 38); v('pens-reddito', 1800); v('pens-versamento', 100); v('pens-inizio', 25);
+        pensCalcola();
+        const prima = document.getElementById('pens-cli-legame').textContent;
+        /* Si simula la scelta dall'elenco, che e' quello che fa il clic. */
+        window.__PENS_CERCA = [{ id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', nominativo: 'ROSSI MARIO', cellulare: '3331234567' }];
+        pensClienteScelto(0);
+        const dopo = document.getElementById('pens-cli-legame').textContent;
+        const agganciato = PENS.cliente && PENS.cliente.id;
+        const tel = document.getElementById('pens-tel').value;
+        /* E adesso il consulente riscrive il nome a mano: il legame di prima
+           NON puo' restare, o si salverebbe il progetto sotto un cliente che
+           non e' quello scritto nel campo. */
+        pensClienteCerca('Bianchi Giuseppe');
+        return { prima, dopo, agganciato, tel, dopoAMano: PENS.cliente.id,
+                 legameFinale: document.getElementById('pens-cli-legame').textContent };
+      });
+      deve(/Nessun cliente collegato/.test(r.prima), 'in partenza non dice che manca il collegamento');
+      deve(r.agganciato === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'scegliendo dall\'elenco non si aggancia l\'id del cliente');
+      deve(/ROSSI MARIO/.test(r.dopo) && /Previdenza/.test(r.dopo), 'non dice a quale scheda si e\' collegato');
+      deve(r.tel === '3331234567', 'il telefono del cliente non viene ripreso per WhatsApp');
+      deve(!r.dopoAMano, 'riscrivendo il nome a mano il legame col cliente di prima resta attaccato');
+      deve(/Nessun cliente collegato/.test(r.legameFinale), 'dopo aver staccato il legame la schermata continua a dire che c\'e\'');
+      return 'aggancia, lo dice, e si stacca se riscrivi il nome';
+    });
+
+    await prova('pensione: si salva sul cliente senza dover stampare', async () => {
+      /* Prima l'unico modo di mandare un progetto a registro era aprire la
+         finestra di stampa. Chi voleva solo tenerselo per il richiamo doveva
+         stampare e chiudere. */
+      const r = await page.evaluate(async () => {
+        apriPensione();
+        PENS.parametri = 'ok'; PENS.avvisi = []; pensBase('netto');
+        const v = (i, x) => { const e = document.getElementById(i); if (e) e.value = x; };
+        v('pens-eta', 38); v('pens-reddito', 1800); v('pens-versamento', 100); v('pens-inizio', 25);
+        pensCalcola();
+        PENS.cliente = { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', nome: 'ROSSI MARIO', telefono: '' };
+        v('pens-cli', 'ROSSI MARIO'); v('pens-cons', 'Francesco Oddo');
+        const vecchioFetch = window.fetch; const apri = window.open;
+        let corpo = null, stampata = false;
+        window.open = () => { stampata = true; return { document: { write() {}, close() {} } }; };
+        window.fetch = async (url, opts) => {
+          if (String(url).includes('/analisi-previdenziali')) { corpo = JSON.parse(opts.body); return { ok: true, status: 200, json: async () => ({ ok: true, id: 'x' }) }; }
+          return vecchioFetch(url, opts);
+        };
+        let scritto = '';
+        try {
+          await pensSalva();
+          for (let k = 0; k < 40 && !/archiviat|NON/.test(scritto); k++) {
+            await new Promise(r => setTimeout(r, 25));
+            scritto = (document.getElementById('pens-archivio') || {}).textContent || '';
+          }
+        } finally { window.fetch = vecchioFetch; window.open = apri; }
+        return { corpo, scritto, stampata };
+      });
+      deve(!r.stampata, 'per salvare ha aperto comunque la finestra di stampa');
+      deve(r.corpo && r.corpo.riga, 'il salvataggio non ha mandato niente a registro');
+      deve(r.corpo.riga.anagrafica_id === 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        'la riga non porta il collegamento al cliente: il progetto non comparira\' nella sua scheda');
+      deve(/archiviat/i.test(r.scritto), 'non dice che ha salvato: ' + r.scritto);
+      return 'salvato e collegato, senza aprire la stampa';
+    });
+
+    await prova('pensione: la scheda cliente ha la sua sezione, e distingue «nessuno» da «non ci riesco»', async () => {
+      const r = await page.evaluate(async () => {
+        /* NIENTE querySelectorAll QUI: la scheda cliente e' una finestra che
+           esiste solo quando la apri, quindi in pagina di linguette non ce
+           n'e' nessuna e la prova passerebbe o fallirebbe per il motivo
+           sbagliato. Si guarda la sorgente, come fa la prova della
+           cronologia. */
+        const tab = null;
+        /* L'elenco vuoto invita, non lascia il vuoto. */
+        const vuoto = pensElencoHtml([], 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+        /* Un elenco pieno mostra il divario, che e' il numero che si cerca. */
+        const pieno = pensElencoHtml([{ id: 'i1', creata_il: '2026-09-12T10:00:00Z',
+          dati: { etichettaLavoro: 'Lavoratore dipendente', eta: 38, versamentoMensile: 100, mensilita: 13, prudenziale: true },
+          obiettivo: { gapMensile: 350 } }], 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+        /* E quando la lettura fallisce lo dice, invece di fingere zero. */
+        const box = document.createElement('div'); box.id = 'cl-prevd'; document.body.appendChild(box);
+        const vecchioFetch = window.fetch;
+        window.fetch = async () => ({ ok: false, status: 500, json: async () => ({ error: 'database fermo' }) });
+        try { await caricaPrevidenzaCliente('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'); }
+        finally { window.fetch = vecchioFetch; }
+        const guasto = box.textContent; box.remove();
+        return { tab, vuoto, pieno, guasto };
+      });
+      const h = fs.readFileSync('index.html', 'utf8');
+      deve(/data-t="prevd"/.test(h), 'manca la linguetta «Previdenza» accanto ai preventivi');
+      deve(/id="cl-prevd"/.test(h), 'manca il riquadro che la linguetta Previdenza dovrebbe accendere');
+      deve(/'prevd'/.test((h.match(/\[((?:'[a-z]+',\s*)*'[a-z]+')\]\.forEach\(k => \{ const e = document\.getElementById\('cl-'/) || [])[1] || ''),
+        'clTab non conosce la linguetta Previdenza: cliccandola non si accende niente');
+      deve(/Nessun progetto/.test(r.vuoto) && /Nuovo progetto/.test(r.vuoto), 'l\'elenco vuoto non invita a farne uno');
+      deve(/350/.test(r.pieno) && /scoperti/.test(r.pieno), 'l\'elenco non mostra il divario, che e\' il numero che si cerca');
+      deve(/prudenziale/i.test(r.pieno), 'un progetto prudenziale non e\' marcato nell\'elenco');
+      deve(/Riapri/.test(r.pieno), 'manca il tasto per riaprire un progetto');
+      /* «Nessun progetto» e «non sono riuscito a leggerli» sono due cose
+         diverse: confonderle fa rifare al consulente un lavoro gia' fatto. */
+      deve(/non sono riuscito/i.test(r.guasto) && !/Nessun progetto/.test(r.guasto),
+        'una lettura fallita viene mostrata come «nessun progetto»: ' + r.guasto.slice(0, 90));
+      return 'scheda presente, vuoto che invita, guasto che si dichiara';
+    });
+
 
     await prova('pensione: i bottoni si vedono — niente bianco su bianco', async () => {
       const r = await page.evaluate(() => {
@@ -3270,7 +3657,13 @@ const avvio = async () => {
          (Note e Trattative) e la prova ha iniziato a dire che clTab non
          conosceva la Cronologia, che invece c'era. Si controlla che ci siano
          quelle che servono, non che siano ESATTAMENTE quelle. (04/09/2026) */
-      const linguette = (h.match(/\[((?:'[a-z]+',\s*)+'cro')\]\.forEach/) || [])[1] || '';
+      /* SECONDO GIRO DELLO STESSO ERRORE (12/09/2026). La correzione del
+         04/09 aveva tolto l'elenco esatto ma lasciato 'cro' inchiodato come
+         ULTIMO: aggiungendo la linguetta Previdenza in fondo, la prova e'
+         tornata a dire che clTab non conosceva la Cronologia — che invece
+         c'era. Adesso si prende l'elenco qualunque sia, e si controlla che
+         dentro ci siano le linguette che servono. */
+      const linguette = (h.match(/\[((?:'[a-z]+',\s*)*'[a-z]+')\]\.forEach\(k => \{ const e = document\.getElementById\('cl-'/) || [])[1] || '';
       deve(linguette, 'clTab non elenca più le linguette');
       for (const k of ['pol', 'prev', 'doc', 'sin', 'cro']) {
         deve(linguette.indexOf("'" + k + "'") >= 0, 'clTab non conosce la linguetta ' + k);
@@ -5171,6 +5564,227 @@ const avvio = async () => {
 
     await prova('anagrafica: nessun errore JavaScript in tutto lo step', async () => {
       deve(erroriAna.length === 0, erroriAna.slice(0, 3).join(' | '));
+    });
+
+    await context.close();
+  }
+
+  /* ══ LA PAGINA PUBBLICA DEL CLIENTE ══════════════════════════════════════
+     progetto.html la apre una persona che NON e' collegata a niente, dal suo
+     telefono. E' l'unica pagina di QUOTO con quella proprieta', e quindi
+     l'unica dove un errore lo trova un estraneo prima di noi.
+
+     Qui il server e' FINTO: si collauda la pagina, non il backend — quello ha
+     le sue prove, senza browser, in server/verifica/progetto-previdenziale.
+     Quello che si controlla e': che i due motori si carichino davvero, che il
+     conto sia LO STESSO del consulente, che la data di nascita venga chiesta
+     due volte (all'apertura e al salvataggio), e che la pagina non prometta
+     mai di essere un preventivo. */
+  {
+    const context = await browser.newContext();
+    /* Il finto backend. `stato` lo pilotano le singole prove. */
+    const stato = { apri: 'ok', salvato: null, chiamate: [] };
+    await context.route('**/*', (route) => {
+      const url = route.request().url();
+      if (url.startsWith(BASE)) return route.continue();
+      if (/\.css(\?|$)/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '/* collaudo */' });
+      if (/progetti-previdenziali/.test(url)) {
+        const corpo = (() => { try { return JSON.parse(route.request().postData() || '{}'); } catch (_) { return {}; } })();
+        stato.chiamate.push({ url, metodo: route.request().method(), corpo });
+        const rispondi = (s, o) => route.fulfill({ status: s, contentType: 'application/json', body: JSON.stringify(o) });
+        if (/\/salva$/.test(url)) {
+          if (corpo.dataNascita !== '1980-03-05') return rispondi(401, { error: 'Data di nascita non corrispondente.' });
+          stato.salvato = corpo;
+          return rispondi(200, { ok: true });
+        }
+        if (/\/apri$/.test(url)) {
+          if (stato.apri === 'bloccato') return rispondi(423, { error: 'Questo link è stato bloccato dopo troppi tentativi. Chiedi al tuo consulente di rimandartelo.' });
+          if (corpo.dataNascita !== '1980-03-05') return rispondi(401, { error: 'Data di nascita non corrispondente. Controlla e riprova.', restano: 4 });
+          return rispondi(200, { ok: true, cliente: { nome: 'Mario', nominativo: 'Mario Rossi', professione: 'Impiegato' }, giaCompletato: false, dati: null });
+        }
+        if (stato.apri === 'scaduto') return rispondi(410, { error: 'Questo link è scaduto. Chiedi al tuo consulente di rimandartelo.' });
+        return rispondi(200, { ok: true, richiede: 'data_nascita', giaCompletato: false });
+      }
+      if (/parametri-previdenziali\/numeri/.test(url)) {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+      }
+      if (/\.m?js(\?|$)|jsdelivr|cdn/.test(url)) return route.fulfill({ status: 200, contentType: 'text/javascript', body: '/* collaudo */' });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    });
+    const page = await context.newPage();
+    const erroriPub = [];
+    sorvegliaErrori(page, erroriPub);
+    const apriPagina = async (t) => {
+      await page.goto(BASE + '/progetto.html' + (t === null ? '' : '?t=' + t), { waitUntil: 'load' });
+      await page.waitForTimeout(300);
+    };
+    const compila = async (dn) => {
+      await page.fill('#dn', dn);
+      await page.click('#go');
+      await page.waitForTimeout(250);
+    };
+
+    await prova('cliente: senza token la pagina non chiede niente e lo spiega', async () => {
+      await apriPagina(null);
+      const t = await page.textContent('#bd');
+      deve(/non . completo|apri il link/i.test(t), 'non spiega che il link è incompleto: ' + t.slice(0, 80));
+      deve(!(await page.locator('#dn').count()), 'chiede la data di nascita senza nemmeno un token');
+      return 'si ferma prima di chiedere dati';
+    });
+
+    await prova('cliente: il link chiede la data di nascita PRIMA di dire qualunque cosa', async () => {
+      stato.apri = 'ok';
+      await apriPagina('tok-collaudo-1234567890');
+      deve(await page.locator('#dn').count(), 'non chiede la data di nascita');
+      const t = await page.evaluate(() => document.body.innerText);
+      /* IL NOME NON DEVE COMPARIRE. Chi ha intercettato il link non deve
+         poter leggere nemmeno a chi appartiene. */
+      deve(!/Mario|Rossi/.test(t), 'il nome del cliente compare prima della data di nascita: ' + t.slice(0, 120));
+      return 'chiede la seconda chiave, e non anticipa niente';
+    });
+
+    await prova('cliente: la data sbagliata non apre, e dice quanti tentativi restano', async () => {
+      await compila('1980-03-06');
+      const t = await page.textContent('#bd');
+      deve(/non corrispondente/i.test(t), 'non dice che la data non corrisponde: ' + t.slice(0, 80));
+      deve(!(await page.locator('#eta').count()), 'con la data sbagliata si apre lo stesso il modulo');
+      return 'porta chiusa, messaggio chiaro';
+    });
+
+    await prova('cliente: un link bloccato dice cosa fare, non «non autorizzato»', async () => {
+      stato.apri = 'bloccato';
+      await apriPagina('tok-collaudo-1234567890');
+      await compila('1980-03-05');
+      const t = await page.textContent('#bd');
+      deve(/bloccat/i.test(t), 'non dice che è bloccato: ' + t.slice(0, 90));
+      deve(/consulente/i.test(t), 'non dice a chi rivolgersi: ' + t.slice(0, 90));
+      stato.apri = 'ok';
+      return 'dice perché, e a chi chiedere';
+    });
+
+    await prova('cliente: un link scaduto si ferma prima di chiedere la data', async () => {
+      stato.apri = 'scaduto';
+      await apriPagina('tok-collaudo-1234567890');
+      const t = await page.textContent('#bd');
+      deve(/scadut/i.test(t), 'non dice che è scaduto: ' + t.slice(0, 90));
+      deve(!(await page.locator('#dn').count()), 'chiede la data di nascita su un link scaduto');
+      stato.apri = 'ok';
+      return 'si ferma subito';
+    });
+
+    await prova('cliente: con la data giusta si aprono le quattro domande', async () => {
+      await apriPagina('tok-collaudo-1234567890');
+      await compila('1980-03-05');
+      for (const id of ['#eta', '#lavoro', '#reddito', '#versamento', '#inizio', '#ignoto']) {
+        deve(await page.locator(id).count(), 'manca il campo ' + id);
+      }
+      const t = await page.evaluate(() => document.body.innerText);
+      deve(/Mario/.test(t), 'non saluta il cliente per nome dopo che si è riconosciuto');
+      return 'sei campi, e il cliente riconosciuto';
+    });
+
+    await prova('cliente: il conto è LO STESSO del consulente, non un secondo calcolo', async () => {
+      /* Due calcoli diversi sugli stessi dati sono il modo più veloce di
+         perdere una persona al primo appuntamento: il cliente arriva con un
+         numero, il consulente gliene mostra un altro. */
+      await page.fill('#eta', '38');
+      await page.selectOption('#lavoro', 'dipendente');
+      await page.fill('#reddito', '1800');
+      await page.fill('#versamento', '100');
+      await page.fill('#inizio', '25');
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      /* Gli importi attesi si formattano NEL BROWSER, con lo stesso
+         `toLocaleString('it-IT')` che usa la pagina: Node, senza i dati di
+         localizzazione completi, scrive «1294 €» dove il browser scrive
+         «1.294 €» — e la prova sarebbe rossa per la strada, non per il
+         contenuto. */
+      const r = await page.evaluate(() => {
+        const eur = (n) => Math.round(n).toLocaleString('it-IT') + ' €';
+        const a = window.Pensione ? window.Pensione.calcola({
+          eta: 38, lavoro: 'dipendente', redditoMensile: 1800, versamentoMensile: 100,
+          etaInizioLavoro: 25, baseReddito: 'netto',
+        }) : null;
+        return {
+          motore: typeof window.Pensione, fisco: typeof window.Irpef,
+          attesi: a ? { pensione: eur(a.pensioneNettaMensile), reddito: eur(a.redditoNettoMensile), gap: eur(a.gapMensile) } : null,
+          visto: document.getElementById('bd').innerText,
+        };
+      });
+      deve(r.motore === 'object' && r.fisco === 'object',
+        'la pagina del cliente non carica i due motori (Pensione: ' + r.motore + ', Irpef: ' + r.fisco + ')');
+      deve(r.visto.includes(r.attesi.pensione),
+        'la pensione mostrata non è quella del motore (' + r.attesi.pensione + '): ' + r.visto.slice(0, 140));
+      deve(r.visto.includes(r.attesi.reddito),
+        'il reddito mostrato non è quello del motore (' + r.attesi.reddito + ')');
+      deve(r.visto.includes(r.attesi.gap),
+        'il divario mostrato non è quello del motore (' + r.attesi.gap + ')');
+      return 'pensione ' + r.attesi.pensione + ', divario ' + r.attesi.gap + ': gli stessi numeri';
+    });
+
+    await prova('cliente: la pagina non promette di essere un preventivo, e non dà PDF', async () => {
+      /* Finché i valori di tariffa sono segnaposto, «un foglio non si
+         consegna a un cliente vero» — e men che meno senza nessuno accanto
+         che lo spieghi. */
+      /* `innerText`, non `textContent`: il secondo comprende anche il testo
+         dei tag <script>, e questa pagina il suo codice ce l'ha dentro —
+         la prova finiva per leggere i propri commenti. */
+      const t = await page.evaluate(() => document.body.innerText);
+      deve(/stima/i.test(t), 'non dice mai che è una stima');
+      deve(/non . un preventivo|non . una promessa/i.test(t), 'non dice che non è un preventivo né una promessa');
+      deve(!/scarica|PDF|firma/i.test(t), 'offre un PDF o una firma al cliente lasciato solo: ' + t.slice(0, 120));
+      return 'stima dichiarata, nessun foglio da firmare';
+    });
+
+    await prova('cliente: il salvataggio richiede DI NUOVO la data di nascita', async () => {
+      /* La pagina non tiene nessuna sessione: se il salvataggio non la
+         richiedesse, il solo link basterebbe a scrivere sulla scheda. */
+      stato.salvato = null;
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      deve(stato.salvato, 'il salvataggio non è arrivato al server');
+      deve(stato.salvato.dataNascita === '1980-03-05',
+        'il salvataggio non porta la data di nascita: ' + JSON.stringify(stato.salvato.dataNascita));
+      deve(stato.salvato.dati && stato.salvato.dati.eta === 38, 'i dati compilati non arrivano');
+      deve(stato.salvato.versione_motore, 'non dice con quale versione del motore è stato calcolato');
+      const t = await page.textContent('#bd');
+      deve(/Fatto|consulente/i.test(t), 'non conferma al cliente che è arrivato: ' + t.slice(0, 80));
+      return 'data richiesta due volte, dati e versione a destinazione';
+    });
+
+    await prova('cliente: «non me lo ricordo» arriva al server come dato mancante, non come zero', async () => {
+      /* Un\'età di inizio a 0 produrrebbe una carriera di 67 anni e una
+         pensione da sogno. Il motore, senza il dato, applica lo scenario
+         prudenziale e LO DICHIARA: è tutta un\'altra cosa. */
+      await apriPagina('tok-collaudo-1234567890');
+      await compila('1980-03-05');
+      await page.fill('#eta', '38');
+      await page.fill('#reddito', '1800');
+      await page.fill('#versamento', '0');
+      await page.check('#ignoto');
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      const t = await page.textContent('#bd');
+      deve(/prudenziale/i.test(t), 'non dichiara al cliente che la stima è prudenziale: ' + t.slice(0, 120));
+      stato.salvato = null;
+      await page.click('#go');
+      await page.waitForTimeout(300);
+      deve(stato.salvato, 'il salvataggio non è arrivato');
+      deve(stato.salvato.dati.etaInizioLavoro === null,
+        'l\'età di inizio sconosciuta arriva come ' + JSON.stringify(stato.salvato.dati.etaInizioLavoro) + ' invece che nulla');
+      deve(stato.salvato.esito && stato.salvato.esito.prudenziale === true,
+        'la stima salvata non risulta prudenziale: il consulente non saprebbe che lo era');
+      return 'mancante resta mancante, e viaggia marcato';
+    });
+
+    await prova('cliente: la pagina non finisce sui motori di ricerca', async () => {
+      const robots = await page.getAttribute('meta[name="robots"]', 'content');
+      deve(/noindex/i.test(robots || ''), 'progetto.html è indicizzabile: content="' + robots + '"');
+      return robots;
+    });
+
+    await prova('cliente: nessun errore JavaScript in tutta la pagina pubblica', async () => {
+      deve(erroriPub.length === 0, erroriPub.slice(0, 3).join(' | '));
     });
 
     await context.close();

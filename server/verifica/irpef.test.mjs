@@ -29,6 +29,8 @@ const esiti = [];
 const prova = (nome, fn) => { try { esiti.push([true, nome, fn() || '']); } catch (e) { esiti.push([false, nome, e.message]); } };
 const deve = (c, m) => { if (!c) throw new Error(m); };
 const vicino = (a, b, eps) => Math.abs(a - b) < (eps === undefined ? 0.01 : eps);
+const pc = (n) => ((Number(n) || 0) * 100).toFixed(2) + '%';
+const eur = (n) => Math.round(n).toLocaleString('it-IT') + ' €';
 
 /* ── L'imponibile: il lordo non è la base ────────────────────────────────── */
 
@@ -473,6 +475,65 @@ prova('chi non ha TFR né datoriale lo dichiara, invece di lasciare il campo vuo
   const artigiano = P.forbiceContributiva(30000, 'artigiani');
   deve(artigiano.tfr === 'no' && artigiano.datoriale === 'no', 'l\'artigiano non dichiara di non avere TFR né datoriale');
   return 'pubblico «regole proprie», artigiano «no»: nessun campo muto';
+});
+
+/* ══ LA TASSAZIONE SEPARATA DEL TFR (art. 19 c. 1 TUIR) ════════════════
+   Decide se al cliente conviene portare il TFR nel fondo. Era la riga del
+   foglio scritta «tipicamente sopra il 20%»: vera in media, falsa per il
+   singolo — e il foglio lo firma un singolo. */
+
+prova('l\'aliquota del TFR si calcola sul reddito di riferimento, non sul TFR', () => {
+  /* Il reddito di riferimento e' (TFR / anni) × 12: è quello che decide lo
+     scaglione. Due TFR molto diversi, maturati in tempi proporzionati, danno
+     la STESSA aliquota — se cosi' non fosse, il conto starebbe usando il
+     montante invece del riferimento. */
+  const a = P.tassazioneSeparataTfr(50000, 30);
+  const b = P.tassazioneSeparataTfr(100000, 60);
+  deve(vicino(a.aliquota, b.aliquota, 1e-9),
+    'stesso reddito di riferimento, aliquote diverse: ' + pc(a.aliquota) + ' contro ' + pc(b.aliquota));
+  deve(vicino(a.redditoRiferimento, 20000, 0.01), 'reddito di riferimento sbagliato: ' + a.redditoRiferimento);
+  return 'riferimento ' + Math.round(a.redditoRiferimento) + ' € → ' + pc(a.aliquota);
+});
+
+prova('l\'aliquota del TFR sale col reddito, e a mano torna', () => {
+  /* Il caso si rifa' a mano: 20.000 € di riferimento stanno tutti nel primo
+     scaglione, quindi l'aliquota media è esattamente il 23%. */
+  const basso = P.tassazioneSeparataTfr(50000, 30);        // riferimento 20.000
+  deve(vicino(basso.aliquota, 0.23, 1e-9), 'sotto i 28.000 l\'aliquota media non è il 23%: ' + pc(basso.aliquota));
+  /* 120.000 € di TFR su 30 anni → riferimento 48.000: 28.000 al 23% e 20.000
+     al 33% = 6.440 + 6.600 = 13.040 → 27,1̅6̅%. */
+  const alto = P.tassazioneSeparataTfr(120000, 30);
+  deve(vicino(alto.redditoRiferimento, 48000, 0.01), 'riferimento sbagliato: ' + alto.redditoRiferimento);
+  const atteso = (28000 * 0.23 + 20000 * 0.33) / 48000;
+  deve(vicino(alto.aliquota, atteso, 1e-9),
+    'aliquota diversa dal conto a mano: ' + pc(alto.aliquota) + ' invece di ' + pc(atteso));
+  deve(alto.aliquota > basso.aliquota, 'l\'aliquota non sale col reddito');
+  return pc(basso.aliquota) + ' a 20.000 €, ' + pc(alto.aliquota) + ' a 48.000 €';
+});
+
+prova('l\'imposta è l\'aliquota per TUTTO il TFR, e il netto torna', () => {
+  const t = P.tassazioneSeparataTfr(60000, 30);
+  deve(vicino(t.imposta, 60000 * t.aliquota, 0.01), 'l\'imposta non è l\'aliquota per il TFR');
+  deve(vicino(t.netto + t.imposta, 60000, 0.01), 'netto e imposta non ricompongono il TFR');
+  return eur(t.imposta) + ' su 60.000 €';
+});
+
+prova('meno di un anno di servizio non gonfia l\'aliquota', () => {
+  /* Dividere per zero (o per mezzo anno) produrrebbe un reddito di
+     riferimento enorme e l'aliquota massima: un numero falso che rende il
+     fondo piu' conveniente di quanto sia. Si tiene il pavimento a un anno. */
+  for (const anni of [0, -5, null, undefined, NaN, 0.5]) {
+    const t = P.tassazioneSeparataTfr(10000, anni);
+    deve(t.anniServizio >= 1, 'anni di servizio sotto l\'uno con ' + String(anni) + ': ' + t.anniServizio);
+    deve(t.aliquota <= 0.43, 'aliquota fuori scala con ' + String(anni) + ': ' + pc(t.aliquota));
+  }
+  return 'pavimento a un anno, nessuna aliquota inventata';
+});
+
+prova('un TFR a zero non produce imposta né aliquota', () => {
+  const t = P.tassazioneSeparataTfr(0, 30);
+  deve(t.imposta === 0 && t.aliquota === 0, 'un TFR a zero produce imposta o aliquota');
+  return 'zero resta zero';
 });
 
 /* ── esecuzione ──────────────────────────────────────────────────────────── */
