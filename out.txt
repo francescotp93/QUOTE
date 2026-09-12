@@ -1,34 +1,8 @@
-id: risalva-1789221466  exit: 0  2026-09-12 13:57:55
+id: risalva2-1789221518  exit: 0  2026-09-12 13:59:01
 ----
 == ora
-2026-09-12 13:57:55
-== auth.json (data e dimensione)
+2026-09-12 13:59:01
 axa       2026-09-12 13:39:01  26449 byte
 groupama  2026-09-12 13:53:52  5936 byte
-== stato login
 axa        {"running":false,"step":"loggato","since":1789220293734,"msg":"Login completato ✅"}
 groupama   {"running":false,"step":"loggato","since":1789220038252,"msg":"Sessione attiva"}
-== log axa ultimi 25 minuti
-Sep 12 13:33:26 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
-Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: State 'final-sigterm' timed out. Killing.
-Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: Killing process 1497962 (node) with signal SIGKILL.
-Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: Failed with result 'timeout'.
-Sep 12 13:33:42 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Sep 12 13:33:42 vps-d6443a46 systemd[1]: axa-scraper.service: Consumed 1h 33min 19.812s CPU time over 3d 6h 58min 19.975s wall clock time, 1.2G memory peak.
-Sep 12 13:33:42 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Sep 12 13:33:43 vps-d6443a46 systemd[1]: Stopping axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700...
-Sep 12 13:33:43 vps-d6443a46 systemd[1]: axa-scraper.service: Deactivated successfully.
-Sep 12 13:33:43 vps-d6443a46 systemd[1]: Stopped axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Sep 12 13:33:43 vps-d6443a46 systemd[1]: Started axa-scraper.service - AXA scraper (Playwright + Xvfb/VNC) — telecomando HTTP su 127.0.0.1:4700.
-Sep 12 13:33:47 vps-d6443a46 start-service.sh[2150620]: 🔑 VNC AXA su 127.0.0.1:5906 (password: axa2026) — tunnel SSH dal Mac per il primo login se serve
-Sep 12 13:33:49 vps-d6443a46 start-service.sh[2150754]: 13:33:49 [axa] telecomando HTTP su 127.0.0.1:4700
-Sep 12 13:34:08 vps-d6443a46 start-service.sh[2150754]: 13:34:08 [axa] sessione ripresa da auth.json: 102 cookie
-Sep 12 13:34:17 vps-d6443a46 start-service.sh[2150754]: 13:34:17 [axa] la sessione salvata non è più valida: serve un accesso con il codice
-Sep 12 13:34:17 vps-d6443a46 start-service.sh[2150754]: 13:34:17 [axa] PRONTO al login — attendo Accedi dall'utente
-Sep 12 13:38:02 vps-d6443a46 start-service.sh[2150754]: 13:38:02 [axa] AXA: User ID inserito
-Sep 12 13:38:02 vps-d6443a46 start-service.sh[2150754]: 13:38:02 [axa] AXA: password inserita (form unico)
-Sep 12 13:38:02 vps-d6443a46 start-service.sh[2150754]: 13:38:02 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 13:38:04 vps-d6443a46 start-service.sh[2150754]: 13:38:04 [axa] AXA: submit 1
-Sep 12 13:38:07 vps-d6443a46 start-service.sh[2150754]: 13:38:07 [axa] AXA: password inserita (passo 2)
-Sep 12 13:38:07 vps-d6443a46 start-service.sh[2150754]: 13:38:07 [axa] trustDevice: nessuna casella "ricorda 30 giorni" trovata in alcun frame
-Sep 12 13:38:09 vps-d6443a46 start-service.sh[2150754]: 13:38:09 [axa] AXA: submit 2
