@@ -250,3 +250,52 @@ Da `CODEX.md` §4, e valgono qui identiche:
    in servizi esterni o nei messaggi di commit.
 4. **Backup prima di ogni modifica**: non iniziare con l'albero sporco.
 5. Il confine QUOTO ⇄ IAM passa da `INTERFACCIA-QUOTO-IAM.md`, sempre.
+
+---
+
+## 9. Trovato il 15/09/2026, lavorando al menu «Nuovo preventivo»
+
+Verificato sul codice e sui DNS, come il resto di questo file.
+
+**Il menu «Nuovo preventivo» non sta qui.** Sta nella scocca di IAM
+(`Agente-sospesi/withus-one.js`, oggetto `MEGA`). Qui sta solo la parte che lo
+risolve: `PRODOTTI_DIRETTI` in `index.html`, 57 chiavi `prod`, una per foglia
+del menu. L'elenco è contratto (`INTERFACCIA-QUOTO-IAM.md` §2.6) e la prova
+`server/verifica/prodotti-diretti.test.mjs` controlla che codice e contratto
+dicano la stessa cosa, che ogni sottocategoria RC Professionale esista una
+volta sola in tariffa e che ogni chiave AMTRUST sia in `tariffe/amtrust.json`.
+Un brief che parla di «IAM» può riguardare tutti e due i repository: prima si
+cerca dove vive la cosa, poi si tocca.
+
+**RC Professionale si apre dopo la tariffa, non prima.** `renderRcprof` azzera
+la vista e la ridisegna quando la tariffa arriva: chi imposta la vista prima
+se la vede sovrascrivere e il menu apre l'elenco categorie invece del
+prodotto. `apriRcProfDiretto` e `apriAmtrustDiretto` fanno l'ordine giusto.
+
+**Numeri aggiornati.** `node ui-test.mjs`: **356** prove al 15/09/2026, tutte
+verdi in sessione web con il repo gemello clonato in `/home/user/agente-sospesi`
+(la prova del ponte lo cerca anche in `../agente-sospesi`).
+
+**Dove sta la produzione, davvero.**
+
+| dominio | chi risponde |
+|---|---|
+| `quoto.withusassicurazioni.it` | GitHub Pages, da `main` |
+| `iam.withusassicurazioni.it` | GitHub Pages, da `main` di Agente-sospesi. **Non Vercel**: Vercel fa solo le anteprime delle PR |
+| `api.withusassicurazioni.it` | il VPS OVH, dietro Caddy |
+
+Il VPS ha già IAM clonato in `/opt/withus-iam`, tenuto su `main` da
+`deploy/autopull.sh` dal 21/08/2026. Manca il blocco Caddy e il cambio DNS:
+il piano è `deploy/TRASLOCO-OVH.md`, l'idea del dominio unico è
+`deploy/DOMINIO-UNICO.md`, la decisione del 28/07/2026 è
+`Agente-sospesi/INDIRIZZO-UNICO.md`. Nessuno dei tre è stato eseguito.
+
+**Cose dell'ambiente di sessione web.**
+- Il proxy git risponde `403` alla cancellazione di rami remoti: i rami fusi li
+  cancella Francesco dal tasto «Delete branch» della PR.
+- `iam.withusassicurazioni.it` risponde `403` alle richieste dal contenitore;
+  `quoto.` risponde. Il deploy di IAM non si verifica da qui.
+- `pkill -f <nome>` uccide anche la shell che lo lancia se il nome compare nel
+  comando: esce con `144`. Non è un guasto.
+- Le PR si fondono con squash; nessuno dei due repository cancella i rami da
+  solo (Settings → «Automatically delete head branches» è spento).
