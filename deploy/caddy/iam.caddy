@@ -1,0 +1,80 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  iam.withusassicurazioni.it — UN SOLO INDIRIZZO (dal 15/09/2026)
+#
+#  Questo file vive nel repository (QUOTE/deploy/caddy/) e l'autopull lo copia
+#  in /etc/caddy/withus/, da dove il Caddyfile lo importa. Si modifica QUI, mai
+#  a mano sul server: al giro successivo l'autopull lo valida, lo ricarica e, se
+#  non e' valido, rimette quello di prima (vedi deploy/autopull.sh).
+#
+#  Tre cose sotto lo stesso nome:
+#    1. /nuovo-preventivo/…  → QUOTO, i file statici gia' in /opt/withus-backend
+#    2. /api, /moto, /pay, …  → il backend sulla stessa macchina (porta 3000)
+#    3. tutto il resto        → IAM, i file statici in /opt/withus-iam
+#
+#  Stessa origine per IAM e per il preventivatore nel riquadro: il browser
+#  condivide il login da solo, i token smettono di viaggiare nell'indirizzo, e
+#  i clic dentro il riquadro tornano visibili alla scocca (INTERFACCIA-QUOTO-IAM
+#  §2, INDIRIZZO-UNICO.md in Agente-sospesi).
+#
+#  Il blocco api.withusassicurazioni.it NON sta qui e non si tocca: e' scritto
+#  a mano nel Caddyfile, con il suo registro (deploy/REGISTRO-RICHIESTE.md).
+#
+#  Finche' il DNS di iam. punta a GitHub Pages questo blocco non riceve
+#  traffico e Caddy non riesce a farsi dare il certificato: riprova da solo,
+#  e ci riesce nei minuti successivi al cambio DNS. Non e' un errore.
+# ═══════════════════════════════════════════════════════════════════════════
+iam.withusassicurazioni.it {
+	encode gzip zstd
+
+	# ── 1. QUOTO sotto /nuovo-preventivo/ ──────────────────────────────────
+	# /nuovo-preventivo senza barra: si aggiunge, altrimenti i percorsi
+	# relativi della pagina (tariffe/motore/…) cercherebbero alla radice.
+	redir /nuovo-preventivo /nuovo-preventivo/ 308
+
+	handle_path /nuovo-preventivo/* {
+		root * /opt/withus-backend
+
+		# QUOTE e' un monorepo: alla radice stanno anche il backend, gli
+		# scraper e la configurazione. GitHub Pages li esponeva tutti (solo
+		# .env era 404). Qui restano fuori. ATTENZIONE: /tariffe/motore/*.js e
+		# /tariffe/*.json li carica il BROWSER (i motori di tariffa e i premi):
+		# NON vanno nascosti, e la prova deploy/dominio-unico.test.mjs lo
+		# controlla.
+		@sorgente_quoto {
+			path /server/* /scraper/* /supabase/* /deploy/* /config/* /node_modules/*
+			path /.git/* /.github/* /.claude/* /withus-one/verifica/*
+			path /.env /.env.* /package.json /package-lock.json /static-server.js /CNAME
+			path *.mjs *.md *.py *.sh *.sql *.service *.timer
+		}
+		respond @sorgente_quoto 404
+
+		file_server
+	}
+
+	# ── 2. I percorsi di servizio del backend ──────────────────────────────
+	# L'elenco e' quello di Agente-sospesi/vercel.json (28/07/2026), preso
+	# dalle rotte dichiarate in server/*.js. Oggi il preventivatore chiama il
+	# backend con l'indirizzo assoluto api.withusassicurazioni.it (PAY_API):
+	# queste righe servono a poterlo chiamare anche con percorsi relativi,
+	# dallo stesso indirizzo, senza CORS.
+	@servizi path /api/* /auth/* /backup/* /catalogo/* /crm/* /diag/* /firma-collab/* /fonti /fonti/* /health /l/* /lead/* /login/* /mail/* /marketing/* /moto/* /notify/* /pay/* /preventivi/* /products/* /public/* /scrape/* /shop/* /sign/* /user/*
+	handle @servizi {
+		reverse_proxy localhost:3000
+	}
+
+	# ── 3. IAM alla radice ─────────────────────────────────────────────────
+	handle {
+		root * /opt/withus-iam
+
+		# Prove, migrazioni, documenti interni e la configurazione di Vercel
+		# non sono pagine: fuori (deploy/TRASLOCO-OVH.md).
+		@sorgente_iam {
+			path /verifica/* /sql/* /docs/* /compliance/* /.git/* /.github/*
+			path /package.json /controlla-tutto.mjs /vercel.json /CNAME
+			path *.mjs *.md
+		}
+		respond @sorgente_iam 404
+
+		file_server
+	}
+}

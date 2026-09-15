@@ -153,6 +153,35 @@ for dir in scraper/*/; do
   systemctl restart "$name" 2>/dev/null && echo "[autopull] $name riavviato"
 done
 
+# ── SITI CADDY VERSIONATI (deploy/caddy/*.caddy) ─────────────────────────────
+#    Dal 15/09/2026 il sito iam.withusassicurazioni.it e' scritto nel repository
+#    e importato dal Caddyfile (impianto: setup.d/20-dominio-unico-caddy.sh).
+#    Quando cambia, si prova PRIMA e si ricarica DOPO: la copia nuova va in
+#    /etc/caddy/withus/, `caddy validate` la legge insieme al resto del
+#    Caddyfile, e solo se passa si fa il reload. Se non passa, o se il reload
+#    fallisce, tornano i file di prima e si ricarica di nuovo: Caddy non resta
+#    mai con una configurazione su disco che al prossimo riavvio lo fermerebbe.
+#    Il blocco api. non viene toccato: sta nel Caddyfile scritto a mano.
+if echo "$CHANGED" | grep -q '^deploy/caddy/' && [ -d /etc/caddy/withus ]; then
+  PRIMA=$(mktemp -d)
+  cp -a /etc/caddy/withus/. "$PRIMA"/
+  for f in /etc/caddy/withus/*.caddy; do
+    [ -f "$f" ] || continue
+    [ -f "deploy/caddy/$(basename "$f")" ] || rm -f "$f"   # tolto dal repo → tolto anche qui
+  done
+  for f in deploy/caddy/*.caddy; do [ -f "$f" ] && install -m 644 "$f" /etc/caddy/withus/; done
+  if caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 && systemctl reload caddy 2>/dev/null; then
+    echo "[autopull] Caddy: siti aggiornati e ricaricati ✅ ($(ls /etc/caddy/withus/*.caddy 2>/dev/null | xargs -n1 basename | tr '\n' ' '))"
+  else
+    echo "[autopull] ATTENZIONE: la configurazione Caddy nuova NON vale o non si carica: rimetto quella di prima"
+    caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile 2>&1 | tail -5
+    rm -f /etc/caddy/withus/*.caddy
+    cp -a "$PRIMA"/. /etc/caddy/withus/
+    systemctl reload caddy 2>/dev/null && echo "[autopull] Caddy: ricaricata la configurazione di prima" || echo "[autopull] ATTENZIONE: nemmeno il reload di prima e' riuscito: guardare journalctl -u caddy"
+  fi
+  rm -rf "$PRIMA"
+fi
+
 # ── Script di primo impianto (una volta sola, con ritentativo) ───────────────
 # deploy/setup.d/NN-nome.sh: eseguito a ogni giro finché non esce con 0;
 # poi un segnalino in /var/lib/withus-autopull lo salta per sempre.

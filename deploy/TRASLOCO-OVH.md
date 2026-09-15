@@ -73,9 +73,17 @@ quoto.withusassicurazioni.it {
 	file_server
 }
 ```
-ATTENZIONE: `tariffe/*.json` DEVE restare servito (il browser lo scarica per
-calcolare i premi) — infatti si nasconde solo `tariffe/motore/*`, non tutto
-`tariffe/`. Verificare dopo il reload che `…/tariffe/rc_professionale.json` → 200
+> **Correzione del 15/09/2026:** il blocco qui sopra è **sbagliato** su un punto
+> che avrebbe rotto il preventivatore: `/tariffe/motore/*` NON va nascosto. Sono
+> i motori di tariffa (`amtrust.js`, `pensione.js`, `tutelalegale.js`, …) che
+> `index.html` carica con `<script src>`: nascosti, il quotatore si apre e non
+> calcola niente. La deny-list buona è in `deploy/caddy/iam.caddy`, e la prova
+> `deploy/dominio-unico.test.mjs` controlla che nessun file caricato dalla pagina
+> sia nascosto. La fase QUOTO, poi, non ha più bisogno di un sito `quoto.` a
+> parte: QUOTO sta sotto `iam./nuovo-preventivo/` (dominio unico).
+
+ATTENZIONE: `tariffe/*.json` E `tariffe/motore/*.js` DEVONO restare serviti (il
+browser scarica gli uni per i premi e gli altri per calcolarli). Verificare dopo il reload che `…/tariffe/rc_professionale.json` → 200
 e `…/server/index.js` → 404, e che il preventivatore quoti ancora.
 
 DNS Aruba per `quoto`: stesso cambio, `CNAME → github.io` ⇒ `A → 51.254.142.199`.

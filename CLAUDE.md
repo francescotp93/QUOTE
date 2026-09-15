@@ -108,6 +108,10 @@ node server/verifica/tracciabilita.test.mjs
 
 # 3. la scocca a moduli
 node withus-one/verifica/controlla.mjs
+
+# 4. l'impianto sul VPS (autopull, scraper, il sito Caddy del dominio unico)
+node deploy/impianto.test.mjs
+node deploy/dominio-unico.test.mjs
 ```
 
 ### Le trappole d'ambiente, e come distinguerle da un guasto vero

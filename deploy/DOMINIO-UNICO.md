@@ -1,5 +1,33 @@
 # Dominio unico su VPS — guida operativa (Fase 1 di WITH US ONE)
 
+> **Aggiornamento 15/09/2026 — si fa con Caddy, non con nginx.** Sul VPS davanti
+> al backend c'è già Caddy (`api.withusassicurazioni.it`, col suo registro:
+> `REGISTRO-RICHIESTE.md`), e `/opt/withus-iam` è già clonato e tenuto su `main`
+> dall'autopull dal 21/08/2026. Il pacchetto di questa pagina (nginx, certbot,
+> `deploy/nginx/`) non è mai stato eseguito e **non si esegue**: lo sostituisce
+>
+> - `deploy/caddy/iam.caddy` — il sito `iam.withusassicurazioni.it` versionato:
+>   IAM alla radice, QUOTO sotto `/nuovo-preventivo/`, i percorsi di servizio al
+>   backend sulla stessa macchina;
+> - `deploy/setup.d/20-dominio-unico-caddy.sh` — l'impianto una-tantum: copia il
+>   sito in `/etc/caddy/withus/`, aggiunge una riga `import` al Caddyfile, valida,
+>   ricarica, controlla `api.` e la configurazione in esecuzione, e rientra da solo
+>   se un passo fallisce;
+> - il blocco «SITI CADDY VERSIONATI» in `deploy/autopull.sh` — ogni modifica
+>   futura a `deploy/caddy/` si valida prima e si ricarica dopo, con rientro;
+> - `deploy/dominio-unico.test.mjs` — la prova: niente di ciò che il browser
+>   carica viene nascosto, il sorgente del backend sì, lo script ha tutte le reti.
+>
+> Il gesto che resta a Francesco è lo stesso della tabella qui sotto: su Aruba
+> `iam` da `CNAME francescotp93.github.io` ad `A 51.254.142.199`. Caddy prende il
+> certificato da solo. Un dettaglio: il sito viene acceso su Caddy **prima** del
+> DNS, apposta (così un errore di configurazione si scopre mentre il sito è ancora
+> su Pages, senza che nessuno se ne accorga). In quell'intervallo Caddy prova a
+> farsi dare il certificato e non ci riesce, e allunga l'attesa fra un tentativo e
+> l'altro. **Subito dopo il cambio DNS** conviene un `systemctl reload caddy` (dal
+> canale comandi): riparte da zero e il certificato arriva in un minuto.
+> Il resto della pagina è la storia del piano, e i dettagli su nginx non valgono più.
+
 > Obiettivo: `iam.withusassicurazioni.it` servito dal VPS OVH (`51.254.142.199`),
 > con IAM alla radice, QUOTO sotto `/nuovo-preventivo/` e i servizi smistati
 > dallo stesso indirizzo. Stessa origine = un solo login, un solo software.
